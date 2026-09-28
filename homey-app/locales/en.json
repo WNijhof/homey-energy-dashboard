@@ -136,7 +136,6 @@
     "costs": "Costs",
     "netting": "End of net metering",
     "solar": "Solar energy",
-    "solarperf": "Solar performance",
     "gas": "Gas",
     "water": "Water",
     "baseload": "Standby use",

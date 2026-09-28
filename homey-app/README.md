@@ -107,9 +107,9 @@ De kosten worden per meterstand berekend met de prijs van dat moment, dus bij ee
 
 Het blok **Einde salderen** rekent uit wat het stoppen van salderen op 1 januari 2027 jou kost: per teruggeleverde kWh het verschil tussen de prijs die je dan niet meer vermijdt en wat teruglevering zonder salderen oplevert, met je eigen metingen van vorig jaar (of dit jaar tot nu, als vorig jaar te weinig gegevens heeft) en je contract uit de instellingen. Teruglevering boven je verbruik van dat jaar werd nooit gesaldeerd en telt niet mee. Het blok laat ook zien wat elke kWh die je zelf gebruikt in plaats van teruglevert na 2027 bespaart.
 
-## Zonprestatie
+## Zonne-energie
 
-Het blok **Zonprestatie** vergelijkt de opbrengst met de zonneverwachting (vandaag: met de verwachting tot nu), toont de opbrengst per kWp, de beste dag of maand en, bij meer omvormers, de opbrengst per omvormer. De grafiek toont per dag de opbrengst met een streepje voor de verwachting. De app bewaart daarvoor elke dag de verwachte kWh (tot ruim een jaar terug); de vergelijking begint dus op de dag dat je de zonneverwachting aanzet.
+Het blok **Zonne-energie** toont de opbrengst per uur, dag of maand. Met de zonneverwachting aan staat bij elke dag een streepje voor de verwachting, en vergelijkt het blok de opbrengst met de verwachting (vandaag: met de verwachting tot nu) en toont het de opbrengst per kWp. Verder de beste dag of maand en, bij meer omvormers, de opbrengst per omvormer. De app bewaart daarvoor elke dag de verwachte kWh (tot ruim een jaar terug); de vergelijking begint dus op de dag dat je de zonneverwachting aanzet.
 
 ## Gas per graaddag
 

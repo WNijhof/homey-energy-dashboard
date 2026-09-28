@@ -371,6 +371,9 @@ h2 { font-size: 17px; font-weight: 600; }
 .alert.ok i { background: var(--ok); }
 .alert.ok { color: var(--muted); }
 
+#solar-facts:empty { display: none; }
+#solar-facts { margin-bottom: 8px; }
+
 /* Home battery */
 
 .battery-level { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }

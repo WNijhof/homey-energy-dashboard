@@ -656,12 +656,10 @@
   // ---------- Solar performance ----------
 
   function renderSolarPerf(history) {
-    if (!$('solarperf-kwh')) return;
+    if (!$('solar-chart')) return;
     const t = history.totals;
     const rows = history.rows;
     const expected = history.expectedSolar;
-    setText('solarperf-period', PERIOD_LABELS[state.period] || '');
-    setText('solarperf-kwh', formatEnergy(t.solar));
 
     const facts = [];
     // Compare only the buckets that have both a forecast and a measurement
@@ -700,15 +698,16 @@
     if (devices.length > 1) {
       devices.forEach(d => facts.push(`<li><span>${escapeHtml(d.name)}</span><strong>${formatEnergy(d.kWh)} kWh</strong></li>`));
     }
-    $('solarperf-facts').innerHTML = facts.join('');
+    const factsEl = $('solar-facts');
+    if (factsEl) factsEl.innerHTML = facts.join('');
     renderSolarPerfChart(rows, history.bucket, expected?.perBucket);
   }
 
   // Bars for what was produced, with a line marking what was expected in each bucket
   function renderSolarPerfChart(rows, bucket, expected) {
-    const el = $('solarperf-chart');
+    const el = $('solar-chart');
     if (!el) return;
-    charts.set('solarperf-chart', () => renderSolarPerfChart(rows, bucket, expected));
+    charts.set('solar-chart', () => renderSolarPerfChart(rows, bucket, expected));
     const values = rows.map(r => r.solar || 0);
     const max = Math.max(0.1, ...values, ...(expected || []).filter(v => typeof v === 'number'));
     if (!values.some(v => v > 0)) {
@@ -716,7 +715,7 @@
       return;
     }
     const width = el.clientWidth || 300;
-    const height = chartHeight(el, 130);
+    const height = chartHeight(el, Number(el.dataset.height) || 160);
     const pad = { left: 30, right: 4, top: 6, bottom: 18 };
     const plotW = width - pad.left - pad.right;
     const plotH = height - pad.top - pad.bottom;
@@ -1095,11 +1094,6 @@
     }
     renderLegend([...positive, ...negative]);
     renderBars('electricity-chart', rows, { positive, negative, unit: 'kWh', bucket });
-    renderBars('solar-chart', rows, {
-      positive: [{ key: 'solar', label: 'Opgewekt', color: css('--solar') }],
-      unit: 'kWh',
-      bucket,
-    });
     renderBars('gas-chart', rows, {
       positive: [{ key: 'gas', label: 'Gas', color: css('--gas') }],
       unit: 'm³',

@@ -167,21 +167,6 @@
     </section>
   </template>
 
-  <template id="block-solarperf">
-    <section class="card">
-      <div class="card-head">
-        <h2>Zonprestatie</h2>
-        <span class="muted" id="solarperf-period"></span>
-      </div>
-      <div class="big-fact">
-        <span class="big-number" id="solarperf-kwh">–</span>
-        <span class="big-unit" id="solarperf-unit">kWh opgewekt</span>
-      </div>
-      <ul class="facts" id="solarperf-facts"></ul>
-      <div class="chart fill" id="solarperf-chart" data-height="130"></div>
-    </section>
-  </template>
-
   <template id="block-alerts">
     <section class="card">
       <div class="card-head">
@@ -249,6 +234,8 @@
         <h2>Zonne-energie</h2>
         <span class="muted" id="solar-total"></span>
       </div>
+      <!-- Expected, performance, per kWp, best day and per inverter: only what applies -->
+      <ul class="facts" id="solar-facts"></ul>
       <div class="chart fill" id="solar-chart" data-height="160"></div>
     </section>
   </template>

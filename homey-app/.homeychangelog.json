@@ -1,4 +1,8 @@
 {
+  "0.1.2": {
+    "en": "Solar energy and solar performance are now one block: the yield with the forecast, performance, per kWp, best day and per inverter. Layouts with the old block show the new one.",
+    "nl": "Zonne-energie en zonprestatie zijn nu één blok: de opbrengst met de verwachting, prestatie, per kWp, beste dag en per omvormer. Indelingen met het oude blok tonen vanzelf het nieuwe."
+  },
   "0.1.1": {
     "en": "Improvements from testing: new blocks say they fill in after saving the layout, clearer button for the automatic layout, readable settings, prices per quarter hour in the texts.",
     "nl": "Verbeteringen na testen: nieuwe blokken zeggen dat ze na het opslaan van de indeling gevuld worden, duidelijkere knop voor de automatische indeling, beter leesbare instellingen, kwartierprijzen in de teksten."
