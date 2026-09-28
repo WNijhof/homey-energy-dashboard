@@ -1,4 +1,8 @@
 {
+  "0.1.4": {
+    "en": "The app icon now shows in Homey and the App Store.",
+    "nl": "Het app-icoon is nu zichtbaar in Homey en de App Store."
+  },
   "0.1.3": {
     "en": "A new logo: the energy ring, the ring around the house in the Now diagram, split into solar, grid and battery.",
     "nl": "Een nieuw logo: de energiering, de ring rond het huis in het Nu-schema, verdeeld in zon, net en batterij."
