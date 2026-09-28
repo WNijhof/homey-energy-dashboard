@@ -1,4 +1,8 @@
 {
+  "0.1.3": {
+    "en": "A new logo: the energy ring, the ring around the house in the Now diagram, split into solar, grid and battery.",
+    "nl": "Een nieuw logo: de energiering, de ring rond het huis in het Nu-schema, verdeeld in zon, net en batterij."
+  },
   "0.1.2": {
     "en": "Solar energy and solar performance are now one block: the yield with the forecast, performance, per kWp, best day and per inverter. Layouts with the old block show the new one.",
     "nl": "Zonne-energie en zonprestatie zijn nu één blok: de opbrengst met de verwachting, prestatie, per kWp, beste dag en per omvormer. Indelingen met het oude blok tonen vanzelf het nieuwe."

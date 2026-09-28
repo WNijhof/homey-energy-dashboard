@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960">
-  <path d="M120 440 480 140l360 300" fill="none" stroke="#000" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M200 380v420a40 40 0 0 0 40 40h480a40 40 0 0 0 40-40V380" fill="none" stroke="#000" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M520 360 380 580h110l-40 180 150-240H490z" fill="#000"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-dasharray="112.38 238.76" stroke-dashoffset="0.00" transform="rotate(-80 50 50)"/><circle cx="50" cy="50" r="38" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-dasharray="64.63 238.76" stroke-dashoffset="-119.38" transform="rotate(-80 50 50)"/><circle cx="50" cy="50" r="38" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-dasharray="40.75 238.76" stroke-dashoffset="-191.01" transform="rotate(-80 50 50)"/><path d="M33 52 L50 37 L67 52 V68 H33 Z" fill="none" stroke="#000" stroke-width="6" stroke-linejoin="round"/><path d="M45 68 V58 H55 V68" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round"/></svg>
