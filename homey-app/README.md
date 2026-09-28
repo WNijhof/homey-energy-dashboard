@@ -8,6 +8,10 @@ Open het dashboard op **http://&lt;ip-van-je-homey&gt;:8080**, bijvoorbeeld op e
 
 Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgorde, hoe breed en hoe hoog.
 
+## Taal
+
+Rechtsboven op het dashboard kies je **NL** of **EN**. Elk scherm onthoudt zijn eigen keuze; de eerste keer volgt het de taal van de browser. De instellingen in de Homey-app volgen de taal van je Homey.
+
 ## De indeling aanpassen
 
 Tik op het **potlood** rechtsboven op het dashboard:
@@ -25,7 +29,7 @@ Wat er gebeurt als je een blok hoger maakt:
 | Blok | Bij meer hoogte |
 |---|---|
 | Energie nu, Energiestromen | Het diagram wordt groter |
-| Elektriciteit, Zonne-energie, Gas, Water, Stroomprijs, Verwarming, Laadpaal | De grafiek wordt hoger |
+| Elektriciteit, Vermogen vandaag, Zonne-energie, Gas, Water, Stroomprijs, Verwarming, Laadpaal | De grafiek wordt hoger |
 | Warm water | De temperatuurgrafiek van vandaag wordt hoger |
 | Kengetallen | De meters worden groter; in een smal, hoog blok staan ze onder elkaar |
 | Totalen | De tegels worden hoger |
@@ -42,6 +46,7 @@ Wat er gebeurt als je een blok hoger maakt:
 | **Stroomprijs** | Dynamische uurprijzen van vandaag en morgen (EnergyZero), met het goedkoopste blok van 3 uur |
 | **Kengetallen** | Meters voor zelfvoorzienend, eigen zon gebruikt en netto afgenomen of geleverd |
 | **Elektriciteit** | Waar je stroom vandaan kwam (net, zon, batterij) en waar overschot heen ging, per uur of dag |
+| **Vermogen vandaag** | Het vermogen door de dag heen, zoals in de HomeWizard-app: zelfverbruik van de zon onderaan, daarboven afname van het net en teruglevering, met de dagtotalen erboven. Het laatste stuk loopt live mee. Bij Week of Maand toont het blok vandaag |
 | **Apparaten nu** | Wat er op dit moment het meeste stroom gebruikt |
 | **Energiestromen** | Sankey-grafiek zoals in Home Assistant: bronnen → huis → individuele verbruikers, live of voor de gekozen periode |
 | **Verbruik per apparaat** | Ranglijst van kWh per apparaat in de gekozen periode |
@@ -75,6 +80,7 @@ In de Homey-app: *Meer → Apps → Energie Dashboard → Instellingen*. Bovenaa
 Op dezelfde instellingenpagina:
 
 - **Poort**: standaard 8080. Wijzig die als die poort al door iets anders gebruikt wordt.
+- **Toegangscode voor het dashboard**: als je die invult, vraagt een browser er één keer om en onthoudt hem daarna. Voor een tablet aan de muur kun je ook het adres openen met `?code=…` erachter.
 - **Pincode voor bewerken**: als je die invult, vraagt het dashboard erom bij het opslaan van een nieuwe indeling.
 - **Indeling**: zet blokken aan of uit, verplaats ze met ↑ en ↓, en kies de breedte: smal (1/3), half, breed (2/3) of volledig. De hoogte stel je in op het dashboard zelf. Hier kun je die met **Eigen hoogte ✕** weer op automatisch zetten. Op een telefoon staan alle blokken onder elkaar. Zolang je geen eigen indeling kiest, verschijnen nieuwe blokken vanzelf zodra er een passend apparaat bijkomt, bijvoorbeeld een thuisbatterij of laadpaal. Met **Standaardindeling gebruiken** ga je daar weer naar terug.
 - **Apparaten**: laat op "Automatisch" staan. De app zoekt zelf naar een P1-meter, zonnepanelen, thuisbatterij, boiler, warmtepomp of cv-ketel, thermostaat, laadpaal en watermeter.
@@ -85,7 +91,7 @@ Op dezelfde instellingenpagina:
 
 ## Veiligheid
 
-De webpagina is alleen bereikbaar binnen je thuisnetwerk, niet vanaf internet (tenzij je zelf poorten doorstuurt in je router, doe dat niet). Er is geen wachtwoord: iedereen op je wifi kan het dashboard bekijken. De pagina kan niets bedienen. Het enige dat je er kunt wijzigen is de indeling. Wil je niet dat iedereen op je wifi dat kan, stel dan een pincode in (na 5 foute pogingen is bewerken een minuut geblokkeerd). Apparaten, tarieven en andere instellingen wijzig je alleen via de Homey-app.
+De webpagina is alleen bereikbaar binnen je thuisnetwerk, niet vanaf internet (tenzij je zelf poorten doorstuurt in je router, doe dat niet). Zonder toegangscode kan iedereen op je wifi het dashboard bekijken; stel er een in bij de instellingen als je dat niet wilt (na 5 foute pogingen is inloggen een minuut geblokkeerd). De pagina kan niets bedienen. Het enige dat je er kunt wijzigen is de indeling. Wil je niet dat iedereen op je wifi dat kan, stel dan een pincode in (na 5 foute pogingen is bewerken een minuut geblokkeerd). Apparaten, tarieven en andere instellingen wijzig je alleen via de Homey-app.
 
 Voor het blok Stroomprijs haalt de app elk half uur de prijzen op bij EnergyZero. Daarbij gaan geen gegevens over jouw huis of verbruik mee.
 

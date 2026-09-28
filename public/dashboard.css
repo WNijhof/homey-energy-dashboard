@@ -211,7 +211,22 @@ h2 { font-size: 17px; font-weight: 600; }
 .grid.rows #flow { --min: 150px; }
 .grid.rows #flow > svg { width: 100%; height: 100%; max-height: none; }
 .flow-line { fill: none; stroke: var(--line); stroke-width: 3; }
-.flow-line.on { stroke-opacity: 1; }
+.flow-line[stroke] { stroke-linecap: round; }
+.flow-glow { fill: none; stroke-opacity: 0.1; stroke-linecap: round; }
+.flow-particles { pointer-events: none; }
+.node-pulse {
+  fill: none;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: node-pulse 2.8s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+@keyframes node-pulse {
+  from { transform: scale(1); opacity: 0.45; }
+  to { transform: scale(1.35); opacity: 0; }
+}
+.node-spin { transform-box: fill-box; transform-origin: center; animation: node-spin 24s linear infinite; }
+@keyframes node-spin { to { transform: rotate(360deg); } }
 .node-ring { fill: var(--card); stroke-width: 3; }
 .node-label { fill: var(--muted); font-size: 12px; font-weight: 500; text-anchor: middle; }
 .node-value { fill: var(--text); font-size: 15px; font-weight: 700; text-anchor: middle; }
@@ -322,8 +337,15 @@ h2 { font-size: 17px; font-weight: 600; }
 .sankey-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .segmented.small button { font-size: 12px; padding: 3px 10px; }
 #sankey svg { display: block; min-width: 100%; }
-.sankey-link { fill: none; stroke-opacity: 0.32; }
-.sankey-link:hover { stroke-opacity: 0.55; }
+.sankey-link { fill: none; stroke-opacity: 0.32; transition: stroke-opacity 0.2s; }
+.sankey-link:hover { stroke-opacity: 0.6; }
+#sankey svg:has(.sankey-link:hover) .sankey-link:not(:hover) { stroke-opacity: 0.14; }
+.sankey-link.grow {
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: sankey-grow 0.8s cubic-bezier(0.3, 0.7, 0.3, 1) forwards;
+}
+@keyframes sankey-grow { to { stroke-dashoffset: 0; } }
 .sankey-label {
   font-size: 12px;
   fill: var(--text);
@@ -337,6 +359,22 @@ h2 { font-size: 17px; font-weight: 600; }
 
 .empty { color: var(--muted); text-align: center; padding: 50px 0; font-size: 14px; }
 .grid.rows .fill > .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; }
+
+/* Power through the day */
+
+.power-summary { margin: -2px 0 10px; min-height: 48px; }
+.power-values { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.power-value b { font-weight: 600; margin-right: 3px; }
+.power-unit { color: var(--muted); font-weight: 600; margin-left: -6px; }
+.power-when { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.grid.rows .power-summary { flex: none; }
+.power-area { stroke: none; }
+.power-edge { fill: none; stroke-width: 1.5; stroke-linejoin: round; }
+.power-cursor { stroke: var(--text); stroke-opacity: 0.6; stroke-width: 1; }
+.power-now-line { stroke: var(--muted); stroke-opacity: 0.4; stroke-dasharray: 2 3; }
+.power-now { transform-box: fill-box; transform-origin: center; animation: node-pulse 2.8s cubic-bezier(0.2, 0.6, 0.4, 1) infinite; }
+.power-reveal { transform-box: fill-box; transform-origin: left; animation: power-reveal 1.1s cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+@keyframes power-reveal { from { transform: scaleX(0); } }
 
 /* Consumers */
 
@@ -410,7 +448,8 @@ h2 { font-size: 17px; font-weight: 600; }
 .phases li:first-child { border-top: 0; }
 
 /* Header buttons */
-.header-actions { display: flex; align-items: center; gap: 8px; }
+.header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.lang-switch button { padding-inline: 8px; }
 .icon-button {
   width: 34px;
   height: 34px;
@@ -587,4 +626,9 @@ body.editing #blocks { padding-bottom: 160px; }
   padding: 8px 10px;
   background: var(--track);
   color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-pulse, .node-spin, .sankey-link.grow, .power-reveal, .power-now { animation: none; stroke-dashoffset: 0; }
+  .node-pulse { display: none; }
 }

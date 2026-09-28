@@ -109,6 +109,7 @@ const BLOCKS = [
   { id: 'prices', title: 'Stroomprijs', size: 'large', available: (f, cfg) => cfg.prices?.source !== 'off' },
   { id: 'gauges', title: 'Kengetallen', size: 'small', available: f => f.solar.length > 0 || f.batteries.length > 0 },
   { id: 'electricity', title: 'Elektriciteit', size: 'large', available: () => true },
+  { id: 'power', title: 'Vermogen vandaag', size: 'full', available: f => Boolean(f.p1) },
   { id: 'consumers', title: 'Apparaten nu', size: 'small', available: () => true },
   { id: 'sankey', title: 'Energiestromen', size: 'full', available: () => true },
   { id: 'devices', title: 'Verbruik per apparaat', size: 'half', available: () => true },
@@ -650,6 +651,102 @@ async function buildDeviceEnergy(client, devices, found, resolution) {
   }));
 }
 
+// ---------- Power through the day ----------
+
+const POWER_STEP = 5 * 60 * 1000;
+
+// The average of a power series (W) in each step; a step without readings keeps the last value
+// for a while, so a meter that only reports changes still gives a line. After that the step is
+// unknown (null). With `idleZero`, a device that was (nearly) idle stays at 0 while it is quiet,
+// also before its first reading, as panels at night or a resting battery often log nothing.
+function averageInSteps(entries, start, steps, { idleZero = false } = {}) {
+  const sums = new Array(steps).fill(0);
+  const counts = new Array(steps).fill(0);
+  for (const e of entries) {
+    const i = Math.floor((e.t - start) / POWER_STEP);
+    if (i >= 0 && i < steps) { sums[i] += e.v; counts[i]++; }
+  }
+  const out = [];
+  let last = idleZero ? 0 : null;
+  let lastAt = idleZero ? 0 : -Infinity;
+  for (let i = 0; i < steps; i++) {
+    if (counts[i]) {
+      last = sums[i] / counts[i];
+      lastAt = i;
+    }
+    const idle = idleZero && Math.abs(last) < 10;
+    out.push(idle ? 0 : i - lastAt <= 6 ? last : null);
+  }
+  return out;
+}
+
+// Turns a cumulative kWh meter into power readings (W), for panels that log no power
+function powerFromMeter(entries) {
+  const out = [];
+  for (let i = 1; i < entries.length; i++) {
+    const hours = (entries[i].t - entries[i - 1].t) / 3600000;
+    const delta = entries[i].v - entries[i - 1].v;
+    if (hours > 0 && hours <= 2 && delta >= 0) out.push({ t: entries[i - 1].t, v: delta * 1000 / hours });
+  }
+  return out;
+}
+
+// Grid, solar and battery power (W, battery positive while charging) per step of the day,
+// split into the same flows as the energy totals. A step where one of them is unknown is left
+// empty (null), rather than guessing that device was at 0 W.
+function buildPowerCurve(start, end, until, { grid, solar, battery }) {
+  const steps = Math.max(0, Math.ceil((Math.min(until, end) - start) / POWER_STEP));
+  const points = [];
+  for (let i = 0; i < steps; i++) {
+    const values = [grid, ...solar, ...battery].map(list => list[i]);
+    if (!values.every(v => typeof v === 'number')) { points.push(null); continue; }
+    const g = grid[i];
+    const sun = Math.max(0, solar.reduce((sum, list) => sum + list[i], 0));
+    const bat = battery.reduce((sum, list) => sum + list[i], 0);
+    const flows = allocateFlows({
+      solar: sun,
+      imported: Math.max(0, g),
+      exported: Math.max(0, -g),
+      charge: Math.max(0, bat),
+      discharge: Math.max(0, -bat),
+    });
+    const point = { solar: sun };
+    for (const key of FLOW_KEYS) point[key] = flows[key];
+    point.home = flows.solarToHome + flows.gridToHome + flows.batteryToHome;
+    for (const key of Object.keys(point)) point[key] = Math.round(point[key]);
+    points.push(point);
+  }
+  return { start: start.toISOString(), end: end.toISOString(), step: POWER_STEP / 1000, points };
+}
+
+async function buildPowerHistory(client, found, period, cfg) {
+  if (!found.p1) return null;
+  const { resolution } = PERIODS[period];
+  const start = periodStart(period);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const until = new Date(Math.min(Date.now(), end.getTime()));
+  const steps = Math.ceil((until - start) / POWER_STEP);
+  const read = (device, capability) => client.getEntries(device.id, capability, resolution).catch(() => []);
+  const sign = cfg.battery?.invertPower ? -1 : 1;
+
+  const [grid, solar, battery] = await Promise.all([
+    read(found.p1, 'measure_power'),
+    Promise.all(found.solar.map(async panel => {
+      let entries = has(panel, 'measure_power') ? await read(panel, 'measure_power') : [];
+      if (!entries.length && has(panel, 'meter_power')) entries = powerFromMeter(await read(panel, 'meter_power'));
+      return entries.map(e => ({ t: e.t, v: Math.abs(e.v) }));
+    })),
+    Promise.all(found.batteries.map(async b => (await read(b, 'measure_power')).map(e => ({ t: e.t, v: e.v * sign })))),
+  ]);
+  if (!grid.length) return null;
+  return buildPowerCurve(start, end, until, {
+    grid: averageInSteps(grid, start, steps),
+    solar: solar.map(list => averageInSteps(list, start, steps, { idleZero: true })),
+    battery: battery.map(list => averageInSteps(list, start, steps, { idleZero: true })),
+  });
+}
+
 async function buildHistory(client, devices, found, period, cfg, { light = false } = {}) {
   const { resolution } = PERIODS[period];
   const buckets = makeBuckets(period);
@@ -711,6 +808,11 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
       .then(e => { boilerTemperature = e.map(({ t, v }) => ({ t: t.toISOString(), v })); }));
   }
 
+  let power = null;
+  if (!light && PERIODS[period].bucket === 'hour') {
+    jobs.push(buildPowerHistory(client, found, period, cfg).then(curve => { power = curve; }).catch(() => {}));
+  }
+
   let deviceEnergy = [];
   if (!light) {
     jobs.push(buildDeviceEnergy(client, devices, found, resolution).then(list => { deviceEnergy = list; }));
@@ -719,6 +821,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
   await Promise.all(jobs);
   return summarize(period, buckets, series, cfg.tariffs, {
     boilerTemperature,
+    power,
     deviceEnergy,
     hasBattery: found.batteries.length > 0,
     available: {
@@ -784,6 +887,7 @@ module.exports = {
   buildSankey,
   buildLive,
   buildHistory,
+  buildPowerCurve,
   makeBuckets,
   summarize,
   showerMinutes,

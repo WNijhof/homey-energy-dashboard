@@ -9,12 +9,13 @@ Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht
 - **Nu**: live energiestroom tussen zon, net en huis
 - **Boiler (Atag Lydos)**: watertemperatuur, of hij warm is, geschatte doucheminuten, douchebeurten volgens de Lydos, opwarmen, modus en temperatuurverloop van vandaag
 - **Totalen** per dag, week of maand: verbruik, van het net, zon opgewekt, teruggeleverd, gas, zelfvoorzienend %, eigen zonverbruik % en kosten
+- **Vermogen vandaag**: een lijngrafiek van het vermogen door de dag, met zelfverbruik, afname van het net en teruglevering
 - **Grafieken** per uur of dag voor elektriciteit, zonne-energie en gas
 - **Energiestromen**: een Sankey-grafiek zoals in Home Assistant, van de bronnen (zon, net, batterij) via het huis naar de individuele verbruikers, live of voor de gekozen periode
 - **Thuisbatterij**: laden, ontladen en laadniveau, zodra je er een hebt (zie hieronder)
 - **Apparaten nu**: wat er op dit moment het meeste stroom gebruikt
 
-Het werkt automatisch in licht en donker, en ook op telefoon of tablet.
+Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je tussen Nederlands en Engels.
 
 ## Wat je nodig hebt
 

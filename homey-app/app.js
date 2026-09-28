@@ -74,6 +74,7 @@ class EnergyDashboardApp extends Homey.App {
       tariffs: { ...DEFAULTS.tariffs, ...saved.tariffs },
       layout: Array.isArray(saved.layout) && saved.layout.length ? saved.layout : null,
       editPin: saved.editPin || '',
+      accessCode: saved.accessCode || '',
     };
   }
 

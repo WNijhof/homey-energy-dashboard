@@ -12,8 +12,8 @@
     "nl": "Energie Dashboard"
   },
   "description": {
-    "en": "Energy dashboard on your own network, served by Homey: live energy flow, solar, grid, gas and your boiler's shower minutes",
-    "nl": "Energiedashboard in je eigen netwerk, direct vanaf Homey: live energiestroom, zon, net, gas en de doucheminuten van je boiler"
+    "en": "A live energy dashboard for any screen in your home",
+    "nl": "Een live energiedashboard voor elk scherm in huis"
   },
   "category": [
     "energy"
@@ -46,6 +46,12 @@
   "author": {
     "name": "DrPeppers",
     "email": "drpeppers@duck.com"
+  },
+  "homepage": "https://github.com/WNijhof/homey-energy-dashboard",
+  "source": "https://github.com/WNijhof/homey-energy-dashboard",
+  "support": "https://github.com/WNijhof/homey-energy-dashboard/issues",
+  "bugs": {
+    "url": "https://github.com/WNijhof/homey-energy-dashboard/issues"
   },
   "api": {
     "getSettingsInfo": {

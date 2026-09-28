@@ -8,6 +8,11 @@ const DEFAULT_BOILER = { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFl
 
 function onHomeyReady(Homey) {
   const form = document.getElementById('settings-form');
+  // Texts in the language of Homey, from /locales
+  const __ = (key, tokens) => Homey.__(`settings.${key}`, tokens);
+  const blockTitle = block => Homey.__(`blocks.${block.id}`) || block.title;
+  form.editPin.placeholder = __('none');
+  form.accessCode.placeholder = __('none');
 
   const call = (method, path) => new Promise((resolve, reject) => {
     Homey.api(method, path, null, (err, result) => (err ? reject(err) : resolve(result)));
@@ -29,7 +34,7 @@ function onHomeyReady(Homey) {
       form.port.value = config.port || 8080;
       const devices = config.devices || {};
       const name = id => list.devices.find(d => d.id === id)?.name;
-      const autoLabel = id => `Automatisch${name(id) ? ` (${name(id)})` : ''}`;
+      const autoLabel = id => `${__('automatic')}${name(id) ? ` (${name(id)})` : ''}`;
 
       fillSelect(form.p1, list.devices, devices.p1, autoLabel(list.found.p1));
       fillSelect(form.boiler, list.devices, devices.boiler, autoLabel(list.found.boiler));
@@ -37,23 +42,24 @@ function onHomeyReady(Homey) {
       fillSelect(form.water, list.devices, devices.water, autoLabel(list.found.water));
       form.fuseAmps.value = config.grid?.fuseAmps ?? 25;
       form.editPin.value = config.editPin || '';
+      form.accessCode.value = config.accessCode || '';
       form.pricesOn.checked = config.prices?.source !== 'off';
       form.surcharge.value = config.prices?.surcharge ?? 0;
       form['water-tariff'].value = config.tariffs?.water ?? '';
       fillChecks('heating-list', 'heating', list.devices, devices.heating || [],
         d => d.class === 'heatpump' || d.class === 'boiler' || /warmtepomp|heat ?pump|cv|ketel/i.test(d.name),
-        'Geen warmtepomp of cv-ketel gevonden');
+        __('noHeating'));
       fillChecks('ev-list', 'evChargers', list.devices, devices.evChargers || [],
         d => d.class === 'evcharger' || /laadpa|charger|wallbox|easee|zaptec|alfen/i.test(d.name),
-        'Geen laadpaal gevonden');
+        __('noEv'));
       initLayout(list);
 
       fillChecks('solar-list', 'solar', list.devices, devices.solar || [],
         d => d.class === 'solarpanel' || /solar|zon|omvormer|inverter|pv/i.test(d.name),
-        'Geen zonnepanelen gevonden');
+        __('noSolar'));
       fillChecks('battery-list', 'batteries', list.devices, devices.batteries || [],
         d => d.class === 'battery' || /batter|zendure|solarflow|accu/i.test(d.name),
-        'Nog geen thuisbatterij gevonden. Na het toevoegen van je batterij in Homey verschijnt hij hier vanzelf.');
+        __('noBattery'));
       form.invertPower.checked = Boolean(config.battery?.invertPower);
 
       const boiler = { ...DEFAULT_BOILER, ...config.boiler };
@@ -61,7 +67,7 @@ function onHomeyReady(Homey) {
       const tariffs = config.tariffs || {};
       TARIFF_FIELDS.forEach(key => { form[key].value = tariffs[key] ?? ''; });
     } catch (err) {
-      status.textContent = `Instellingen laden mislukt: ${err.message || err}`;
+      status.textContent = __('loadFailed', { error: err.message || err });
     }
 
     form.addEventListener('submit', async event => {
@@ -70,6 +76,7 @@ function onHomeyReady(Homey) {
       const config = {
         port: number('port') ?? 8080,
         editPin: form.editPin.value.trim(),
+        accessCode: form.accessCode.value.trim(),
         devices: {
           p1: form.p1.value,
           boiler: form.boiler.value,
@@ -91,20 +98,24 @@ function onHomeyReady(Homey) {
         ].filter(([, v]) => v !== undefined)),
       };
       if (config.boiler.showerTemp <= config.boiler.coldWaterTemp) {
-        status.textContent = 'De douchetemperatuur moet hoger zijn dan die van het koude water.';
+        status.textContent = __('showerTooCold');
         return;
       }
       if (config.port < 1024 || config.port > 65535) {
-        status.textContent = 'Kies een poort tussen 1024 en 65535.';
+        status.textContent = __('portRange');
+        return;
+      }
+      if (config.accessCode && config.accessCode.length < 4) {
+        status.textContent = __('accessCodeLength');
         return;
       }
       try {
         await setSetting('config', config);
-        status.textContent = 'Opgeslagen';
+        status.textContent = __('saved');
         // The app restarts the web server on a new port, give it a moment
         setTimeout(() => call('GET', '/settings-info').then(showDashboard).catch(() => {}), 1500);
       } catch (err) {
-        status.textContent = `Opslaan mislukt: ${err.message || err}`;
+        status.textContent = __('saveFailed', { error: err.message || err });
       }
     });
   }
@@ -114,7 +125,8 @@ function onHomeyReady(Homey) {
     link.textContent = info.dashboardUrl;
     link.href = info.dashboardUrl;
     const status = document.getElementById('server-status');
-    status.textContent = info.server.running ? 'De webpagina draait.' : `De webpagina draait niet. ${info.server.message || ''}`;
+    const reason = info.server.reason === 'portInUse' ? __('portInUse', { port: info.server.port }) : info.server.message || '';
+    status.textContent = info.server.running ? __('serverRunning') : `${__('serverStopped')} ${reason}`;
     status.className = info.server.running ? 'muted' : 'error';
   }
 
@@ -129,7 +141,7 @@ function onHomeyReady(Homey) {
     const hidden = blocks
       .filter(b => !shown.some(s => s.id === b.id))
       .map(b => ({ id: b.id, size: b.size, on: false }));
-    return [...shown, ...hidden].map(b => ({ ...b, title: blocks.find(x => x.id === b.id).title }));
+    return [...shown, ...hidden].map(b => ({ ...b, title: blockTitle(blocks.find(x => x.id === b.id)) }));
   }
 
   function initLayout(info) {
@@ -143,24 +155,24 @@ function onHomeyReady(Homey) {
     };
   }
 
-  const SIZE_LABELS = { small: 'Smal', half: 'Half', large: 'Breed', full: 'Volledig' };
+  const SIZE_LABELS = { small: __('sizeSmall'), half: __('sizeHalf'), large: __('sizeLarge'), full: __('sizeFull') };
 
   function renderLayout() {
     const list = document.getElementById('layout-list');
     list.innerHTML = layoutItems.map((b, i) => `
       <li class="${b.on ? '' : 'off'}" data-i="${i}">
-        <input type="checkbox" data-action="toggle" ${b.on ? 'checked' : ''} aria-label="${escapeText(b.title)} tonen">
+        <input type="checkbox" data-action="toggle" ${b.on ? 'checked' : ''} aria-label="${escapeText(__('show', { name: b.title }))}">
         <span class="name">${escapeText(b.title)}</span>
-        <select data-action="size" aria-label="Breedte">
+        <select data-action="size" aria-label="${escapeText(__('width'))}">
           ${Object.entries(SIZE_LABELS).map(([id, label]) => `<option value="${id}" ${b.size === id ? 'selected' : ''}>${label}</option>`).join('')}
         </select>
-        ${b.rows ? '<button type="button" class="chip" data-action="auto-height" title="De hoogte is op het dashboard ingesteld. Tik om die weer door de inhoud te laten bepalen.">Eigen hoogte ✕</button>' : ''}
-        <button type="button" class="move" data-action="up" ${i === 0 ? 'disabled' : ''} aria-label="Omhoog">↑</button>
-        <button type="button" class="move" data-action="down" ${i === layoutItems.length - 1 ? 'disabled' : ''} aria-label="Omlaag">↓</button>
+        ${b.rows ? `<button type="button" class="chip" data-action="auto-height" title="${escapeText(__('ownHeightHelp'))}">${escapeText(__('ownHeight'))}</button>` : ''}
+        <button type="button" class="move" data-action="up" ${i === 0 ? 'disabled' : ''} aria-label="${escapeText(__('moveUp'))}">↑</button>
+        <button type="button" class="move" data-action="down" ${i === layoutItems.length - 1 ? 'disabled' : ''} aria-label="${escapeText(__('moveDown'))}">↓</button>
       </li>`).join('');
     document.getElementById('layout-mode').textContent = layoutCustom
-      ? 'Je gebruikt een eigen indeling.'
-      : 'Standaardindeling: blokken verschijnen vanzelf zodra er een passend apparaat is, bijvoorbeeld een thuisbatterij of laadpaal.';
+      ? __('layoutCustom')
+      : __('layoutDefault');
   }
 
   document.getElementById('layout-list').addEventListener('input', onLayoutChange);

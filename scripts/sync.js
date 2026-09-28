@@ -12,6 +12,7 @@ const copies = [
   ['lib/energy.js', ['homey-app/lib/energy.js']],
   ['lib/prices.js', ['homey-app/lib/prices.js']],
   ['shared/dashboard.js', ['public/dashboard.js', 'homey-app/web/dashboard.js']],
+  ['shared/i18n.js', ['public/i18n.js', 'homey-app/web/i18n.js']],
   ['shared/dashboard.css', ['public/dashboard.css', 'homey-app/web/dashboard.css']],
   ['public/index.html', ['homey-app/web/index.html']],
   ['public/icon.svg', ['homey-app/web/icon.svg']],

@@ -22,8 +22,11 @@
     sankeyMode: 'live',
   };
 
+  // Numbers and dates follow the language chosen on the page (see i18n.js)
+  const LOCALE = window.EnergyI18n?.locale || 'nl-NL';
+
   const $ = id => document.getElementById(id);
-  const nf = (digits = 0) => new Intl.NumberFormat('nl-NL', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const nf = (digits = 0) => new Intl.NumberFormat(LOCALE, { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
   const ICONS = {
@@ -193,28 +196,153 @@
 
   // ---------- Live flow ----------
 
-  function flowDots(pathId, watts, color, radius = 4.5) {
+  // The diagrams are drawn again on every update. One animation loop moves the particles along
+  // the lines and remembers where each flow was, so particles keep going instead of jumping back
+  // to the start, and a change in power speeds them up or slows them down gradually.
+
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const flowMemory = new Map();
+  const TAIL = 4;
+  let flowItems = [];
+  let flowFrame = 0;
+  let flowTime = 0;
+
+  // SVG units per second: faster with more power
+  const flowSpeed = watts => 190 / Math.max(0.9, 4.2 - Math.log10(watts) * 0.9);
+
+  // Thicker lines for more power
+  const flowWidth = watts => 2.5 + Math.min(3, Math.max(0, Math.log10(watts) - 1.5));
+
+  // A negative delay that keeps a CSS animation in step when its element is drawn again
+  const syncDelay = seconds => `-${((performance.now() / 1000) % seconds).toFixed(2)}s`;
+
+  function flowDots(pathId, watts, color, radius = 4.5, key = pathId) {
     if (!(watts > 5)) return '';
-    const duration = Math.max(0.9, 4.2 - Math.log10(watts) * 0.9);
-    const dots = watts > 2000 ? 4 : watts > 500 ? 3 : 2;
-    let out = '';
-    for (let i = 0; i < dots; i++) {
-      out += `<circle r="${radius}" fill="${color}"><animateMotion dur="${duration.toFixed(2)}s" begin="-${(duration / dots * i).toFixed(2)}s" repeatCount="indefinite"><mpath href="#${pathId}"/></animateMotion></circle>`;
+    return `<g class="flow-particles" data-path="${pathId}" data-key="${escapeHtml(key)}" data-watts="${watts}" data-color="${color}" data-r="${radius}"></g>`;
+  }
+
+  function syncFlows() {
+    const seen = new Set();
+    flowItems = [...document.querySelectorAll('.flow-particles')].map(g => {
+      const path = document.getElementById(g.dataset.path);
+      const length = path ? path.getTotalLength() : 0;
+      if (!(length > 0)) return null;
+      const watts = Number(g.dataset.watts);
+      const r = Number(g.dataset.r);
+      const color = g.dataset.color;
+      const key = g.dataset.key;
+      seen.add(key);
+      const target = flowSpeed(watts);
+      const memory = flowMemory.get(key) || { offset: Math.random() * length, speed: target };
+      flowMemory.set(key, memory);
+
+      // Each particle is a glowing head with a fading tail behind it
+      const spacing = watts > 2000 ? 48 : watts > 500 ? 62 : 90;
+      const count = Math.max(1, Math.round(length / spacing));
+      let html = '';
+      for (let i = 0; i < count; i++) {
+        let tail = '';
+        for (let k = 1; k <= TAIL; k++) {
+          tail += `<circle class="flow-tail" r="${(r * (1 - k / (TAIL + 1.5))).toFixed(2)}" fill="${color}" opacity="${(0.55 * (1 - k / (TAIL + 1))).toFixed(2)}"/>`;
+        }
+        html += `<g class="flow-particle">${tail}<g class="flow-head">
+          <circle r="${(r * 2.4).toFixed(2)}" fill="${color}" opacity="0.16"/>
+          <circle r="${r}" fill="${color}"/>
+          <circle r="${(r * 0.42).toFixed(2)}" fill="#fff" opacity="0.85"/>
+        </g></g>`;
+      }
+      g.innerHTML = html;
+      const parts = [...g.querySelectorAll('.flow-particle')].map(el => ({
+        el, head: el.querySelector('.flow-head'), tail: [...el.querySelectorAll('.flow-tail')],
+      }));
+      return { path, length, count, r, target, memory, parts };
+    }).filter(Boolean);
+
+    for (const key of flowMemory.keys()) if (!seen.has(key)) flowMemory.delete(key);
+
+    flowItems.forEach(placeParticles);
+    if (flowItems.length && !flowFrame && !reducedMotion.matches) {
+      flowTime = 0;
+      flowFrame = requestAnimationFrame(flowStep);
     }
-    return out;
+  }
+
+  function placeParticles(item) {
+    const { path, length, count, r, memory, parts } = item;
+    const gap = r * (0.8 + memory.speed / 220);
+    parts.forEach((p, i) => {
+      const d = (memory.offset + i * length / count) % length;
+      // Fade in when leaving a node and out when arriving at the next
+      p.el.setAttribute('opacity', Math.max(0, Math.min(1, d / 16, (length - d) / 16)).toFixed(2));
+      const head = path.getPointAtLength(d);
+      p.head.setAttribute('transform', `translate(${head.x.toFixed(1)} ${head.y.toFixed(1)})`);
+      p.tail.forEach((c, k) => {
+        const td = d - (k + 1) * gap;
+        if (td < 0) { c.setAttribute('visibility', 'hidden'); return; }
+        const point = path.getPointAtLength(td);
+        c.setAttribute('visibility', 'visible');
+        c.setAttribute('cx', point.x.toFixed(1));
+        c.setAttribute('cy', point.y.toFixed(1));
+      });
+    });
+  }
+
+  function flowStep(now) {
+    const dt = flowTime ? Math.min(0.1, (now - flowTime) / 1000) : 0;
+    flowTime = now;
+    for (const item of flowItems) {
+      const m = item.memory;
+      m.speed += (item.target - m.speed) * Math.min(1, dt * 1.5);
+      m.offset = (m.offset + m.speed * dt) % item.length;
+      placeParticles(item);
+    }
+    flowFrame = flowItems.length && !reducedMotion.matches ? requestAnimationFrame(flowStep) : 0;
+  }
+
+  reducedMotion.addEventListener?.('change', syncFlows);
+
+  // Numbers count smoothly to their new value instead of jumping
+  const shownValues = new Map();
+  function tweenValues(root) {
+    root.querySelectorAll('[data-tween]').forEach(el => {
+      const key = el.dataset.tween;
+      const to = Number(el.dataset.watts);
+      const shown = shownValues.get(key) || { value: to };
+      shownValues.set(key, shown);
+      const from = shown.value;
+      const token = (shown.token || 0) + 1;
+      shown.token = token;
+      if (reducedMotion.matches || from === to || Math.abs(from - to) < 1) {
+        shown.value = to;
+        return;
+      }
+      el.textContent = formatPower(from);
+      const started = performance.now();
+      const step = now => {
+        if (shown.token !== token) return;
+        const t = Math.min(1, (now - started) / 900);
+        shown.value = from + (to - from) * (1 - Math.pow(1 - t, 3));
+        el.textContent = formatPower(t < 1 ? shown.value : to);
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
   }
 
   // A circle in the live diagram; `total` is an extra line with today's energy under the label
-  function node({ x, y, color, iconName, label, labelAbove, value, sub, ring, total }) {
+  // `watts` makes the value count to its new number; `active` gives the circle a soft pulse
+  function node({ x, y, color, iconName, label, labelAbove, value, watts, sub, ring, total, active, spin }) {
     const r = 44;
     const labelY = labelAbove ? -(r + (total ? 22 : 8)) : r + 18;
     const totalY = labelAbove ? -(r + 8) : r + 32;
+    const tween = typeof watts === 'number' ? ` data-tween="${iconName}" data-watts="${watts}"` : '';
     return `
       <g transform="translate(${x} ${y})">
+        ${active ? `<circle r="${r}" class="node-pulse" stroke="${color}" style="animation-delay:${syncDelay(2.8)}"/>` : ''}
         <circle r="${r}" class="node-ring" stroke="${ring ? 'transparent' : color}"/>
         ${ring || ''}
-        <g transform="translate(-11 -30)" style="color:${color}">${icon(iconName, 22)}</g>
-        <text class="node-value" y="11">${value}</text>
+        <g transform="translate(-11 -30)" style="color:${color}"><g class="${spin ? 'node-spin' : ''}" style="${spin ? `animation-delay:${syncDelay(24)}` : ''}">${icon(iconName, 22)}</g></g>
+        <text class="node-value" y="11"${tween}>${value}</text>
         ${sub ? `<text class="node-sub" y="27">${sub}</text>` : ''}
         <text class="node-label" y="${labelY}">${label}</text>
         ${total ? `<text class="node-total" y="${totalY}">${total}</text>` : ''}
@@ -249,8 +377,14 @@
     const colors = {
       solar: css('--solar'), grid: css('--grid'), home: css('--home'), export: css('--export'), battery: css('--battery'),
     };
-    const line = (id, d, on, color, hidden) =>
-      `<path id="${id}" class="flow-line" ${hidden ? 'style="stroke:none"' : ''} ${on ? `stroke="${color}" stroke-opacity="0.35"` : ''} d="${d}"/>`;
+    // An active line gets its color, a width that grows with the power and a soft glow
+    const line = (id, d, watts, color, hidden) => {
+      if (hidden) return `<path id="${id}" class="flow-line" style="stroke:none" d="${d}"/>`;
+      if (!(watts > 5)) return `<path id="${id}" class="flow-line" d="${d}"/>`;
+      const width = flowWidth(watts);
+      return `<path class="flow-glow" stroke="${color}" stroke-width="${(width + 8).toFixed(1)}" d="${d}"/>` +
+        `<path id="${id}" class="flow-line" stroke="${color}" stroke-opacity="0.4" stroke-width="${width.toFixed(1)}" d="${d}"/>`;
+    };
 
     // Today's totals take one extra line of text under (or above) each circle
     const today = live.today;
@@ -279,16 +413,16 @@
     el.style.setProperty('--basis', `${Math.round(Math.min(480, (el.clientWidth || 420) * H / 420))}px`);
     el.innerHTML = `
       <svg viewBox="0 0 420 ${H}" role="img" aria-label="Actuele energiestroom">
-        ${line('p-grid-home', `M 116 ${y} L 304 ${y}`, f.gridToHome > 5, colors.grid)}
+        ${line('p-grid-home', `M 116 ${y} L 304 ${y}`, f.gridToHome, colors.grid)}
         ${hasSolar ? `
-          ${line('p-solar-home', `M 238 ${92 + top} C 262 ${140 + top} 280 ${160 + top} 306 ${186 + top}`, f.solarToHome > 5, colors.solar)}
-          ${line('p-solar-grid', `M 182 ${92 + top} C 158 ${140 + top} 140 ${160 + top} 114 ${186 + top}`, f.solarToGrid > 5, colors.export)}
+          ${line('p-solar-home', `M 238 ${92 + top} C 262 ${140 + top} 280 ${160 + top} 306 ${186 + top}`, f.solarToHome, colors.solar)}
+          ${line('p-solar-grid', `M 182 ${92 + top} C 158 ${140 + top} 140 ${160 + top} 114 ${186 + top}`, f.solarToGrid, colors.export)}
         ` : ''}
         ${hasBattery ? `
-          ${line('p-battery-home', `M 238 ${by - 34} C 262 ${by - 82} 280 ${by - 102} 306 ${y + 34}`, f.batteryToHome > 5, colors.battery)}
-          ${line('p-grid-battery', `M 114 ${y + 34} C 140 ${by - 102} 158 ${by - 82} 182 ${by - 34}`, f.gridToBattery > 5 || f.batteryToGrid > 5, f.gridToBattery > 5 ? colors.grid : colors.export)}
-          ${line('p-battery-grid', `M 182 ${by - 34} C 158 ${by - 82} 140 ${by - 102} 114 ${y + 34}`, false, '', true)}
-          ${hasSolar ? line('p-solar-battery', `M 210 ${100 + top} L 210 ${by - 44}`, f.solarToBattery > 5, colors.battery) : ''}
+          ${line('p-battery-home', `M 238 ${by - 34} C 262 ${by - 82} 280 ${by - 102} 306 ${y + 34}`, f.batteryToHome, colors.battery)}
+          ${line('p-grid-battery', `M 114 ${y + 34} C 140 ${by - 102} 158 ${by - 82} 182 ${by - 34}`, Math.max(f.gridToBattery || 0, f.batteryToGrid || 0), f.gridToBattery > 5 ? colors.grid : colors.export)}
+          ${line('p-battery-grid', `M 182 ${by - 34} C 158 ${by - 82} 140 ${by - 102} 114 ${y + 34}`, 0, '', true)}
+          ${hasSolar ? line('p-solar-battery', `M 210 ${100 + top} L 210 ${by - 44}`, f.solarToBattery, colors.battery) : ''}
         ` : ''}
         ${flowDots('p-grid-home', f.gridToHome, colors.grid)}
         ${hasSolar ? flowDots('p-solar-home', f.solarToHome, colors.solar) : ''}
@@ -297,22 +431,24 @@
         ${hasBattery ? flowDots('p-grid-battery', f.gridToBattery, colors.grid) : ''}
         ${hasBattery ? flowDots('p-battery-grid', f.batteryToGrid, colors.export) : ''}
         ${hasBattery && hasSolar ? flowDots('p-solar-battery', f.solarToBattery, colors.solar) : ''}
-        ${hasSolar ? node({ x: 210, y: 56 + top, color: colors.solar, iconName: 'sun', label: 'Zon', labelAbove: true, value: formatPower(solar), total: totals.solar }) : ''}
-        ${node({ x: 70, y, color: grid < -5 ? colors.export : colors.grid, iconName: 'grid', label: 'Net', value: formatPower(grid), sub: gridSub, total: totals.grid })}
+        ${hasSolar ? node({ x: 210, y: 56 + top, color: colors.solar, iconName: 'sun', label: 'Zon', labelAbove: true, value: formatPower(solar), watts: solar, total: totals.solar, active: solar > 5, spin: solar > 5 }) : ''}
+        ${node({ x: 70, y, color: grid < -5 ? colors.export : colors.grid, iconName: 'grid', label: 'Net', value: formatPower(grid), watts: grid, sub: gridSub, total: totals.grid, active: Math.abs(grid) > 5 })}
         ${node({
-          x: 350, y, color: colors.home, iconName: 'home', label: 'Huis', value: formatPower(home), total: totals.home,
+          x: 350, y, color: colors.home, iconName: 'home', label: 'Huis', value: formatPower(home), watts: home, total: totals.home,
           ring: homeRing([
             { value: f.solarToHome || 0, color: colors.solar },
             { value: f.batteryToHome || 0, color: colors.battery },
             { value: f.gridToHome || 0, color: colors.grid },
           ]),
         })}
-        ${hasBattery ? node({ x: 210, y: by, color: colors.battery, iconName: 'battery', label: `Batterij${soc}`, value: formatPower(batteryW), sub: batterySub, total: totals.battery }) : ''}
+        ${hasBattery ? node({ x: 210, y: by, color: colors.battery, iconName: 'battery', label: `Batterij${soc}`, value: formatPower(batteryW), watts: batteryW, sub: batterySub, total: totals.battery, active: Math.abs(batteryW) > 5 }) : ''}
       </svg>`;
+    syncFlows();
+    tweenValues(el);
 
     const updated = $('live-updated');
     if (updated) {
-      const time = new Date(live.updated).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const time = new Date(live.updated).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       updated.textContent = today ? `kWh = vandaag · ${time}` : `bijgewerkt ${time}`;
     }
   }
@@ -566,10 +702,10 @@
     const start = new Date(row.start);
     if (bucket === 'hour') {
       const end = new Date(start.getTime() + 3600000);
-      const hm = d => d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+      const hm = d => d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
       return `${hm(start)} – ${hm(end)}`;
     }
-    return start.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+    return start.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
   const charts = new Map();
@@ -815,6 +951,7 @@
 
   // Three columns like Home Assistant's energy Sankey: sources → house (and export/battery) → consumers.
   // Live, the values are watts and dots run along the links like in the "Nu" diagram.
+  let sankeyShape = '';
   function renderSankey(data, live = false) {
     const el = $('sankey');
     if (!el) return;
@@ -823,6 +960,8 @@
     if (!data?.links?.length) {
       el.style.removeProperty('--basis');
       el.innerHTML = `<div class="empty">${live ? 'Nu geen energiestroom gemeten' : 'Nog geen gegevens voor deze periode'}</div>`;
+      sankeyShape = '';
+      syncFlows();
       return;
     }
     const format = live ? formatPower : v => `${formatEnergy(v)} kWh`;
@@ -868,7 +1007,7 @@
       const color = s.kind === 'home' ? t.color : s.color;
       const title = `${s.label} → ${t.label}: ${format(l.value)}`;
       paths += `<path id="sankey-link-${i}" class="sankey-link" d="M${x0} ${sy} C${xm} ${sy} ${xm} ${ty} ${x1} ${ty}" stroke="${color}" stroke-width="${thickness}"><title>${escapeHtml(title)}</title></path>`;
-      if (live) dots += flowDots(`sankey-link-${i}`, l.value, color, Math.min(4.5, Math.max(2, thickness / 2)));
+      if (live) dots += flowDots(`sankey-link-${i}`, l.value, color, Math.min(4.5, Math.max(2, thickness / 2)), `sankey:${l.source}>${l.target}`);
     });
 
     let boxes = '';
@@ -891,12 +1030,308 @@
         <g class="sankey-dots">${dots}</g>
         ${boxes}
       </svg>`;
+
+    // The links grow from left to right when the chart shows something new, not on every update
+    const shape = `${live}|${state.period}|${links.map(l => `${l.source}>${l.target}`).sort().join(',')}`;
+    if (shape !== sankeyShape && !reducedMotion.matches) {
+      el.querySelectorAll('.sankey-link').forEach(path => {
+        path.style.setProperty('--len', Math.ceil(path.getTotalLength() + 2));
+        path.style.animationDelay = `${byId.get(links[Number(path.id.slice(12))].source).column * 0.25}s`;
+        path.classList.add('grow');
+      });
+    }
+    sankeyShape = shape;
+    syncFlows();
+  }
+
+  // ---------- Power through the day ----------
+
+  // Like the HomeWizard app: above zero where the house got its power (solar used directly,
+  // battery, grid), below zero what went back to the grid or into the battery, and a dashed
+  // line for everything the panels produced. The day comes from Insights in steps of
+  // 5 minutes; after the last step the line continues with the live readings of this page.
+  const POWER_DAYS = { today: 'vandaag', yesterday: 'gisteren' };
+  const POWER_FLOW_KEYS = ['solarToHome', 'solarToGrid', 'solarToBattery', 'gridToHome', 'gridToBattery', 'batteryToHome', 'batteryToGrid'];
+  let powerShape = '';
+  let powerPointer = null;
+
+  function powerSource() {
+    if (POWER_DAYS[state.period]) return { day: state.period, history: state.history };
+    return { day: 'today', history: state.powerToday };
+  }
+
+  // Remembers today's live readings, to continue the line after the last Insights step
+  function addLivePower(live) {
+    if (!live || typeof live.homeW !== 'number') return;
+    const f = live.flows || {};
+    const point = { t: Date.parse(live.updated) || Date.now(), home: live.homeW, solar: Math.max(0, live.solarW || 0) };
+    for (const key of POWER_FLOW_KEYS) point[key] = f[key] || 0;
+    const midnight = new Date(point.t).setHours(0, 0, 0, 0);
+    state.liveTrail = (state.liveTrail || []).filter(p => p.t >= midnight && p.t < point.t);
+    state.liveTrail.push(point);
+  }
+
+  function powerSamples(power, day) {
+    const start = Date.parse(power.start);
+    const stepMs = power.step * 1000;
+    const samples = power.points.map((p, i) => (p ? { t: start + (i + 0.5) * stepMs, ...p } : null));
+    if (day === 'today') {
+      const lastT = start + (power.points.length - 0.5) * stepMs;
+      // Live readings come every 10 seconds; averaged per minute they follow the line calmly
+      const minutes = new Map();
+      for (const p of (state.liveTrail || []).filter(q => q.t > lastT)) {
+        const key = Math.floor(p.t / 60000);
+        if (!minutes.has(key)) minutes.set(key, []);
+        minutes.get(key).push(p);
+      }
+      for (const list of minutes.values()) {
+        const avg = { t: list.reduce((sum, p) => sum + p.t, 0) / list.length };
+        for (const key of ['home', 'solar', ...POWER_FLOW_KEYS]) avg[key] = list.reduce((sum, p) => sum + p[key], 0) / list.length;
+        samples.push(avg);
+      }
+    }
+    return { start, samples };
+  }
+
+  // A smooth line through the points that never overshoots them (monotone cubic)
+  function smoothPath(points, command = 'M') {
+    const f = n => n.toFixed(1);
+    const n = points.length;
+    if (!n) return '';
+    let d = `${command}${f(points[0][0])} ${f(points[0][1])}`;
+    if (n === 1) return d;
+    const slopes = [];
+    for (let i = 0; i < n - 1; i++) {
+      const dx = points[i + 1][0] - points[i][0];
+      slopes.push(dx ? (points[i + 1][1] - points[i][1]) / dx : 0);
+    }
+    const tangents = points.map((_, i) => {
+      if (i === 0) return slopes[0];
+      if (i === n - 1) return slopes[n - 2];
+      return slopes[i - 1] * slopes[i] <= 0 ? 0 : (slopes[i - 1] + slopes[i]) / 2;
+    });
+    for (let i = 0; i < n - 1; i++) {
+      if (!slopes[i]) { tangents[i] = 0; tangents[i + 1] = 0; continue; }
+      const a = tangents[i] / slopes[i];
+      const b = tangents[i + 1] / slopes[i];
+      const h = a * a + b * b;
+      if (h > 9) {
+        tangents[i] = 3 / Math.sqrt(h) * a * slopes[i];
+        tangents[i + 1] = 3 / Math.sqrt(h) * b * slopes[i];
+      }
+    }
+    for (let i = 0; i < n - 1; i++) {
+      const [x0, y0] = points[i];
+      const [x1, y1] = points[i + 1];
+      const third = (x1 - x0) / 3;
+      d += ` C${f(x0 + third)} ${f(y0 + tangents[i] * third)} ${f(x1 - third)} ${f(y1 - tangents[i + 1] * third)} ${f(x1)} ${f(y1)}`;
+    }
+    return d;
+  }
+
+  function renderPower() {
+    const el = $('power-chart');
+    if (!el) return;
+    charts.set('power-chart', renderPower);
+    const { day, history } = powerSource();
+    setText('power-title', `Vermogen ${POWER_DAYS[day]}`);
+    const summaryEl = $('power-summary');
+    const power = history?.power;
+    if (!power?.points?.length) {
+      el.innerHTML = `<div class="empty">${history ? 'Geen vermogensgegevens van de P1-meter' : 'Laden…'}</div>`;
+      if (summaryEl) summaryEl.innerHTML = '';
+      return;
+    }
+
+    const hasBattery = Boolean(history.hasBattery);
+    const hasSolar = history.available?.solar !== false;
+    const colors = {
+      solar: css('--solar'), grid: css('--grid'), export: css('--export'), battery: css('--battery'),
+      batteryIn: css('--battery-in'), card: css('--card'),
+    };
+
+    // Two stacks on the same zero line, like the HomeWizard app. Both start with the solar power
+    // used in the house; on top of that comes where the rest of the use came from (its top is the
+    // use of the house) and where the rest of the solar power went (its top is all solar power).
+    // Import and export rarely happen at the same moment, so the stacks hardly overlap.
+    const self = { id: 'self', label: 'Zelfverbruik', arrow: '⇕', color: colors.solar, value: p => p.solarToHome || 0, total: t => t.solarToHome };
+    const use = [
+      hasBattery && { id: 'discharge', label: 'Uit batterij', arrow: '↗', color: colors.battery, value: p => p.batteryToHome || 0, total: t => t.batteryToHome },
+      { id: 'import', label: 'Van het net', arrow: '↓', color: colors.grid, value: p => (p.gridToHome || 0) + (p.gridToBattery || 0), total: t => t.import },
+    ].filter(Boolean);
+    const sun = [
+      hasBattery && { id: 'charge', label: 'Zon in batterij', arrow: '↘', color: colors.batteryIn, value: p => p.solarToBattery || 0, total: t => t.solarToBattery },
+      { id: 'export', label: 'Teruggeleverd', arrow: '↑', color: colors.export, value: p => (p.solarToGrid || 0) + (p.batteryToGrid || 0), total: t => t.export },
+    ].filter(Boolean);
+    const layers = hasSolar ? [self, ...use, ...sun] : use;
+    const stacks = hasSolar ? [[self, ...use], [self, ...sun]] : [use];
+
+    const legendEl = $('power-legend');
+    if (legendEl) legendEl.innerHTML = layers.map(x => `<span><i style="background:${x.color}"></i>${x.label}</span>`).join('');
+
+    // The header shows the day's totals, and the values at the pointer while hovering
+    const readout = (title, values, unit = '') => `
+      <div class="power-values">${values.map(({ layer, text }) =>
+        `<span class="power-value" style="color:${layer.color}" title="${layer.label}"><b>${layer.arrow}</b>${text}</span>`).join('')}${unit ? `<span class="power-unit">${unit}</span>` : ''}</div>
+      <div class="power-when">${title}</div>`;
+    const t = history.totals || {};
+    const totalsHtml = readout(
+      hasSolar ? `${POWER_DAYS[day]} · verbruik ${formatEnergy(t.consumption)} kWh · zon ${formatEnergy(t.solar)} kWh` : `${POWER_DAYS[day]} · verbruik ${formatEnergy(t.consumption)} kWh`,
+      layers.map(layer => ({ layer, text: formatEnergy(layer.total(t) || 0) })), 'kWh');
+    if (summaryEl) summaryEl.innerHTML = totalsHtml;
+
+    const { start, samples } = powerSamples(power, day);
+    const valid = samples.filter(Boolean);
+    const stackTop = (stack, p) => stack.reduce((sum, layer) => sum + layer.value(p), 0);
+    const max = Math.max(100, ...valid.map(p => Math.max(...stacks.map(stack => stackTop(stack, p)))));
+
+    const width = el.clientWidth || 600;
+    const height = chartHeight(el, Number(el.dataset.height) || 240);
+    const pad = { left: 4, right: 44, top: 10, bottom: 20 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const step = niceStep(max, height < 200 ? 3 : 4);
+    const top = Math.ceil(max / step) * step;
+    const scale = plotH / top;
+    const end = power.end ? Date.parse(power.end) : start + 86400000;
+    const dayMs = end - start;
+    const X = time => pad.left + Math.min(1, Math.max(0, (time - start) / dayMs)) * plotW;
+    const Y = watts => pad.top + plotH - watts * scale;
+    const f = n => n.toFixed(1);
+    const kW = step >= 1000;
+    const tickLabel = v => (kW ? nf(step % 1000 ? 1 : 0).format(v / 1000) : nf(0).format(v));
+
+    let axis = '';
+    for (let v = 0; v <= top + 1e-9; v += step) {
+      const yPos = f(Y(v));
+      axis += `<line x1="${pad.left}" x2="${pad.left + plotW}" y1="${yPos}" y2="${yPos}" class="${v === 0 ? 'zero' : ''}"/>`;
+      axis += `<text x="${width - pad.right + 6}" y="${Number(yPos) + 4}">${tickLabel(v)}${v === top ? (kW ? ' kW' : ' W') : ''}</text>`;
+    }
+    const hourEvery = plotW < 360 ? 6 : 3;
+    for (let h = hourEvery; h < 24; h += hourEvery) {
+      const x = X(new Date(start).setHours(h, 0, 0, 0));
+      axis += `<text x="${f(x)}" y="${height - 4}" text-anchor="middle">${String(h).padStart(2, '0')}:00</text>`;
+    }
+
+    // Runs of samples without gaps, each drawn as its own areas
+    const runs = [];
+    let run = [];
+    samples.forEach(p => {
+      if (p) run.push(p);
+      else if (run.length) { runs.push(run); run = []; }
+    });
+    if (run.length) runs.push(run);
+
+    const gradients = layers.map(layer => `
+      <linearGradient id="power-fill-${layer.id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${layer.color}" stop-opacity="0.95"/>
+        <stop offset="1" stop-color="${layer.color}" stop-opacity="0.45"/>
+      </linearGradient>`).join('');
+
+    // Upper layers first, so the zelfverbruik lies on top where the stacks meet
+    let shapes = '';
+    for (const list of runs) {
+      const drawn = new Set();
+      const pieces = [];
+      for (const stack of stacks) {
+        let below = () => 0;
+        stack.forEach(layer => {
+          const lower = below;
+          const upper = p => lower(p) + layer.value(p);
+          below = upper;
+          if (drawn.has(layer.id)) return;
+          drawn.add(layer.id);
+          if (!list.some(p => layer.value(p) > 0)) return;
+          const upperPts = list.map(p => [X(p.t), Y(upper(p))]);
+          const lowerPts = list.map(p => [X(p.t), Y(lower(p))]).reverse();
+          pieces.unshift(`<path class="power-area" d="${smoothPath(upperPts)} ${smoothPath(lowerPts, 'L')} Z" fill="url(#power-fill-${layer.id})"/>` +
+            `<path class="power-edge" d="${smoothPath(upperPts)}" stroke="${layer.color}"/>`);
+        });
+      }
+      shapes += pieces.join('');
+    }
+
+    // Today the end of the chart pulses: that is now
+    const last = valid[valid.length - 1];
+    const nowDot = day === 'today' && last ? (() => {
+      const x = f(X(last.t));
+      const y = f(Y(Math.max(...stacks.map(stack => stackTop(stack, last)))));
+      return `
+        <line class="power-now-line" x1="${x}" x2="${x}" y1="${pad.top}" y2="${pad.top + plotH}"/>
+        <circle class="power-now" cx="${x}" cy="${y}" r="5" fill="${colors.solar}" style="animation-delay:${syncDelay(2.8)}"/>
+        <circle cx="${x}" cy="${y}" r="3.5" fill="${colors.solar}" stroke="${colors.card}" stroke-width="1.5"/>`;
+    })() : '';
+
+    // The chart draws itself from left to right when another day is shown
+    const shape = `${day}|${power.start}`;
+    const reveal = shape !== powerShape && !reducedMotion.matches;
+    powerShape = shape;
+
+    el.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+        <defs>${gradients}<clipPath id="power-clip"><rect class="${reveal ? 'power-reveal' : ''}" x="${pad.left}" y="0" width="${plotW}" height="${height}"/></clipPath></defs>
+        <g class="axis">${axis}</g>
+        <g clip-path="url(#power-clip)">${shapes}</g>
+        ${nowDot}
+        <g class="power-hover" visibility="hidden">
+          <line class="power-cursor" y1="${pad.top}" y2="${pad.top + plotH}"/>
+          ${stacks.map((_, i) => `<circle class="power-dot" data-stack="${i}" r="3.5" stroke="${colors.card}" stroke-width="1.5"/>`).join('')}
+        </g>
+      </svg>`;
+
+    // A vertical line at the pointer; the header then shows the power at that moment
+    const hover = el.querySelector('.power-hover');
+    const hide = () => {
+      hover.setAttribute('visibility', 'hidden');
+      if (summaryEl) summaryEl.innerHTML = totalsHtml;
+    };
+    el.onpointerleave = () => {
+      powerPointer = null;
+      hide();
+    };
+    el.onpointermove = event => {
+      powerPointer = { clientX: event.clientX, clientY: event.clientY };
+      const box = el.querySelector('svg').getBoundingClientRect();
+      const x = (event.clientX - box.left) * width / box.width;
+      if (x < pad.left || x > pad.left + plotW || !valid.length) { hide(); return; }
+      const time = start + (x - pad.left) / plotW * dayMs;
+      let p = valid[0];
+      for (const q of valid) if (Math.abs(q.t - time) < Math.abs(p.t - time)) p = q;
+      if (Math.abs(p.t - time) > 30 * 60000) { hide(); return; }
+      const px = f(X(p.t));
+      hover.setAttribute('visibility', 'visible');
+      const cursor = hover.querySelector('line');
+      cursor.setAttribute('x1', px);
+      cursor.setAttribute('x2', px);
+      hover.querySelectorAll('.power-dot').forEach(dot => {
+        const stack = stacks[Number(dot.dataset.stack)];
+        const topLayer = [...stack].reverse().find(layer => layer.value(p) > 0) || stack[0];
+        dot.setAttribute('cx', px);
+        dot.setAttribute('cy', f(Y(stackTop(stack, p))));
+        dot.setAttribute('fill', topLayer.color);
+      });
+      if (!summaryEl) return;
+      const when = new Date(p.t).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+      summaryEl.innerHTML = readout(
+        `${when} · verbruik ${formatPower(stackTop(stacks[0], p))}${hasSolar ? ` · zon ${formatPower(p.solar)}` : ''}`,
+        layers.map(layer => ({ layer, text: formatPower(layer.value(p)) })));
+    };
+    if (powerPointer) el.onpointermove(powerPointer);
+  }
+
+  // With week or month chosen, the chart still shows today, which then needs its own history
+  async function loadPowerToday() {
+    if (!$('power-chart') || POWER_DAYS[state.period]) return;
+    try {
+      state.powerToday = await state.options.get('/history?period=today');
+    } catch { /* keep what was shown */ }
+    renderPower();
   }
 
   // ---------- Prices ----------
 
   const euro = (value, digits = 2) => `€ ${nf(digits).format(value)}`;
-  const hm = iso => new Date(iso).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+  const hm = iso => new Date(iso).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 
   function priceColor(price, min, max) {
     const f = max > min ? (price - min) / (max - min) : 0.5;
@@ -1435,6 +1870,8 @@
       renderPhases(live.phases);
       renderWater(live, state.history);
       if (state.sankeyMode === 'live') renderSankeyBlock();
+      addLivePower(live);
+      renderPower();
       if (rebuilt && state.history) renderHistory(state.history);
       if (rebuilt && !state.history) loadHistory();
       relayout();
@@ -1449,7 +1886,7 @@
         if (!live.devices.solar.length) missing.push('zonnepanelen');
         if (!live.devices.boiler) missing.push('boiler');
         setBanner('', missing.length && state.options.missingHint
-          ? `Niet gevonden: ${missing.join(', ')}. ${state.options.missingHint}`
+          ? `<span>Niet gevonden: ${missing.join(', ')}.</span> ${state.options.missingHint}`
           : '');
       }
     } catch (err) {
@@ -1466,6 +1903,7 @@
       if (period !== state.period) return;
       state.history = history;
       renderHistory(history);
+      loadPowerToday();
     } catch (err) {
       ['electricity-chart', 'solar-chart', 'gas-chart'].forEach(id => {
         const el = $(id);
@@ -1478,6 +1916,7 @@
   function renderHistory(history) {
     renderTiles(history);
     renderCharts(history);
+    renderPower();
     renderGauges(history);
     renderDeviceEnergy(history);
     renderCosts(history);
@@ -1500,7 +1939,7 @@
   }
 
   function needsHistory() {
-    return Boolean($('blocks')) || ['tiles', 'electricity-chart', 'solar-chart', 'gas-chart', 'boiler-history', 'sankey'].some(id => $(id));
+    return Boolean($('blocks')) || ['tiles', 'electricity-chart', 'solar-chart', 'gas-chart', 'boiler-history', 'sankey', 'power-chart'].some(id => $(id));
   }
 
   function redraw() {
@@ -1512,7 +1951,8 @@
   // options.get(path) returns a promise with the JSON for '/live' or '/history?period=…'
   function start(options) {
     state.options = options;
-    setText('today-label', new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }));
+    window.EnergyI18n?.start();
+    setText('today-label', new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' }));
 
     let period = options.period;
     const periods = $('periods');
