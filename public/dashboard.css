@@ -360,6 +360,14 @@ h2 { font-size: 17px; font-weight: 600; }
 .empty { color: var(--muted); text-align: center; padding: 50px 0; font-size: 14px; }
 .grid.rows .fill > .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; }
 
+/* Home battery */
+
+.battery-level { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.battery-level .big-fact { margin: 0; }
+.battery-gauge { flex: 0 0 auto; }
+.battery-gauge svg { display: block; width: 44px; height: 72px; }
+.battery-card .chart svg { overflow: visible; }
+
 /* Power through the day */
 
 .power-summary { margin: -2px 0 10px; min-height: 48px; }
@@ -683,7 +691,13 @@ body.editing #blocks { padding-bottom: 160px; }
   color: var(--text);
 }
 
+.battery-charging { animation: battery-glow 2.4s ease-in-out infinite; }
+@keyframes battery-glow { 50% { opacity: 0.6; } }
+
+/* Less motion: when the system asks for it (unless the screen menu says "always"), or when the menu says "off" */
 @media (prefers-reduced-motion: reduce) {
-  .node-pulse, .node-spin, .sankey-link.grow, .power-reveal, .power-now { animation: none; stroke-dashoffset: 0; }
-  .node-pulse { display: none; }
+  html:not(.motion-on) :is(.node-pulse, .node-spin, .sankey-link.grow, .power-reveal, .power-now, .battery-charging) { animation: none; stroke-dashoffset: 0; }
+  html:not(.motion-on) .node-pulse { display: none; }
 }
+html.motion-off :is(.node-pulse, .node-spin, .sankey-link.grow, .power-reveal, .power-now, .battery-charging) { animation: none; stroke-dashoffset: 0; }
+html.motion-off .node-pulse { display: none; }

@@ -120,6 +120,27 @@
     </section>
   </template>
 
+  <template id="block-battery">
+    <section class="card battery-card">
+      <div class="card-head">
+        <h2 id="battery-name">Thuisbatterij</h2>
+        <span class="chip" id="battery-state"></span>
+      </div>
+      <p class="block-empty" id="battery-empty" hidden>Geen thuisbatterij gevonden. Kies er een bij de instellingen.</p>
+      <div class="battery-body" data-battery>
+        <div class="battery-level">
+          <div class="battery-gauge" id="battery-gauge"></div>
+          <div class="big-fact">
+            <span class="big-number" id="battery-soc">–</span>
+            <span class="big-unit" id="battery-power">laadniveau</span>
+          </div>
+        </div>
+        <ul class="facts" id="battery-facts"></ul>
+      </div>
+      <div class="chart fill" id="battery-chart" data-height="90" data-battery></div>
+    </section>
+  </template>
+
   <template id="block-tiles">
     <section class="tiles-block">
       <div class="tiles" id="tiles"></div>

@@ -10,7 +10,8 @@
 
   const KEY = 'energy-dashboard-screen';
   const WAKE_FOR = 60 * 1000;
-  const defaults = { night: 'off', from: '23:00', to: '07:00', keepOn: false };
+  const defaults = { night: 'off', from: '23:00', to: '07:00', keepOn: false, motion: 'auto' };
+  const systemReduced = matchMedia('(prefers-reduced-motion: reduce)');
 
   let settings = { ...defaults };
   try { settings = { ...defaults, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { /* storage unavailable */ }
@@ -38,6 +39,18 @@
 
   // True while the screen is black: the page then skips its updates
   const sleeping = () => settings.night === 'black' && isNight() && Date.now() > wokenUntil;
+
+  // The moving flows show where power goes, so they move unless this screen turns motion off.
+  // Decorative effects follow the system (Windows reports less motion when "Animation effects"
+  // is off), unless this screen is set to always move.
+  const flowsStill = () => settings.motion === 'off';
+  const reducedMotion = () => settings.motion === 'off' || (settings.motion !== 'on' && systemReduced.matches);
+
+  function applyMotion() {
+    document.documentElement.classList.toggle('motion-on', settings.motion === 'on');
+    document.documentElement.classList.toggle('motion-off', settings.motion === 'off');
+    window.dispatchEvent(new Event('energy-motion'));
+  }
 
   function update() {
     if (!overlay) return;
@@ -80,6 +93,13 @@
     return `
       ${fullscreen}
       ${keepOn}
+      <label class="screen-row"><span>Beweging</span>
+        <select data-action="motion">
+          <option value="auto" ${settings.motion === 'auto' ? 'selected' : ''}>Standaard</option>
+          <option value="on" ${settings.motion === 'on' ? 'selected' : ''}>Alle effecten</option>
+          <option value="off" ${settings.motion === 'off' ? 'selected' : ''}>Uit</option>
+        </select>
+      </label>
       <label class="screen-row"><span>Nachtstand</span>
         <select data-action="night">${option('off', 'Uit')}${option('dim', 'Dimmen')}${option('black', 'Zwart')}</select>
       </label>
@@ -121,6 +141,12 @@
       const action = event.target.dataset.action;
       if (action === 'keepOn') settings.keepOn = event.target.checked;
       if (action === 'night') settings.night = event.target.value;
+      if (action === 'motion') {
+        settings.motion = event.target.value;
+        save();
+        applyMotion();
+        return;
+      }
       if (action === 'from' || action === 'to') settings[action] = event.target.value || defaults[action];
       save();
       if (action === 'night') panel.innerHTML = panelHtml();
@@ -143,6 +169,8 @@
       if (onWake) onWake();
     });
     addButton();
+    applyMotion();
+    systemReduced.addEventListener?.('change', applyMotion);
     update();
     applyKeepOn();
     shiftPixels();
@@ -155,6 +183,6 @@
     document.addEventListener('visibilitychange', applyKeepOn);
   }
 
-  window.EnergyScreen = { start, sleeping };
+  window.EnergyScreen = { start, sleeping, reducedMotion, flowsStill };
 
 })();

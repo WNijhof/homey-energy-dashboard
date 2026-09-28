@@ -128,6 +128,8 @@ Voor de prijzen haalt de app elk half uur de marktprijzen op bij EnergyZero, en 
 
 ## Thuisbatterij
 
+Heb je een thuisbatterij, dan staat er een eigen blok **Thuisbatterij** op het dashboard: het laadniveau, of hij laadt of ontlaadt en met hoeveel vermogen, hoeveel er in de gekozen periode geladen en ontladen is, welk deel met zon geladen is, het laadniveau door de dag heen, en bij Maand of Jaar het rendement. Met meerdere batterijen staat elke batterij er apart bij.
+
 Het dashboard is voorbereid op een thuisbatterij, zoals de Zendure SolarFlow 2400 AC. Voeg de batterij in Homey toe (bijvoorbeeld met de app [Zendure Local](https://homey.app/en-us/app/com.tweakers.zendure/Zendure-Local/)). Het dashboard vindt hem dan vanzelf als hij als batterij bij Homey Energie bekend is. Zo niet, vink hem aan bij de instellingen.
 
 Daarna verschijnen:

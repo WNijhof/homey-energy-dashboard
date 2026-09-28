@@ -205,7 +205,13 @@
   // the lines and remembers where each flow was, so particles keep going instead of jumping back
   // to the start, and a change in power speeds them up or slows them down gradually.
 
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  // Less motion when the system asks for it, unless the screen menu (screen.js) says otherwise
+  const systemReduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const reducedMotion = {
+    get matches() { return window.EnergyScreen ? window.EnergyScreen.reducedMotion() : systemReduced.matches; },
+  };
+  // The flows themselves keep moving (as in the first version), unless motion is turned off
+  const flowsStill = () => (window.EnergyScreen ? window.EnergyScreen.flowsStill() : false);
   const flowMemory = new Map();
   const TAIL = 4;
   let flowItems = [];
@@ -266,7 +272,7 @@
     for (const key of flowMemory.keys()) if (!seen.has(key)) flowMemory.delete(key);
 
     flowItems.forEach(placeParticles);
-    if (flowItems.length && !flowFrame && !reducedMotion.matches) {
+    if (flowItems.length && !flowFrame && !flowsStill()) {
       flowTime = 0;
       flowFrame = requestAnimationFrame(flowStep);
     }
@@ -301,10 +307,11 @@
       m.offset = (m.offset + m.speed * dt) % item.length;
       placeParticles(item);
     }
-    flowFrame = flowItems.length && !reducedMotion.matches ? requestAnimationFrame(flowStep) : 0;
+    flowFrame = flowItems.length && !flowsStill() ? requestAnimationFrame(flowStep) : 0;
   }
 
-  reducedMotion.addEventListener?.('change', syncFlows);
+  window.addEventListener('energy-motion', syncFlows);
+  if (!window.EnergyScreen) systemReduced.addEventListener?.('change', syncFlows);
 
   // Numbers count smoothly to their new value instead of jumping
   const shownValues = new Map();
@@ -627,6 +634,94 @@
       chargers.forEach(c => facts.push(`<li><span>${escapeHtml(c.name)}</span><strong>${formatPower(c.watts)}</strong></li>`));
     }
     $('ev-facts').innerHTML = facts.join('');
+  }
+
+  // ---------- Home battery ----------
+
+  function renderBattery(battery, history) {
+    if (!$('battery-soc')) return;
+    toggleEmpty('battery', Boolean(battery));
+    if (!battery) return;
+    const color = css('--battery');
+    const soc = typeof battery.soc === 'number' ? battery.soc : null;
+    const watts = battery.watts || 0;
+
+    setText('battery-name', battery.names?.length === 1 ? battery.names[0] : 'Thuisbatterij');
+    setText('battery-state', watts > 5 ? 'Laden' : watts < -5 ? 'Ontladen' : 'Rust');
+    setText('battery-soc', soc === null ? '–' : `${nf(0).format(soc)}%`);
+    setText('battery-power', Math.abs(watts) > 5 ? `${watts > 0 ? 'laadt' : 'levert'} ${formatPower(watts)}` : 'laadniveau');
+
+    // A battery that fills up with its charge level; it glows softly while charging
+    const gauge = $('battery-gauge');
+    if (gauge) {
+      const level = Math.max(0, Math.min(100, soc ?? 0));
+      const inner = 60 * level / 100;
+      gauge.innerHTML = `
+        <svg viewBox="0 0 44 72" role="img" aria-label="Laadniveau">
+          <rect x="15" y="1" width="14" height="5" rx="2" fill="${css('--track')}"/>
+          <rect x="3" y="6" width="38" height="64" rx="8" fill="none" stroke="${css('--track')}" stroke-width="3"/>
+          <rect class="${watts > 5 ? 'battery-charging' : ''}" x="8" y="${(66 - inner).toFixed(1)}" width="28" height="${Math.max(0, inner).toFixed(1)}" rx="4" fill="${level < 15 ? css('--hot') : color}"/>
+        </svg>`;
+    }
+
+    const period = (PERIOD_LABELS[state.period] || '').toLowerCase();
+    const t = history?.totals;
+    const facts = [];
+    if (t) {
+      facts.push(`<li><span>Geladen ${period}</span><strong>${formatEnergy(t.charge)} kWh</strong></li>`);
+      facts.push(`<li><span>Ontladen ${period}</span><strong>${formatEnergy(t.discharge)} kWh</strong></li>`);
+      // Within a day the charged energy is mostly still in the battery, so only over a longer period
+      if (['month', 'year'].includes(state.period) && t.charge > 5 && t.discharge > 0) {
+        facts.push(`<li><span>Rendement</span><strong>${formatPercent(Math.min(1, t.discharge / t.charge))}%</strong></li>`);
+      }
+      if (t.charge > 0.05) {
+        facts.push(`<li><span>Geladen met zon</span><strong>${formatPercent(Math.min(1, (t.solarToBattery || 0) / t.charge))}%</strong></li>`);
+      }
+    }
+    if ((battery.devices || []).length > 1) {
+      battery.devices.forEach(d => facts.push(`<li><span>${escapeHtml(d.name)}</span><strong>${typeof d.soc === 'number' ? `${nf(0).format(d.soc)}% · ` : ''}${formatPower(d.watts)}</strong></li>`));
+    }
+    $('battery-facts').innerHTML = facts.join('');
+    renderBatteryChart(['today', 'yesterday'].includes(state.period) ? history?.batterySoc : null);
+  }
+
+  // Charge level through the day, 0–100%
+  function renderBatteryChart(series) {
+    const el = $('battery-chart');
+    if (!el) return;
+    charts.set('battery-chart', () => renderBatteryChart(series));
+    const points = series ? series.values.map((v, i) => (typeof v === 'number' ? { t: Date.parse(series.start) + (i + 0.5) * series.step * 1000, v } : null)) : [];
+    const known = points.filter(Boolean);
+    if (known.length < 2) {
+      el.innerHTML = '';
+      return;
+    }
+    const width = el.clientWidth || 300;
+    const height = chartHeight(el, 90);
+    const start = Date.parse(series.start);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const x = time => (time - start) / (end - start) * width;
+    const y = v => 4 + (1 - v / 100) * (height - 18);
+    const color = css('--battery');
+    const line = smoothPath(known.map(p => [x(p.t), y(p.v)]));
+    const last = known[known.length - 1];
+    const area = `${line} L${x(last.t).toFixed(1)} ${y(0).toFixed(1)} L${x(known[0].t).toFixed(1)} ${y(0).toFixed(1)} Z`;
+    el.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Laadniveau vandaag">
+        <defs>
+          <linearGradient id="soc-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="${color}" stop-opacity="0.35"/>
+            <stop offset="1" stop-color="${color}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="0" x2="${width}" y1="${y(100)}" y2="${y(100)}" stroke="${css('--line')}"/>
+        <line x1="0" x2="${width}" y1="${y(0)}" y2="${y(0)}" stroke="${css('--line')}"/>
+        <path d="${area}" fill="url(#soc-fill)"/>
+        <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+        <text x="${width - 2}" y="${y(100) + 10}" text-anchor="end" font-size="10" fill="${css('--muted')}">100%</text>
+        ${[0, 6, 12, 18].map(h => `<text x="${Math.max(0, x(new Date(start).setHours(h)))}" y="${height - 2}" font-size="10" fill="${css('--muted')}">${String(h).padStart(2, '0')}</text>`).join('')}
+      </svg>`;
   }
 
   // ---------- Tiles ----------
@@ -1608,6 +1703,7 @@
       renderBoiler(state.live.boiler);
       renderHeating(state.live.heating);
       renderEv(state.live.ev);
+      renderBattery(state.live.battery, state.history);
       renderConsumers(state.live);
       renderPrices(state.live.prices);
       renderBaseload(state.live.baseload);
@@ -1910,6 +2006,7 @@
       renderBoiler(live.boiler);
       renderHeating(live.heating);
       renderEv(live.ev);
+      renderBattery(live.battery, state.history);
       renderConsumers(live);
       renderPrices(live.prices);
       renderBaseload(live.baseload);
@@ -1976,6 +2073,7 @@
       renderBoiler(state.live.boiler);
       renderHeating(state.live.heating);
       renderEv(state.live.ev);
+      renderBattery(state.live.battery, history);
     }
     relayout();
   }
