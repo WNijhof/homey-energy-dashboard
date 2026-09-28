@@ -54,7 +54,7 @@ function loadConfig() {
   // The demo shows costs with a dynamic contract, unless config.json has one
   if (cfg.demo && !cfg.contract) {
     cfg.contract = {
-      electricity: { type: 'dynamic', supplier: 'anwb', markup: 0.018 },
+      electricity: { type: 'dynamic', supplier: 'anwb', markup: 0.0200 },
       gas: { type: 'fixed', price: 1.35 },
       water: 1.1,
       monthly: 95,

@@ -11,12 +11,28 @@ const ENERGY_TAX = { electricity: 0.11085, gas: 0.7300 };
 const TAX_REDUCTION = 628.96;
 
 // Starting values for the markup of dynamic suppliers (€/kWh, and €/m³ for gas where known,
-// incl. VAT). Suppliers change these now and then, so the settings say to check them.
+// incl. VAT), from the comparisons of keuze.nl and salderingswijzer.nl in September 2026.
+// Suppliers change these now and then, so the settings say to check them.
 const SUPPLIERS = [
-  { id: 'anwb', name: 'ANWB Energie', markup: 0.018 },
-  { id: 'frank', name: 'Frank Energie', markup: 0.015 },
-  { id: 'tibber', name: 'Tibber', markup: 0.0248 },
-  { id: 'zonneplan', name: 'Zonneplan', markup: 0.019, gasMarkup: 0.08 },
+  { id: 'anwb', name: 'ANWB Energie', markup: 0.0200, gasMarkup: 0.0591 },
+  { id: 'budget', name: 'Budget Energie', markup: 0.0168, gasMarkup: 0.0641 },
+  { id: 'easyenergy', name: 'easyEnergy', markup: 0.0180 },
+  { id: 'eneco', name: 'Eneco', markup: 0.0314, gasMarkup: 0.0929 },
+  { id: 'energiedirect', name: 'Energiedirect', markup: 0.0169 },
+  { id: 'energiek', name: 'Energiek', markup: 0.0180, gasMarkup: 0.0600 },
+  { id: 'essent', name: 'Essent', markup: 0.0253, gasMarkup: 0.0787 },
+  { id: 'frank', name: 'Frank Energie', markup: 0.0182, gasMarkup: 0.0799 },
+  { id: 'greenchoice', name: 'Greenchoice', markup: 0.0240 },
+  { id: 'mega', name: 'Mega', markup: 0.0182, gasMarkup: 0.0945 },
+  { id: 'nextenergy', name: 'NextEnergy', markup: 0.0219, gasMarkup: 0.0799 },
+  { id: 'noord', name: 'Noord Energie', markup: 0.0194, gasMarkup: 0.0666 },
+  { id: 'oxxio', name: 'Oxxio', markup: 0.0224, gasMarkup: 0.0129 },
+  { id: 'powerpeers', name: 'Powerpeers', markup: 0.0100, gasMarkup: 0.0821 },
+  { id: 'pure', name: 'Pure Energie', markup: 0.0180, gasMarkup: 0.0990 },
+  { id: 'tibber', name: 'Tibber', markup: 0.0180, gasMarkup: 0.0749 },
+  { id: 'vandebron', name: 'Vandebron', markup: 0.0221, gasMarkup: 0.0598 },
+  { id: 'vattenfall', name: 'Vattenfall', markup: 0.0255, gasMarkup: 0.0750 },
+  { id: 'zonneplan', name: 'Zonneplan', markup: 0.0199, gasMarkup: 0.0800 },
   { id: 'other', name: 'Anders', markup: 0 },
 ];
 
