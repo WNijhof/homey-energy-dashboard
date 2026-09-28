@@ -750,6 +750,11 @@
   function renderAlerts(alerts) {
     const el = $('alerts');
     if (!el) return;
+    // A block just added in the editor: the server only fills it once the layout is saved
+    if (alerts === undefined) {
+      el.innerHTML = '<li class="alert ok"><i></i><span>Verschijnt na het opslaan van de indeling</span></li>';
+      return;
+    }
     const list = alerts || [];
     el.innerHTML = list.length
       ? list.map(a => `<li class="alert ${a.level === 'warning' ? 'warning' : ''}"><i></i><span>${escapeHtml(a.text)}</span></li>`).join('')
@@ -765,7 +770,8 @@
     toggleEmpty('netting', ok);
     if (!ok) {
       if (empty) {
-        empty.textContent = !netting ? 'Laden…'
+        empty.textContent = netting === undefined ? 'Verschijnt na het opslaan van de indeling'
+          : !netting ? 'Laden…'
           : !(netting.export > 0) ? 'Nog geen teruglevering gemeten.'
             : 'Vul je stroomcontract in bij de instellingen om dit te berekenen.';
       }

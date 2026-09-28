@@ -536,7 +536,7 @@ button.screen-row:hover { background: var(--track); }
   color: var(--text);
   cursor: pointer;
 }
-body.editing .icon-button { background: var(--accent); color: #fff; }
+body.editing #edit-toggle { background: var(--accent); color: #fff; }
 
 /* Edit mode */
 .block { position: relative; }

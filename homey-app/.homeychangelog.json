@@ -1,4 +1,8 @@
 {
+  "0.1.1": {
+    "en": "Improvements from testing: new blocks say they fill in after saving the layout, clearer button for the automatic layout, readable settings, prices per quarter hour in the texts.",
+    "nl": "Verbeteringen na testen: nieuwe blokken zeggen dat ze na het opslaan van de indeling gevuld worden, duidelijkere knop voor de automatische indeling, beter leesbare instellingen, kwartierprijzen in de teksten."
+  },
   "0.1.0": {
     "en": "New: end of net metering calculator, battery earnings, solar performance, gas per degree day, warnings (devices left on, standby use), prices per quarter hour, a layout per screen, CSV export, install on your home screen and the \"Energy now\" widget. Power today also works for P1 meters without power readings in Insights, flows always move, and updates are picked up by every browser.",
     "nl": "Nieuw: wat het einde van salderen kost, opbrengst van je thuisbatterij, zonprestatie, gas per graaddag, meldingen (apparaten die aan blijven, sluipverbruik), prijzen per kwartier, een indeling per scherm, CSV-export, op je beginscherm te zetten en de widget \"Energie nu\". Vermogen vandaag werkt ook voor P1-meters zonder vermogensmetingen in Insights, de stromen bewegen altijd, en elke browser haalt een update op."

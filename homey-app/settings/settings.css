@@ -66,6 +66,26 @@ input[type="number"] {
 }
 fieldset { border: 0; padding: 0; margin: 0; }
 legend { font-size: 14px; margin-bottom: 6px; }
+
+/* Homey adds its own form style to settings pages (small capitals for labels); keep the
+   labels and the explanations under check boxes readable */
+body form label,
+body form legend,
+body form label span,
+body .checks label {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+}
+body form label small.muted,
+body form label small {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 12px;
+  color: var(--muted);
+}
 .checks { display: grid; gap: 6px; }
 .checks label { justify-content: flex-start; margin: 0; }
 
