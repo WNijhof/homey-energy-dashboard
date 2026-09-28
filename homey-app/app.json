@@ -2,7 +2,7 @@
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.drpeppers.energydashboard",
   "version": "1.0.0",
-  "compatibility": ">=12.1.0",
+  "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
   "platforms": [
@@ -36,7 +36,8 @@
     ]
   },
   "permissions": [
-    "homey:manager:api"
+    "homey:manager:api",
+    "homey:manager:geolocation"
   ],
   "brandColor": "#20C07C",
   "images": {
@@ -58,6 +59,45 @@
     "getSettingsInfo": {
       "method": "GET",
       "path": "/settings-info"
+    }
+  },
+  "widgets": {
+    "energy-flow": {
+      "name": {
+        "en": "Energy flows",
+        "nl": "Energiestromen"
+      },
+      "height": 260,
+      "transparent": false,
+      "settings": [
+        {
+          "id": "perZone",
+          "type": "number",
+          "title": {
+            "en": "Devices per room",
+            "nl": "Apparaten per ruimte"
+          },
+          "value": 3,
+          "min": 0,
+          "max": 8
+        },
+        {
+          "id": "animate",
+          "type": "checkbox",
+          "title": {
+            "en": "Moving flows",
+            "nl": "Bewegende stromen"
+          },
+          "value": true
+        }
+      ],
+      "api": {
+        "getFlow": {
+          "method": "GET",
+          "path": "/flow"
+        }
+      },
+      "id": "energy-flow"
     }
   }
 }

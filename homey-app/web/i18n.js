@@ -22,6 +22,16 @@
     'Maand': 'Month',
     'Deze week': 'This week',
     'Deze maand': 'This month',
+    'Dit jaar': 'This year',
+    'Jaar': 'Year',
+    'dit jaar': 'this year',
+    'vorig jaar tot dezelfde maand': 'last year up to the same month',
+    'Vaste kosten': 'Fixed costs',
+    'min vermindering energiebelasting': 'minus energy tax reduction',
+    'all-in: markt + belasting + opslag': 'all-in: market + tax + markup',
+    'marktprijs incl. btw': 'market price incl. VAT',
+    'Afname kost nu': 'Import costs now',
+    'Teruglevering levert nu': 'Export earns now',
     'vandaag': 'today',
     'gisteren': 'yesterday',
     'deze week': 'this week',
@@ -54,6 +64,14 @@
     'Sleep om de hoogte te veranderen': 'Drag to change the height',
     'hele breedte': 'full width',
     'Weergave': 'View',
+    'Scherm': 'Screen',
+    'Volledig scherm': 'Full screen',
+    'Scherm aan houden': 'Keep screen on',
+    'Nachtstand': 'Night mode',
+    'Dimmen': 'Dim',
+    'Zwart': 'Black',
+    'Van – tot': 'From – to',
+    'Deze keuzes gelden alleen voor dit scherm.': 'These choices apply to this screen only.',
 
     // Block titles (also sent by the server)
     'Nu': 'Now',
@@ -149,6 +167,7 @@
     'Uit batterij': 'From battery',
     'Zon in batterij': 'Solar to battery',
     'Zelfverbruik': 'Self-consumption',
+    'Verwachte zon': 'Expected solar',
     'Opgewekt': 'Produced',
     'Stroom verwarming': 'Heating electricity',
     '= gelijk': '= same',
@@ -211,9 +230,10 @@
     'Ongeldige gegevens': 'Invalid data',
     'Ongeldig adres': 'Invalid address',
     'Niet gevonden': 'Not found',
+    'Toegangscode nodig': 'Access code required',
   };
 
-  const PERIOD = '(vandaag|gisteren|deze week|deze maand)';
+  const PERIOD = '(vandaag|gisteren|deze week|deze maand|dit jaar)';
   const word = text => WORDS[text] ?? text;
   const list = text => text.split(', ').map(word).join(', ');
 
@@ -246,6 +266,9 @@
     [/^(.*)nu ([\d.,]+ L\/min)$/, (_, before, flow) => `${before}now ${flow}`],
     [/^hoofdzekering (.+) A$/, (_, amps) => `main fuse ${amps} A`],
     [/^vorige periode (.+)$/, (_, amount) => `previous period ${amount}`],
+    [/^· verwacht vandaag (.+) kWh · morgen (.+) kWh$/, (_, a, b) => `· expected today ${a} kWh · tomorrow ${b} kWh`],
+    [/^· verwacht vandaag (.+) kWh$/, (_, a) => `· expected today ${a} kWh`],
+    [/^(.+) per uur$/, (_, amount) => `${amount} per hour`],
     [/^Bewerken lukt niet: (.+)$/, (_, why) => `Cannot edit: ${translate(why)}`],
     [/^\+ (.+)$/, (_, title) => `+ ${word(title)}`],
     [/^Niet gevonden: (.+)\.$/, (_, what) => `Not found: ${list(what)}.`],

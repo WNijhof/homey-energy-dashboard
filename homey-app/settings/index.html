@@ -55,6 +55,37 @@
       <legend data-i18n="settings.battery"></legend>
       <div id="battery-list" class="checks"></div>
     </fieldset>
+    <h3 data-i18n="settings.forecast"></h3>
+    <label class="check-row"><span><span data-i18n="settings.forecastOn"></span><br><small class="muted" data-i18n="settings.forecastHelp"></small></span> <input name="forecastOn" type="checkbox"></label>
+    <div data-forecast>
+      <p class="muted" data-i18n="settings.plane1"></p>
+      <label><span data-i18n="settings.kwp"></span> <input name="kwp1" type="number" min="0" max="100" step="0.01"></label>
+      <label><span data-i18n="settings.tilt"></span> <input name="tilt1" type="number" min="0" max="90" step="1"></label>
+      <label><span data-i18n="settings.azimuth"></span>
+        <select name="azimuth1">
+          <option value="-90" data-i18n="settings.east"></option>
+          <option value="-45" data-i18n="settings.southEast"></option>
+          <option value="0" data-i18n="settings.south"></option>
+          <option value="45" data-i18n="settings.southWest"></option>
+          <option value="90" data-i18n="settings.west"></option>
+          <option value="180" data-i18n="settings.north"></option>
+        </select>
+      </label>
+      <p class="muted" data-i18n="settings.plane2"></p>
+      <label><span data-i18n="settings.kwp"></span> <input name="kwp2" type="number" min="0" max="100" step="0.01"></label>
+      <label><span data-i18n="settings.tilt"></span> <input name="tilt2" type="number" min="0" max="90" step="1"></label>
+      <label><span data-i18n="settings.azimuth"></span>
+        <select name="azimuth2">
+          <option value="-90" data-i18n="settings.east"></option>
+          <option value="-45" data-i18n="settings.southEast"></option>
+          <option value="0" data-i18n="settings.south"></option>
+          <option value="45" data-i18n="settings.southWest"></option>
+          <option value="90" data-i18n="settings.west"></option>
+          <option value="180" data-i18n="settings.north"></option>
+        </select>
+      </label>
+    </div>
+
     <label class="check-row"><span><span data-i18n="settings.invertPower"></span><br><small class="muted" data-i18n="settings.invertPowerHelp"></small></span> <input name="invertPower" type="checkbox"></label>
 
     <h3 data-i18n="settings.boilerSection"></h3>
@@ -68,16 +99,55 @@
     <h3 data-i18n="settings.connection"></h3>
     <label><span data-i18n="settings.fuseAmps"></span> <input name="fuseAmps" type="number" min="6" max="80" step="1"></label>
 
+    <!-- Contract: all amounts include VAT; empty fields leave that cost out -->
+    <h3 data-i18n="settings.electricityContract"></h3>
+    <p class="muted" data-i18n="settings.contractHelp"></p>
+    <label><span data-i18n="settings.contractType"></span>
+      <select name="elecType">
+        <option value="fixed" data-i18n="settings.fixed"></option>
+        <option value="dynamic" data-i18n="settings.dynamic"></option>
+      </select>
+    </label>
+    <div data-contract="elec-fixed">
+      <label><span data-i18n="settings.normalRate"></span> <input name="elecNormal" type="number" min="0" step="0.0001"></label>
+      <label><span data-i18n="settings.lowRate"></span> <input name="elecLow" type="number" min="0" step="0.0001"></label>
+      <label><span data-i18n="settings.lowHours"></span> <span class="inline"><input name="lowFrom" type="number" min="0" max="23" step="1"> – <input name="lowTo" type="number" min="0" max="23" step="1"></span></label>
+      <label class="check-row"><span data-i18n="settings.lowWeekend"></span> <input name="lowWeekend" type="checkbox"></label>
+      <label><span data-i18n="settings.exportRate"></span> <input name="elecExport" type="number" step="0.0001"></label>
+      <p class="muted" data-i18n="settings.exportRateHelp"></p>
+    </div>
+    <div data-contract="elec-dynamic">
+      <label><span data-i18n="settings.supplier"></span> <select name="supplier"></select></label>
+      <label><span data-i18n="settings.markup"></span> <input name="elecMarkup" type="number" step="0.0001"></label>
+      <label><span data-i18n="settings.energyTax"></span> <input name="elecTax" type="number" min="0" step="0.00001"></label>
+      <label class="check-row"><span><span data-i18n="settings.netting"></span><br><small class="muted" data-i18n="settings.nettingHelp"></small></span> <input name="netting" type="checkbox"></label>
+      <label><span data-i18n="settings.exportFee"></span> <input name="exportFee" type="number" step="0.0001"></label>
+      <p class="muted" data-i18n="settings.supplierHelp"></p>
+    </div>
+
+    <h3 data-i18n="settings.gasContract"></h3>
+    <label><span data-i18n="settings.contractType"></span>
+      <select name="gasType">
+        <option value="fixed" data-i18n="settings.fixed"></option>
+        <option value="dynamic" data-i18n="settings.dynamic"></option>
+      </select>
+    </label>
+    <div data-contract="gas-fixed">
+      <label><span data-i18n="settings.gasPrice"></span> <input name="gasPrice" type="number" min="0" step="0.0001"></label>
+    </div>
+    <div data-contract="gas-dynamic">
+      <label><span data-i18n="settings.gasMarkup"></span> <input name="gasMarkup" type="number" step="0.0001"></label>
+      <label><span data-i18n="settings.gasTax"></span> <input name="gasTax" type="number" min="0" step="0.00001"></label>
+    </div>
+
+    <h3 data-i18n="settings.otherCosts"></h3>
+    <label><span data-i18n="settings.monthly"></span> <input name="monthly" type="number" min="0" step="0.01"></label>
+    <label><span data-i18n="settings.taxReduction"></span> <input name="taxReduction" type="number" min="0" step="0.01"></label>
+    <p class="muted" data-i18n="settings.monthlyHelp"></p>
+    <label><span data-i18n="settings.water"></span> <input name="waterPrice" type="number" min="0" step="0.001"></label>
+
     <h3 data-i18n="settings.prices"></h3>
     <label class="check-row"><span><span data-i18n="settings.pricesOn"></span><br><small class="muted" data-i18n="settings.pricesOnHelp"></small></span> <input name="pricesOn" type="checkbox"></label>
-    <label><span data-i18n="settings.surcharge"></span> <input name="surcharge" type="number" step="0.001"></label>
-
-    <h3 data-i18n="settings.tariffs"></h3>
-    <p class="muted" data-i18n="settings.tariffsHelp"></p>
-    <label><span data-i18n="settings.electricityImport"></span> <input name="electricityImport" type="number" min="0" step="0.001"></label>
-    <label><span data-i18n="settings.electricityExport"></span> <input name="electricityExport" type="number" min="0" step="0.001"></label>
-    <label><span data-i18n="settings.gas"></span> <input name="gas" type="number" min="0" step="0.001"></label>
-    <label><span data-i18n="settings.water"></span> <input name="water-tariff" type="number" min="0" step="0.001"></label>
 
     <div class="form-actions">
       <button type="submit" data-i18n="settings.save"></button>

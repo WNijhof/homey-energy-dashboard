@@ -3,7 +3,6 @@
 // Homey settings page: links to the dashboard and edits the app settings
 
 const BOILER_FIELDS = ['liters', 'coldWaterTemp', 'showerTemp', 'showerFlow', 'warmFrom'];
-const TARIFF_FIELDS = ['electricityImport', 'electricityExport', 'gas'];
 const DEFAULT_BOILER = { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 };
 
 function onHomeyReady(Homey) {
@@ -44,8 +43,8 @@ function onHomeyReady(Homey) {
       form.editPin.value = config.editPin || '';
       form.accessCode.value = config.accessCode || '';
       form.pricesOn.checked = config.prices?.source !== 'off';
-      form.surcharge.value = config.prices?.surcharge ?? 0;
-      form['water-tariff'].value = config.tariffs?.water ?? '';
+      fillContract(list.contract, list.suppliers);
+      fillForecast(config.forecast || {});
       fillChecks('heating-list', 'heating', list.devices, devices.heating || [],
         d => d.class === 'heatpump' || d.class === 'boiler' || /warmtepomp|heat ?pump|cv|ketel/i.test(d.name),
         __('noHeating'));
@@ -64,8 +63,6 @@ function onHomeyReady(Homey) {
 
       const boiler = { ...DEFAULT_BOILER, ...config.boiler };
       BOILER_FIELDS.forEach(key => { form[key].value = boiler[key]; });
-      const tariffs = config.tariffs || {};
-      TARIFF_FIELDS.forEach(key => { form[key].value = tariffs[key] ?? ''; });
     } catch (err) {
       status.textContent = __('loadFailed', { error: err.message || err });
     }
@@ -88,14 +85,12 @@ function onHomeyReady(Homey) {
           water: form.water.value,
         },
         grid: { fuseAmps: number('fuseAmps') ?? 25 },
-        prices: { source: form.pricesOn.checked ? 'energyzero' : 'off', surcharge: number('surcharge') ?? 0 },
+        prices: { source: form.pricesOn.checked ? 'energyzero' : 'off' },
+        contract: contractToSave(number),
+        forecast: forecastToSave(number),
         layout: layoutToSave(),
         battery: { invertPower: form.invertPower.checked },
         boiler: Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
-        tariffs: Object.fromEntries([
-          ...TARIFF_FIELDS.map(key => [key, number(key)]),
-          ['water', number('water-tariff')],
-        ].filter(([, v]) => v !== undefined)),
       };
       if (config.boiler.showerTemp <= config.boiler.coldWaterTemp) {
         status.textContent = __('showerTooCold');
@@ -118,6 +113,104 @@ function onHomeyReady(Homey) {
         status.textContent = __('saveFailed', { error: err.message || err });
       }
     });
+  }
+
+  // ---------- Solar forecast ----------
+
+  function fillForecast(forecast) {
+    form.forecastOn.checked = Boolean(forecast.enabled);
+    [1, 2].forEach(n => {
+      const p = (forecast.planes || [])[n - 1] || {};
+      form[`kwp${n}`].value = p.kwp ?? '';
+      form[`tilt${n}`].value = p.tilt ?? 35;
+      form[`azimuth${n}`].value = String(p.azimuth ?? (n === 1 ? 0 : 90));
+    });
+    const show = () => { document.querySelector('[data-forecast]').hidden = !form.forecastOn.checked; };
+    form.forecastOn.onchange = show;
+    show();
+  }
+
+  // Planes without a size are left out
+  function forecastToSave(number) {
+    const planes = [1, 2]
+      .map(n => ({ kwp: number(`kwp${n}`), tilt: number(`tilt${n}`) ?? 35, azimuth: Number(form[`azimuth${n}`].value) }))
+      .filter(p => p.kwp > 0);
+    return { enabled: form.forecastOn.checked && planes.length > 0, planes };
+  }
+
+  // ---------- Contract ----------
+
+  // Shows the fields of the chosen contract type
+  function showContractFields() {
+    document.querySelectorAll('[data-contract]').forEach(el => {
+      const [kind, type] = el.dataset.contract.split('-');
+      el.hidden = form[kind === 'elec' ? 'elecType' : 'gasType'].value !== type;
+    });
+  }
+
+  function fillContract(contract, suppliers) {
+    const e = contract.electricity;
+    const g = contract.gas;
+    const value = v => (v === null || v === undefined ? '' : v);
+    form.elecType.value = e.type;
+    form.elecNormal.value = value(e.normal);
+    form.elecLow.value = value(e.low);
+    form.elecExport.value = value(e.export);
+    form.lowFrom.value = e.lowFrom;
+    form.lowTo.value = e.lowTo;
+    form.lowWeekend.checked = e.lowWeekend;
+    form.supplier.innerHTML = suppliers
+      .map(s => `<option value="${s.id}">${escapeText(s.id === 'other' ? __('otherSupplier') : s.name)}</option>`)
+      .join('');
+    form.supplier.value = e.supplier;
+    form.elecMarkup.value = e.markup;
+    form.elecTax.value = e.energyTax;
+    form.netting.checked = e.netting;
+    form.exportFee.value = e.exportFee;
+    form.gasType.value = g.type;
+    form.gasPrice.value = value(g.price);
+    form.gasMarkup.value = g.markup;
+    form.gasTax.value = g.energyTax;
+    form.monthly.value = value(contract.monthly);
+    form.taxReduction.value = value(contract.taxReduction);
+    form.waterPrice.value = value(contract.water);
+    // Choosing a supplier fills in its usual markup, which can still be changed
+    form.supplier.onchange = () => {
+      const supplier = suppliers.find(s => s.id === form.supplier.value);
+      if (supplier && supplier.id !== 'other') form.elecMarkup.value = supplier.markup;
+    };
+    form.elecType.onchange = showContractFields;
+    form.gasType.onchange = showContractFields;
+    showContractFields();
+  }
+
+  function contractToSave(number) {
+    const empty = key => (number(key) === undefined ? null : number(key));
+    return {
+      electricity: {
+        type: form.elecType.value,
+        normal: empty('elecNormal'),
+        low: empty('elecLow'),
+        export: empty('elecExport'),
+        lowFrom: number('lowFrom') ?? 23,
+        lowTo: number('lowTo') ?? 7,
+        lowWeekend: form.lowWeekend.checked,
+        supplier: form.supplier.value,
+        markup: number('elecMarkup') ?? 0,
+        energyTax: empty('elecTax'),
+        netting: form.netting.checked,
+        exportFee: number('exportFee') ?? 0,
+      },
+      gas: {
+        type: form.gasType.value,
+        price: empty('gasPrice'),
+        markup: number('gasMarkup') ?? 0,
+        energyTax: empty('gasTax'),
+      },
+      water: empty('waterPrice'),
+      monthly: empty('monthly'),
+      taxReduction: empty('taxReduction'),
+    };
   }
 
   function showDashboard(info) {

@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Kept light: one small SVG, drawn again every 10 seconds, and a CSS animation */
+    body { margin: 0; }
+    #flow { display: block; width: 100%; overflow: visible; }
+    .link { fill: none; stroke-opacity: 0.32; }
+    .run { fill: none; stroke: #fff; stroke-opacity: 0.55; stroke-linecap: round; stroke-dasharray: 1 14; animation: run 1.6s linear infinite; }
+    .homey-dark-mode .run { stroke-opacity: 0.4; }
+    @keyframes run { to { stroke-dashoffset: -15; } }
+    .label { font-size: 11px; fill: var(--homey-text-color, #1c1c1e); paint-order: stroke; stroke: var(--homey-background-color, #fff); stroke-width: 3px; stroke-linejoin: round; }
+    .label .value { fill: var(--homey-text-color-light, #8a8a8e); }
+    .empty { font-size: var(--homey-font-size-small, 14px); color: var(--homey-text-color-light, #8a8a8e); text-align: center; padding: 24px 0; }
+    @media (prefers-reduced-motion: reduce) { .run { display: none; } }
+  </style>
+</head>
+<body class="homey-widget-small">
+  <svg id="flow" role="img"></svg>
+  <div id="empty" class="empty" hidden></div>
+
+  <script>
+    'use strict';
+
+    const COLORS = {
+      solar: '#ffb400', grid: '#3d8bfd', battery: '#14b8a6', export: '#a55eea',
+      zone: '#20c07c', other: '#8e8e93', device: '#20c07c', more: '#8e8e93',
+    };
+    const INTERVAL = 10 * 1000;
+
+    function onHomeyReady(Homey) {
+      const settings = Homey.getSettings() || {};
+      const svg = document.getElementById('flow');
+      const empty = document.getElementById('empty');
+      const locale = (navigator.language || 'nl').startsWith('nl') ? 'nl-NL' : 'en-GB';
+      const nf = digits => new Intl.NumberFormat(locale, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+      const power = w => (w >= 1000 ? `${nf(w >= 10000 ? 1 : 2).format(w / 1000)} kW` : `${nf(0).format(w)} W`);
+      const text = key => Homey.__(`widget.${key}`) || key;
+      const escape = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+      const shorten = (s, max) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
+      let shownHeight = 0;
+      let busy = false;
+
+      function labelOf(n) {
+        return ['solar', 'grid', 'battery', 'export', 'charge', 'other', 'more'].includes(n.label) && n.kind !== 'zone' && n.kind !== 'device'
+          ? text(n.label)
+          : n.label;
+      }
+
+      // Three columns; node heights follow their power with one scale for all columns
+      function draw(data) {
+        const width = Math.max(240, document.body.clientWidth);
+        if (!data.nodes.length) {
+          svg.innerHTML = '';
+          svg.style.display = 'none';
+          empty.hidden = false;
+          empty.textContent = text(data.error === 'noP1' ? 'noP1' : 'noFlow');
+          resize(80);
+          return;
+        }
+        svg.style.display = '';
+        empty.hidden = true;
+
+        const nodes = data.nodes.map(n => ({ ...n, in: 0, out: 0 }));
+        const byId = new Map(nodes.map(n => [n.id, n]));
+        for (const l of data.links) {
+          byId.get(l.source).out += l.value;
+          byId.get(l.target).in += l.value;
+        }
+        nodes.forEach(n => { n.value = Math.max(n.in, n.out); });
+
+        const columns = [0, 1, 2].map(c => nodes.filter(n => n.column === c));
+        const rows = Math.max(...columns.map(col => col.length));
+        const gap = 6;
+        const minH = 3;
+        const height = Math.max(150, Math.min(520, rows * 34));
+        const scale = Math.min(...columns.filter(c => c.length).map(col => {
+          const total = col.reduce((sum, n) => sum + n.value, 0) || 1;
+          return (height - gap * (col.length - 1) - minH * col.length) / total;
+        }));
+        const barW = 6;
+        const x = [0, Math.round(width * 0.42), width - barW];
+        columns.forEach((col, c) => {
+          const used = col.reduce((sum, n) => sum + n.value * scale + minH, 0) + gap * (col.length - 1);
+          let y = (height - used) / 2;
+          col.forEach(n => {
+            n.x = x[c];
+            n.y = y;
+            n.h = n.value * scale + minH;
+            y += n.h + gap;
+          });
+        });
+
+        // Links leave and enter each node in the order of the nodes on the other side
+        const outOffset = new Map();
+        const inOffset = new Map();
+        const links = data.links.slice().sort((a, b) =>
+          byId.get(a.source).y - byId.get(b.source).y || byId.get(a.target).y - byId.get(b.target).y);
+        let paths = '';
+        let runs = '';
+        for (const l of links) {
+          const s = byId.get(l.source);
+          const t = byId.get(l.target);
+          const thickness = Math.max(1, l.value * scale);
+          const sy = s.y + minH / 2 + (outOffset.get(s.id) || 0) + thickness / 2;
+          const ty = t.y + minH / 2 + (inOffset.get(t.id) || 0) + thickness / 2;
+          outOffset.set(s.id, (outOffset.get(s.id) || 0) + thickness);
+          inOffset.set(t.id, (inOffset.get(t.id) || 0) + thickness);
+          const x0 = s.x + barW;
+          const x1 = t.x;
+          const xm = (x0 + x1) / 2;
+          const d = `M${x0} ${sy.toFixed(1)} C${xm} ${sy.toFixed(1)} ${xm} ${ty.toFixed(1)} ${x1} ${ty.toFixed(1)}`;
+          const color = COLORS[s.column === 0 ? s.kind : (t.kind === 'more' ? 'more' : 'device')] || COLORS.zone;
+          paths += `<path class="link" d="${d}" stroke="${color}" stroke-width="${thickness.toFixed(1)}"/>`;
+          if (settings.animate !== false && thickness >= 2) runs += `<path class="run" d="${d}" stroke-width="${Math.min(3, thickness / 2).toFixed(1)}"/>`;
+        }
+
+        let boxes = '';
+        const maxChars = Math.max(8, Math.round(width / 26));
+        for (const n of nodes) {
+          const color = COLORS[n.kind] || COLORS.zone;
+          const right = n.column === 2;
+          const tx = right ? n.x - 4 : n.x + barW + 4;
+          const ty = n.y + n.h / 2 + 4;
+          boxes += `<rect x="${n.x}" y="${n.y.toFixed(1)}" width="${barW}" height="${n.h.toFixed(1)}" rx="2" fill="${color}"/>`
+            + `<text class="label" x="${tx}" y="${ty.toFixed(1)}" text-anchor="${right ? 'end' : 'start'}">${escape(shorten(labelOf(n), maxChars))} <tspan class="value">${power(n.value)}</tspan></text>`;
+        }
+
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.setAttribute('height', height);
+        svg.setAttribute('aria-label', text('name'));
+        svg.innerHTML = paths + runs + boxes;
+        resize(height + 16);
+      }
+
+      function resize(height) {
+        if (height === shownHeight) return;
+        shownHeight = height;
+        if (typeof Homey.setHeight === 'function') Homey.setHeight(height);
+      }
+
+      async function update() {
+        if (busy || document.hidden) return;
+        busy = true;
+        try {
+          draw(await Homey.api('GET', `/flow?perZone=${Number(settings.perZone ?? 3)}`));
+        } catch (err) {
+          svg.style.display = 'none';
+          empty.hidden = false;
+          empty.textContent = err.message || String(err);
+        } finally {
+          busy = false;
+        }
+      }
+
+      update().finally(() => Homey.ready({ height: shownHeight || 200 }));
+      setInterval(update, INTERVAL);
+      document.addEventListener('visibilitychange', update);
+    }
+  </script>
+</body>
+</html>

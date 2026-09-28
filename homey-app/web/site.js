@@ -5,6 +5,7 @@
 EnergyDashboard.start({
   get: async path => {
     const res = await fetch(`/api${path}`, { cache: 'no-store' });
+    if (res.status === 401) location.reload();
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Fout ${res.status}`);
     return data;

@@ -28,14 +28,39 @@
     "fuseAmps": 25
   },
   "prices": {
-    "source": "energyzero",
-    "surcharge": 0
+    "source": "energyzero"
   },
-  "tariffs": {
-    "electricityImport": 0.25,
-    "electricityExport": 0.05,
-    "gas": 1.35,
-    "water": 1.1
+  "contract": {
+    "electricity": {
+      "type": "dynamic",
+      "supplier": "anwb",
+      "markup": 0.018,
+      "energyTax": 0.11085,
+      "netting": true,
+      "exportFee": 0,
+      "normal": null,
+      "low": null,
+      "export": null
+    },
+    "gas": {
+      "type": "fixed",
+      "price": 1.35
+    },
+    "water": 1.1,
+    "monthly": 95,
+    "taxReduction": 628.96
+  },
+  "forecast": {
+    "enabled": false,
+    "lat": 52.09,
+    "lon": 5.12,
+    "planes": [
+      {
+        "kwp": 4.2,
+        "tilt": 35,
+        "azimuth": 0
+      }
+    ]
   },
   "layout": null
 }

@@ -129,3 +129,7 @@ button.secondary {
   cursor: pointer;
   white-space: nowrap;
 }
+
+.inline { display: inline-flex; align-items: center; gap: 6px; }
+.inline input { width: 64px; }
+[hidden] { display: none !important; }

@@ -9,6 +9,8 @@ const {
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
+const { ForecastService } = require('./lib/forecast');
+const { contractFrom, allInElectricity } = require('./lib/tariffs');
 const demo = require('./lib/demo');
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
@@ -16,6 +18,8 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const DEVICES_CACHE_TTL = 5 * 1000;
 const HISTORY_CACHE_TTL = 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
+// Open pages load again when this changes, e.g. after an update and a restart of the server
+const VERSION = `${require('./package.json').version}-${Date.now()}`;
 
 const DEFAULTS = {
   port: 8080,
@@ -24,7 +28,7 @@ const DEFAULTS = {
   boiler: { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 },
   battery: { invertPower: false },
   grid: { fuseAmps: 25 },
-  prices: { source: 'energyzero', surcharge: 0 },
+  prices: { source: 'energyzero' },
   tariffs: {},
   demo: false,
 };
@@ -47,6 +51,15 @@ function loadConfig() {
   };
   const unconfigured = !cfg.homey.address || !cfg.homey.token || cfg.homey.token.startsWith('PLAK');
   cfg.demo = cfg.demo || unconfigured;
+  // The demo shows costs with a dynamic contract, unless config.json has one
+  if (cfg.demo && !cfg.contract) {
+    cfg.contract = {
+      electricity: { type: 'dynamic', supplier: 'anwb', markup: 0.018 },
+      gas: { type: 'fixed', price: 1.35 },
+      water: 1.1,
+      monthly: 95,
+    };
+  }
   return cfg;
 }
 
@@ -57,6 +70,7 @@ let devicesCache = { at: 0, devices: null };
 let baseloadCache = { at: 0, data: null };
 const historyCache = new Map();
 const prices = new PriceService();
+const forecast = new ForecastService();
 const pinGuard = new PinGuard();
 
 async function getDevices() {
@@ -76,17 +90,21 @@ async function getLive() {
     live = buildLive(devices, found, cfg);
     if (live.layout.some(b => b.id === 'baseload')) live.baseload = await getBaseload(found).catch(() => null);
   }
+  live.version = VERSION;
   // Today's totals for the live diagram; the history is cached, so this is cheap
   live.today = todayTotals((await getHistory('today').catch(() => null))?.totals);
   if (live.layout.some(b => b.id === 'prices')) {
-    live.prices = await prices.get(cfg.prices).catch(err => ({ error: err.message }));
+    const contract = contractFrom(cfg);
+    const allIn = contract.electricity.type === 'dynamic' ? p => allInElectricity(contract, p) : null;
+    live.prices = await prices.get(cfg.prices, { allIn }).catch(err => ({ error: err.message }));
   }
   return live;
 }
 
 async function getBaseload(found) {
   if (Date.now() - baseloadCache.at > BASELOAD_CACHE_TTL) {
-    baseloadCache = { at: Date.now(), data: await buildBaseload(client, found, cfg) };
+    const market = await prices.get({}).catch(() => null);
+    baseloadCache = { at: Date.now(), data: await buildBaseload(client, found, cfg, market?.avg) };
   }
   return baseloadCache.data;
 }
@@ -99,13 +117,17 @@ async function getHistory(period, { light = false } = {}) {
   let data;
   if (cfg.demo) {
     data = demo.history(period, cfg);
+    if (period === 'today' && !light) data.forecast = demo.forecast();
   } else {
     const devices = await getDevices();
-    data = await buildHistory(client, devices, discover(devices, cfg.devices), period, cfg, { light });
+    data = await buildHistory(client, devices, discover(devices, cfg.devices), period, cfg, { light, prices });
+    if (period === 'today' && !light && cfg.forecast?.enabled) {
+      data.forecast = await forecast.get({ lat: cfg.forecast.lat, lon: cfg.forecast.lon, planes: cfg.forecast.planes }).catch(() => null);
+    }
   }
   if (!light && PREVIOUS[period]) {
     const previous = await getHistory(PREVIOUS[period], { light: true }).catch(() => null);
-    data.previous = comparableTotals(previous, data, cfg.tariffs);
+    data.previous = comparableTotals(previous, data);
   }
   historyCache.set(key, { at: Date.now(), data });
   return data;

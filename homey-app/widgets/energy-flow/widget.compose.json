@@ -1,0 +1,36 @@
+{
+  "name": {
+    "en": "Energy flows",
+    "nl": "Energiestromen"
+  },
+  "height": 260,
+  "transparent": false,
+  "settings": [
+    {
+      "id": "perZone",
+      "type": "number",
+      "title": {
+        "en": "Devices per room",
+        "nl": "Apparaten per ruimte"
+      },
+      "value": 3,
+      "min": 0,
+      "max": 8
+    },
+    {
+      "id": "animate",
+      "type": "checkbox",
+      "title": {
+        "en": "Moving flows",
+        "nl": "Bewegende stromen"
+      },
+      "value": true
+    }
+  ],
+  "api": {
+    "getFlow": {
+      "method": "GET",
+      "path": "/flow"
+    }
+  }
+}

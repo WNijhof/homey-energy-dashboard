@@ -8,7 +8,7 @@ Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht
 
 - **Nu**: live energiestroom tussen zon, net en huis
 - **Boiler (Atag Lydos)**: watertemperatuur, of hij warm is, geschatte doucheminuten, douchebeurten volgens de Lydos, opwarmen, modus en temperatuurverloop van vandaag
-- **Totalen** per dag, week of maand: verbruik, van het net, zon opgewekt, teruggeleverd, gas, zelfvoorzienend %, eigen zonverbruik % en kosten
+- **Totalen** per dag, week, maand of jaar: verbruik, van het net, zon opgewekt, teruggeleverd, gas, zelfvoorzienend %, eigen zonverbruik % en kosten
 - **Vermogen vandaag**: een lijngrafiek van het vermogen door de dag, met zelfverbruik, afname van het net en teruglevering
 - **Grafieken** per uur of dag voor elektriciteit, zonne-energie en gas
 - **Energiestromen**: een Sankey-grafiek zoals in Home Assistant, van de bronnen (zon, net, batterij) via het huis naar de individuele verbruikers, live of voor de gekozen periode
@@ -52,8 +52,9 @@ Zonder `config.json` (of met de voorbeeld-key) draait het dashboard in **demo-mo
 | `boiler.showerFlow` | Liters per minuut van je douchekop (spaardouche ongeveer 6–7, normaal 8–10) |
 | `boiler.warmFrom` | Vanaf deze temperatuur staat de boiler op "Warm" |
 | `grid.fuseAmps` | Hoofdzekering per fase, voor het blok Fasebelasting |
-| `prices` | `source`: `"energyzero"` of `"off"`; `surcharge`: opslag per kWh bovenop de EnergyZero-prijs |
-| `tariffs` | Prijzen per kWh, m³ gas en m³ water (`water`) voor de kosten. Verwijder dit blok als je geen kosten wilt zien |
+| `prices` | `source`: `"energyzero"` om het blok Stroomprijs te tonen, of `"off"` |
+| `contract` | Stroom (`electricity`: `type` `"fixed"` met `normal`, `low`, `export`, of `"dynamic"` met `markup`, `energyTax`, `netting`, `exportFee`), gas (`gas`: `type` `"fixed"` met `price`, of `"dynamic"` met `markup`, `energyTax`), `water` (€/m³), `monthly` (vaste kosten per maand) en `taxReduction` (per jaar). Alles inclusief btw; zie `config.example.json` en *Prijzen en kosten* in `homey-app/README.md`. Het oude blok `tariffs` werkt nog |
+| `forecast` | Zonneverwachting: `enabled`, `lat`, `lon` en `planes`: een lijst met `kwp`, `tilt` (0–90) en `azimuth` (0 = zuid, -90 = oost, 90 = west) |
 | `editPin` | Optionele pincode voor het bewerken van de indeling op het dashboard |
 | `layout` | `null` voor de automatische indeling, of een lijst zoals `[{ "id": "flow", "size": "half", "rows": 20 }, …]`. `rows` is optioneel: de hoogte in rijen van 24 pixels. Blokken en breedtes staan in `homey-app/README.md`. Je kunt de indeling ook op het dashboard aanpassen met het potlood; die wordt dan hier opgeslagen |
 

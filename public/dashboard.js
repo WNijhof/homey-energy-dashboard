@@ -48,8 +48,13 @@
 
   const escapeHtml = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-  const PERIOD_LABELS = { today: 'Vandaag', yesterday: 'Gisteren', week: 'Deze week', month: 'Deze maand' };
-  const PREVIOUS_LABELS = { today: 'gisteren tot hetzelfde uur', week: 'vorige week tot dezelfde dag', month: 'vorige maand tot dezelfde dag' };
+  const PERIOD_LABELS = { today: 'Vandaag', yesterday: 'Gisteren', week: 'Deze week', month: 'Deze maand', year: 'Dit jaar' };
+  const PREVIOUS_LABELS = {
+    today: 'gisteren tot hetzelfde uur',
+    week: 'vorige week tot dezelfde dag',
+    month: 'vorige maand tot dezelfde dag',
+    year: 'vorig jaar tot dezelfde maand',
+  };
 
   function formatPower(watts) {
     if (typeof watts !== 'number') return '–';
@@ -705,7 +710,16 @@
       const hm = d => d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
       return `${hm(start)} – ${hm(end)}`;
     }
+    if (bucket === 'month') return start.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
     return start.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  // Month and weekday names in the language of the page; hours and days of the month as sent
+  function axisLabel(row, bucket) {
+    const date = new Date(row.start);
+    if (bucket === 'month') return date.toLocaleDateString(LOCALE, { month: 'short' });
+    if (bucket === 'day' && Number.isNaN(Number(row.label))) return date.toLocaleDateString(LOCALE, { weekday: 'short' });
+    return row.label;
   }
 
   const charts = new Map();
@@ -772,7 +786,7 @@
         yDown += h;
       });
       if (i % labelEvery === 0) {
-        axis += `<text x="${pad.left + band * i + band / 2}" y="${height - 4}" text-anchor="middle">${row.label}</text>`;
+        axis += `<text x="${pad.left + band * i + band / 2}" y="${height - 4}" text-anchor="middle">${axisLabel(row, bucket)}</text>`;
       }
       bars += `<rect class="hit" data-i="${i}" x="${pad.left + band * i}" y="${pad.top}" width="${band}" height="${plotH}" rx="4"/>`;
     });
@@ -1167,7 +1181,12 @@
     const stacks = hasSolar ? [[self, ...use], [self, ...sun]] : [use];
 
     const legendEl = $('power-legend');
-    if (legendEl) legendEl.innerHTML = layers.map(x => `<span><i style="background:${x.color}"></i>${x.label}</span>`).join('');
+    // Today: the expected solar power as a dashed line, when a forecast is set up
+    const forecast = day === 'today' ? history.forecast : null;
+    if (legendEl) {
+      legendEl.innerHTML = layers.map(x => `<span><i style="background:${x.color}"></i>${x.label}</span>`).join('')
+        + (forecast ? `<span><i class="legend-dash" style="border-color:${colors.solar}"></i>Verwachte zon</span>` : '');
+    }
 
     // The header shows the day's totals, and the values at the pointer while hovering
     const readout = (title, values, unit = '') => `
@@ -1175,15 +1194,24 @@
         `<span class="power-value" style="color:${layer.color}" title="${layer.label}"><b>${layer.arrow}</b>${text}</span>`).join('')}${unit ? `<span class="power-unit">${unit}</span>` : ''}</div>
       <div class="power-when">${title}</div>`;
     const t = history.totals || {};
+    const dayKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const expected = forecast ? [forecast.days?.[dayKey(new Date())], forecast.days?.[dayKey(tomorrow)]] : [];
+    const forecastText = typeof expected[0] === 'number'
+      ? `<span> · verwacht vandaag ${formatEnergy(expected[0])} kWh${typeof expected[1] === 'number' ? ` · morgen ${formatEnergy(expected[1])} kWh` : ''}</span>`
+      : '';
     const totalsHtml = readout(
-      hasSolar ? `${POWER_DAYS[day]} · verbruik ${formatEnergy(t.consumption)} kWh · zon ${formatEnergy(t.solar)} kWh` : `${POWER_DAYS[day]} · verbruik ${formatEnergy(t.consumption)} kWh`,
+      (hasSolar ? `${POWER_DAYS[day]} · verbruik ${formatEnergy(t.consumption)} kWh · zon ${formatEnergy(t.solar)} kWh` : `${POWER_DAYS[day]} · verbruik ${formatEnergy(t.consumption)} kWh`) + forecastText,
       layers.map(layer => ({ layer, text: formatEnergy(layer.total(t) || 0) })), 'kWh');
     if (summaryEl) summaryEl.innerHTML = totalsHtml;
 
     const { start, samples } = powerSamples(power, day);
     const valid = samples.filter(Boolean);
     const stackTop = (stack, p) => stack.reduce((sum, layer) => sum + layer.value(p), 0);
-    const max = Math.max(100, ...valid.map(p => Math.max(...stacks.map(stack => stackTop(stack, p)))));
+    const end0 = power.end ? Date.parse(power.end) : start + 86400000;
+    const expectedLine = forecast ? forecast.watts.filter(p => p.t >= start && p.t <= end0) : [];
+    const max = Math.max(100, ...valid.map(p => Math.max(...stacks.map(stack => stackTop(stack, p)))), ...expectedLine.map(p => p.w));
 
     const width = el.clientWidth || 600;
     const height = chartHeight(el, Number(el.dataset.height) || 240);
@@ -1249,6 +1277,9 @@
         });
       }
       shapes += pieces.join('');
+    }
+    if (expectedLine.length > 1) {
+      shapes += `<path class="power-forecast" d="${smoothPath(expectedLine.map(p => [X(p.t), Y(p.w)]))}" stroke="${colors.solar}"/>`;
     }
 
     // Today the end of the chart pulses: that is now
@@ -1330,7 +1361,7 @@
 
   // ---------- Prices ----------
 
-  const euro = (value, digits = 2) => `€ ${nf(digits).format(value)}`;
+  const euro = (value, digits = 2) => `${value < 0 ? '−' : ''}€ ${nf(digits).format(Math.abs(value))}`;
   const hm = iso => new Date(iso).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 
   function priceColor(price, min, max) {
@@ -1348,7 +1379,7 @@
       setText('prices-empty', prices?.error ? `Geen prijzen: ${prices.error}` : 'Geen prijzen beschikbaar.');
       return;
     }
-    setText('prices-source', `${prices.source} · incl. btw${prices.surcharge ? ' + opslag' : ''}`);
+    setText('prices-source', prices.allIn ? 'all-in: markt + belasting + opslag' : 'marktprijs incl. btw');
     setText('price-now', typeof prices.current === 'number' ? euro(prices.current, 3) : '–');
 
     const facts = [
@@ -1356,6 +1387,11 @@
       `<li><span>Hoogste vandaag</span><strong>${euro(prices.max, 3)}</strong></li>`,
       `<li><span>Gemiddeld vandaag</span><strong>${euro(prices.avg, 3)}</strong></li>`,
     ];
+    // What the power of this moment costs (or earns) per hour
+    const gridW = state.live?.gridW;
+    if (prices.allIn && typeof prices.current === 'number' && typeof gridW === 'number' && Math.abs(gridW) > 5) {
+      facts.unshift(`<li><span>${gridW > 0 ? 'Afname kost nu' : 'Teruglevering levert nu'}</span><strong>${euro(Math.abs(gridW) / 1000 * prices.current)} per uur</strong></li>`);
+    }
     if (prices.cheapest) {
       const end = new Date(new Date(prices.cheapest.start).getTime() + prices.cheapest.hours * 3600000).toISOString();
       const day = new Date(prices.cheapest.start).getDate() !== new Date().getDate() ? 'morgen ' : '';
@@ -1479,6 +1515,7 @@
       ['Teruglevering', `${formatEnergy(t.export)} kWh`, t.costs.export],
       ['Gas', `${nf(2).format(t.gas)} m³`, t.costs.gas],
       ['Water', `${nf(0).format(t.water)} L`, t.costs.water],
+      ['Vaste kosten', 'min vermindering energiebelasting', t.costs.fixed],
     ].filter(([, , cost]) => typeof cost === 'number');
     const previous = history.previous?.cost;
     el.innerHTML = rows.map(([label, amount, cost]) => `
@@ -1856,9 +1893,18 @@
   // ---------- Data loading ----------
 
   async function loadLive() {
+    if (state.liveBusy) return;
+    state.liveBusy = true;
     try {
       const live = await state.options.get('/live');
+      if (live.version && state.version && live.version !== state.version) {
+        location.reload();
+        return;
+      }
+      state.version = live.version || state.version;
       state.live = live;
+      // A screen that stays on past midnight shows the new day
+      setText('today-label', new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' }));
       const rebuilt = applyLayout(live.layout);
       renderFlow(live);
       renderBoiler(live.boiler);
@@ -1881,23 +1927,24 @@
         setBanner('', state.options.demoMessage || '');
       } else {
         setStatus('live', 'Live');
-        const missing = [];
-        if (!live.devices.p1) missing.push('P1-meter');
-        if (!live.devices.solar.length) missing.push('zonnepanelen');
-        if (!live.devices.boiler) missing.push('boiler');
-        setBanner('', missing.length && state.options.missingHint
-          ? `<span>Niet gevonden: ${missing.join(', ')}.</span> ${state.options.missingHint}`
+        setBanner('', !live.devices.p1 && state.options.missingHint
+          ? `<span>Niet gevonden: P1-meter.</span> ${state.options.missingHint}`
           : '');
       }
     } catch (err) {
       setStatus('error', 'Geen verbinding');
       setBanner('error', `<strong>Kan geen gegevens ophalen.</strong> ${escapeHtml(err.message || err)}`);
+    } finally {
+      state.liveBusy = false;
     }
     changed();
   }
 
   async function loadHistory() {
     const period = state.period;
+    // A slow Homey should not get a pile of requests; a new period does start a new one
+    if (state.historyBusy === period) return;
+    state.historyBusy = period;
     try {
       const history = await state.options.get(`/history?period=${period}`);
       if (period !== state.period) return;
@@ -1905,10 +1952,14 @@
       renderHistory(history);
       loadPowerToday();
     } catch (err) {
-      ['electricity-chart', 'solar-chart', 'gas-chart'].forEach(id => {
-        const el = $(id);
-        if (el) el.innerHTML = `<div class="empty">${escapeHtml(err.message || err)}</div>`;
-      });
+      if (period === state.period) {
+        ['electricity-chart', 'solar-chart', 'gas-chart', 'power-chart'].forEach(id => {
+          const el = $(id);
+          if (el) el.innerHTML = `<div class="empty">${escapeHtml(err.message || err)}</div>`;
+        });
+      }
+    } finally {
+      if (state.historyBusy === period) state.historyBusy = null;
     }
     changed();
   }
@@ -1943,8 +1994,7 @@
   }
 
   function redraw() {
-    if (state.live) { renderFlow(state.live); renderBoiler(state.live.boiler); }
-    if (state.history) renderCharts(state.history);
+    renderAll();
     changed();
   }
 
@@ -1980,12 +2030,25 @@
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
 
     initEditMode();
+    // While the night screen is black the page rests; it catches up when woken
+    const resting = () => document.hidden || window.EnergyScreen?.sleeping();
+    window.EnergyScreen?.start({
+      wake: () => {
+        loadLive();
+        if (needsHistory()) loadHistory();
+      },
+    });
     loadLive();
-    setInterval(loadLive, LIVE_INTERVAL);
+    setInterval(() => { if (!resting()) loadLive(); }, LIVE_INTERVAL);
     if (needsHistory()) {
       selectPeriod(state.period);
-      setInterval(loadHistory, HISTORY_INTERVAL);
+      setInterval(() => { if (!resting()) loadHistory(); }, HISTORY_INTERVAL);
     }
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      loadLive();
+      if (needsHistory()) loadHistory();
+    });
   }
 
   window.EnergyDashboard = { start, redraw };

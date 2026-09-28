@@ -1,6 +1,6 @@
 {
   "1.0.0": {
-    "en": "First release: live energy flow, power chart of the day, energy flows, hot water, heating, EV charger, prices and more, in Dutch and English.",
-    "nl": "Eerste versie: live energiestroom, vermogensgrafiek van de dag, energiestromen, warm water, verwarming, laadpaal, prijzen en meer, in het Nederlands en Engels."
+    "en": "First release: live energy flow, power chart of the day with solar forecast, energy flows, costs with a fixed or dynamic contract, prices, hot water, heating, EV charger, a widget for Homey Dashboards and wall-tablet options, in Dutch and English.",
+    "nl": "Eerste versie: live energiestroom, vermogensgrafiek van de dag met zonneverwachting, energiestromen, kosten met een vast of dynamisch contract, prijzen, warm water, verwarming, laadpaal, een widget voor Homey Dashboards en opties voor een tablet aan de muur, in het Nederlands en Engels."
   }
 }

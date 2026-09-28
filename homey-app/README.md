@@ -86,14 +86,45 @@ Op dezelfde instellingenpagina:
 - **Apparaten**: laat op "Automatisch" staan. De app zoekt zelf naar een P1-meter, zonnepanelen, thuisbatterij, boiler, warmtepomp of cv-ketel, thermostaat, laadpaal en watermeter.
 - **Boiler**: inhoud (Lydos Hybrid: 80 of 110 liter), koud water, douchetemperatuur, liters per minuut van je douchekop, en vanaf welke temperatuur de boiler als "Warm" telt.
 - **Aansluiting**: je hoofdzekering per fase, meestal 25 A, voor het blok Fasebelasting.
-- **Dynamische stroomprijs**: aan of uit, plus een vaste opslag per kWh. EnergyZero geeft de kale uurprijs inclusief btw. Wil je de prijs die je echt betaalt, tel dan de inkoopvergoeding van je leverancier en de energiebelasting erbij op als opslag.
-- **Tarieven**: prijzen per kWh, m³ gas en m³ water voor de kosten. Laat leeg als je geen kosten wilt zien.
+- **Zonneverwachting**: zet aan en vul per dakvlak het vermogen (kWp), de hellingshoek en de richting in. Twee dakvlakken kan ook, bijvoorbeeld oost en west. Zie hieronder.
+- **Stroomcontract**, **gascontract**, **vaste kosten en water**: zie *Prijzen en kosten* hieronder.
+- **Blok stroomprijs**: de uurprijzen van vandaag en morgen aan of uit.
+
+## Prijzen en kosten
+
+Alle bedragen zijn inclusief btw. Laat een veld leeg om die kosten weg te laten.
+
+- **Vast contract**: normaaltarief, en eventueel een daltarief met de daluren (standaard 23:00–07:00 en het hele weekend). Vul ook de terugleververgoeding in; met salderen is die meestal gelijk aan het normaaltarief.
+- **Dynamisch contract**: de prijs per uur is de marktprijs (EPEX, via EnergyZero) plus de energiebelasting plus de opslag van je leverancier. Kies je leverancier om de gebruikelijke opslag in te vullen (ANWB, Frank of Tibber), maar controleer die op je contract. De energiebelasting van 2026 (€ 0,11085 per kWh) staat al ingevuld. Met **Salderen** aan wordt teruglevering verrekend tegen de volledige prijs van dat uur; salderen stopt op 1 januari 2027. Daarna telt de marktprijs min eventuele terugleverkosten.
+- **Gas**: een vaste prijs per m³, of dynamisch: de dagprijs plus energiebelasting (€ 0,73 per m³ in 2026) en opslag.
+- **Vaste kosten per maand**: leverings- en netbeheerkosten samen, zoals op je rekening. De **vermindering energiebelasting** (€ 628,96 in 2026) wordt verspreid over het jaar afgetrokken.
+- **Water**: prijs per m³.
+
+De kosten worden per meterstand berekend met de prijs van dat moment, dus bij een dynamisch contract per uur. Het blok Kosten toont afname, teruglevering, gas, water en vaste kosten, en vergelijkt met de vorige periode tot hetzelfde moment. Het blok Stroomprijs toont bij een dynamisch contract de prijs die je echt betaalt, en wat je verbruik of teruglevering op dit moment per uur kost of oplevert.
+
+## Zonneverwachting
+
+Met de zonneverwachting aan toont "Vermogen vandaag" een stippellijn met de verwachte opbrengst, en bovenin hoeveel kWh er vandaag en morgen verwacht wordt. De verwachting komt van [Forecast.Solar](https://forecast.solar) (gratis, zonder account) voor de locatie van je Homey, en wordt eens per uur opgehaald.
+
+## Scherm (tablet aan de muur)
+
+Met het **schermicoon** rechtsboven stel je per scherm in:
+
+- **Volledig scherm**.
+- **Scherm aan houden**, zodat de tablet niet op slot gaat (als de browser dat ondersteunt).
+- **Nachtstand**: van een tijd tot een tijd het scherm **dimmen** of **zwart** maken. Tik op het zwarte scherm om het een minuut te wekken. Zolang het zwart is, vraagt het dashboard niets op bij Homey.
+
+Een dashboard dat dagen aan staat, schuift af en toe een paar pixels op tegen inbranden. Na een update van de app laadt het dashboard zichzelf opnieuw.
+
+## Widget voor Homey Dashboards
+
+De app heeft een widget **Energiestromen** voor de Dashboards in de Homey-app. Die toont live waar je stroom vandaan komt (zon, net, batterij), in welke ruimtes die gebruikt wordt, en de grootste verbruikers per ruimte. In de widget kies je hoeveel apparaten per ruimte je ziet en of de stromen bewegen. Apparaten zonder stroommeting vallen onder "Overig". De widget is licht: Homey stuurt alleen een klein lijstje met waarden, de widget tekent zelf.
 
 ## Veiligheid
 
 De webpagina is alleen bereikbaar binnen je thuisnetwerk, niet vanaf internet (tenzij je zelf poorten doorstuurt in je router, doe dat niet). Zonder toegangscode kan iedereen op je wifi het dashboard bekijken; stel er een in bij de instellingen als je dat niet wilt (na 5 foute pogingen is inloggen een minuut geblokkeerd). De pagina kan niets bedienen. Het enige dat je er kunt wijzigen is de indeling. Wil je niet dat iedereen op je wifi dat kan, stel dan een pincode in (na 5 foute pogingen is bewerken een minuut geblokkeerd). Apparaten, tarieven en andere instellingen wijzig je alleen via de Homey-app.
 
-Voor het blok Stroomprijs haalt de app elk half uur de prijzen op bij EnergyZero. Daarbij gaan geen gegevens over jouw huis of verbruik mee.
+Voor de prijzen haalt de app elk half uur de marktprijzen op bij EnergyZero, en voor de zonneverwachting eens per uur de verwachting bij Forecast.Solar. Naar EnergyZero gaan geen gegevens over jouw huis. Naar Forecast.Solar gaan alleen de locatie van je Homey (afgerond) en de gegevens van je dakvlakken, geen verbruik.
 
 ## Thuisbatterij
 
@@ -110,7 +141,7 @@ Zelfvoorzienend telt energie uit de batterij mee, net als in Home Assistant. Sta
 
 ## Energiestromen (Sankey)
 
-Met **Live** en **Periode** bovenin het blok kies je wat je ziet. Live toont het vermogen van dit moment in watt, met bewegende stippen over de stromen, net als bij "Nu". Periode toont de kWh van vandaag, gisteren, deze week of deze maand. Het dashboard onthoudt je keuze per scherm.
+Met **Live** en **Periode** bovenin het blok kies je wat je ziet. Live toont het vermogen van dit moment in watt, met bewegende stippen over de stromen, net als bij "Nu". Periode toont de kWh van vandaag, gisteren, deze week, deze maand of dit jaar. Het dashboard onthoudt je keuze per scherm.
 
 De grafiek toont:
 
