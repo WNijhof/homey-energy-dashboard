@@ -1,4 +1,8 @@
 {
+  "0.0.2": {
+    "en": "Nineteen dynamic suppliers to choose from, with markups checked at the suppliers themselves, a clear note on which amounts to check, and the 2026 energy tax on gas corrected.",
+    "nl": "Negentien dynamische leveranciers om uit te kiezen, met opslagen gecontroleerd bij de leveranciers zelf, een duidelijke melding welke bedragen je moet controleren, en de energiebelasting op gas voor 2026 gecorrigeerd."
+  },
   "0.0.1": {
     "en": "First release: live energy flow, power chart of the day with solar forecast, energy flows, costs with a fixed or dynamic contract, prices, hot water, heating, EV charger, a widget for Homey Dashboards and wall-tablet options, in Dutch and English.",
     "nl": "Eerste versie: live energiestroom, vermogensgrafiek van de dag met zonneverwachting, energiestromen, kosten met een vast of dynamisch contract, prijzen, warm water, verwarming, laadpaal, een widget voor Homey Dashboards en opties voor een tablet aan de muur, in het Nederlands en Engels."
