@@ -177,7 +177,9 @@ function onHomeyReady(Homey) {
     // Choosing a supplier fills in its usual markup, which can still be changed
     form.supplier.onchange = () => {
       const supplier = suppliers.find(s => s.id === form.supplier.value);
-      if (supplier && supplier.id !== 'other') form.elecMarkup.value = supplier.markup;
+      if (!supplier || supplier.id === 'other') return;
+      form.elecMarkup.value = supplier.markup;
+      if (typeof supplier.gasMarkup === 'number') form.gasMarkup.value = supplier.gasMarkup;
     };
     form.elecType.onchange = showContractFields;
     form.gasType.onchange = showContractFields;
