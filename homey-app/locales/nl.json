@@ -82,7 +82,7 @@
     "netting": "Salderen",
     "nettingHelp": "Teruglevering wordt dan verrekend tegen de volledige prijs van dat uur. Stopt op 1 januari 2027.",
     "exportFee": "Terugleverkosten zonder salderen (€/kWh)",
-    "supplierHelp": "Prijs per uur = marktprijs + energiebelasting + opslag. De leverancier vult zijn gebruikelijke opslag in; controleer die op je contract.",
+    "supplierHelp": "Prijs per uur = marktprijs + energiebelasting + opslag. De energiebelasting van 2026 staat al ingevuld.",
     "gasContract": "Gascontract",
     "gasPrice": "Gasprijs (€/m³)",
     "gasMarkup": "Opslag leverancier (€/m³)",
@@ -104,7 +104,13 @@
     "south": "Zuid",
     "southWest": "Zuidwest",
     "west": "West",
-    "north": "Noord"
+    "north": "Noord",
+    "checkPrices": "Controleer alle bedragen op je eigen contract of in de app van je leverancier. De voorgestelde waarden zijn alleen een startpunt: leveranciers passen hun opslag aan, en het dashboard rekent alleen goed met jouw eigen bedragen.",
+    "supplierConfirmed": "__name__ publiceert deze bedragen op de eigen website (gecontroleerd in september 2026). Ze kunnen inmiddels veranderd zijn: controleer ze op je contract.",
+    "supplierPartly": "__name__ publiceert de stroomopslag op de eigen website (gecontroleerd in september 2026); de gasopslag komt van een vergelijkingssite. Controleer beide op je contract.",
+    "supplierUnconfirmed": "__name__ publiceert de opslag niet openbaar; deze bedragen komen van een vergelijkingssite (september 2026). Zoek ze op in je contract of in de app van __name__ en pas ze aan.",
+    "supplierNoGas": "De gasopslag is niet bekend: vul die zelf in.",
+    "supplierOther": "Vul de opslag van je leverancier zelf in; die staat op je contract of in de app."
   },
   "blocks": {
     "flow": "Energie nu",

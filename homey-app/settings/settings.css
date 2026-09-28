@@ -133,3 +133,5 @@ button.secondary {
 .inline { display: inline-flex; align-items: center; gap: 6px; }
 .inline input { width: 64px; }
 [hidden] { display: none !important; }
+.warning { font-size: 13px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 159, 10, 0.14); border-left: 3px solid #ff9f0a; }
+.warning:empty { display: none; }

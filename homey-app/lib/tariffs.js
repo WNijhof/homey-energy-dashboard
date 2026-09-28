@@ -7,33 +7,35 @@ const { priceLookup } = require('./prices');
 // and the fixed costs per month minus the yearly energy tax reduction. All amounts include VAT.
 
 // Dutch energy tax 2026, incl. VAT (first bracket); users can change it in the settings
-const ENERGY_TAX = { electricity: 0.11085, gas: 0.7300 };
+const ENERGY_TAX = { electricity: 0.11085, gas: 0.72680 };
 const TAX_REDUCTION = 628.96;
 
 // Starting values for the markup of dynamic suppliers (€/kWh, and €/m³ for gas where known,
-// incl. VAT), from the comparisons of keuze.nl and salderingswijzer.nl in September 2026.
-// Suppliers change these now and then, so the settings say to check them.
+// incl. VAT), checked in September 2026. \`confirmed\` says which amounts the supplier publishes
+// on its own website; the others come from the comparison of keuze.nl, because the supplier
+// only shows them after a postcode check or in its app. Suppliers change these now and then,
+// so the settings ask the user to check them on their own contract.
 const SUPPLIERS = [
-  { id: 'anwb', name: 'ANWB Energie', markup: 0.0200, gasMarkup: 0.0591 },
-  { id: 'budget', name: 'Budget Energie', markup: 0.0168, gasMarkup: 0.0641 },
-  { id: 'easyenergy', name: 'easyEnergy', markup: 0.0180 },
-  { id: 'eneco', name: 'Eneco', markup: 0.0314, gasMarkup: 0.0929 },
-  { id: 'energiedirect', name: 'Energiedirect', markup: 0.0169 },
-  { id: 'energiek', name: 'Energiek', markup: 0.0180, gasMarkup: 0.0600 },
-  { id: 'essent', name: 'Essent', markup: 0.0253, gasMarkup: 0.0787 },
-  { id: 'frank', name: 'Frank Energie', markup: 0.0182, gasMarkup: 0.0799 },
-  { id: 'greenchoice', name: 'Greenchoice', markup: 0.0240 },
-  { id: 'mega', name: 'Mega', markup: 0.0182, gasMarkup: 0.0945 },
-  { id: 'nextenergy', name: 'NextEnergy', markup: 0.0219, gasMarkup: 0.0799 },
-  { id: 'noord', name: 'Noord Energie', markup: 0.0194, gasMarkup: 0.0666 },
-  { id: 'oxxio', name: 'Oxxio', markup: 0.0224, gasMarkup: 0.0129 },
-  { id: 'powerpeers', name: 'Powerpeers', markup: 0.0100, gasMarkup: 0.0821 },
-  { id: 'pure', name: 'Pure Energie', markup: 0.0180, gasMarkup: 0.0990 },
-  { id: 'tibber', name: 'Tibber', markup: 0.0180, gasMarkup: 0.0749 },
-  { id: 'vandebron', name: 'Vandebron', markup: 0.0221, gasMarkup: 0.0598 },
-  { id: 'vattenfall', name: 'Vattenfall', markup: 0.0255, gasMarkup: 0.0750 },
-  { id: 'zonneplan', name: 'Zonneplan', markup: 0.0199, gasMarkup: 0.0800 },
-  { id: 'other', name: 'Anders', markup: 0 },
+  { id: 'anwb', name: 'ANWB Energie', markup: 0.0180, gasMarkup: 0.0768, confirmed: { markup: true, gasMarkup: true } },
+  { id: 'budget', name: 'Budget Energie', markup: 0.0168, gasMarkup: 0.0641, confirmed: {} },
+  { id: 'easyenergy', name: 'easyEnergy', markup: 0.02178, gasMarkup: 0.0790, confirmed: { markup: true, gasMarkup: true } },
+  { id: 'eneco', name: 'Eneco', markup: 0.0314, gasMarkup: 0.0929, confirmed: {} },
+  { id: 'energiedirect', name: 'Energiedirect', markup: 0.0169, confirmed: {} },
+  { id: 'energiek', name: 'Energiek', markup: 0.0180, gasMarkup: 0.0600, confirmed: {} },
+  { id: 'essent', name: 'Essent', markup: 0.0253, gasMarkup: 0.0787, confirmed: {} },
+  { id: 'frank', name: 'Frank Energie', markup: 0.0182, gasMarkup: 0.0799, confirmed: { markup: true } },
+  { id: 'greenchoice', name: 'Greenchoice', markup: 0.0240, confirmed: {} },
+  { id: 'mega', name: 'Mega', markup: 0.0182, gasMarkup: 0.0945, confirmed: {} },
+  { id: 'nextenergy', name: 'NextEnergy', markup: 0.0210, gasMarkup: 0.0790, confirmed: { markup: true, gasMarkup: true } },
+  { id: 'noord', name: 'Noord Energie', markup: 0.0194, gasMarkup: 0.0666, confirmed: {} },
+  { id: 'oxxio', name: 'Oxxio', markup: 0.0224, gasMarkup: 0.0129, confirmed: {} },
+  { id: 'powerpeers', name: 'Powerpeers', markup: 0.0100, gasMarkup: 0.0821, confirmed: { markup: true } },
+  { id: 'pure', name: 'Pure Energie', markup: 0.0180, gasMarkup: 0.0990, confirmed: {} },
+  { id: 'tibber', name: 'Tibber', markup: 0.0180, gasMarkup: 0.08835, confirmed: { markup: true, gasMarkup: true } },
+  { id: 'vandebron', name: 'Vandebron', markup: 0.0200, gasMarkup: 0.0598, confirmed: { markup: true } },
+  { id: 'vattenfall', name: 'Vattenfall', markup: 0.0255, gasMarkup: 0.0750, confirmed: {} },
+  { id: 'zonneplan', name: 'Zonneplan', markup: 0.0200, gasMarkup: 0.0800, confirmed: { markup: true, gasMarkup: true } },
+  { id: 'other', name: 'Anders', markup: 0, confirmed: {} },
 ];
 
 const num = v => (v === '' || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v));

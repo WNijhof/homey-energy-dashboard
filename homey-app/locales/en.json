@@ -82,7 +82,7 @@
     "netting": "Net metering (salderen)",
     "nettingHelp": "Export is then credited at the full price of that hour. Ends on 1 January 2027.",
     "exportFee": "Export fee without net metering (€/kWh)",
-    "supplierHelp": "Price per hour = market price + energy tax + markup. The supplier fills in its usual markup; check it on your contract.",
+    "supplierHelp": "Price per hour = market price + energy tax + markup. The energy tax of 2026 is filled in.",
     "gasContract": "Gas contract",
     "gasPrice": "Gas price (€/m³)",
     "gasMarkup": "Supplier markup (€/m³)",
@@ -104,7 +104,13 @@
     "south": "South",
     "southWest": "South-west",
     "west": "West",
-    "north": "North"
+    "north": "North",
+    "checkPrices": "Check all amounts against your own contract or your supplier's app. The suggested values are only a starting point: suppliers change their markups, and the dashboard only calculates correctly with your own amounts.",
+    "supplierConfirmed": "__name__ publishes these amounts on its own website (checked in September 2026). They can have changed since: check them on your contract.",
+    "supplierPartly": "__name__ publishes the electricity markup on its own website (checked in September 2026); the gas markup comes from a comparison site. Check both on your contract.",
+    "supplierUnconfirmed": "__name__ does not publish its markup openly; these amounts come from a comparison site (September 2026). Look them up on your contract or in the __name__ app and change them.",
+    "supplierNoGas": "The gas markup is not known: fill it in yourself.",
+    "supplierOther": "Fill in your supplier's markup yourself; you find it on your contract or in its app."
   },
   "blocks": {
     "flow": "Energy now",

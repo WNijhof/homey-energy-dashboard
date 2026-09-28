@@ -95,8 +95,8 @@ Op dezelfde instellingenpagina:
 Alle bedragen zijn inclusief btw. Laat een veld leeg om die kosten weg te laten.
 
 - **Vast contract**: normaaltarief, en eventueel een daltarief met de daluren (standaard 23:00–07:00 en het hele weekend). Vul ook de terugleververgoeding in; met salderen is die meestal gelijk aan het normaaltarief.
-- **Dynamisch contract**: de prijs per uur is de marktprijs (EPEX, via EnergyZero) plus de energiebelasting plus de opslag van je leverancier. Kies je leverancier om de gebruikelijke opslag in te vullen (negentien leveranciers, van ANWB tot Zonneplan; waar bekend ook de gasopslag), maar controleer die op je contract. De energiebelasting van 2026 (€ 0,11085 per kWh) staat al ingevuld. Met **Salderen** aan wordt teruglevering verrekend tegen de volledige prijs van dat uur; salderen stopt op 1 januari 2027. Daarna telt de marktprijs min eventuele terugleverkosten.
-- **Gas**: een vaste prijs per m³, of dynamisch: de dagprijs plus energiebelasting (€ 0,73 per m³ in 2026) en opslag.
+- **Dynamisch contract**: de prijs per uur is de marktprijs (EPEX, via EnergyZero) plus de energiebelasting plus de opslag van je leverancier. Kies je leverancier om de gebruikelijke opslag in te vullen (negentien leveranciers, van ANWB tot Zonneplan; waar bekend ook de gasopslag). Onder de keuze staat of de leverancier die bedragen zelf publiceert of dat ze van een vergelijkingssite komen. **Controleer ze altijd op je eigen contract of in de app van je leverancier.** De energiebelasting van 2026 (€ 0,11085 per kWh) staat al ingevuld. Met **Salderen** aan wordt teruglevering verrekend tegen de volledige prijs van dat uur; salderen stopt op 1 januari 2027. Daarna telt de marktprijs min eventuele terugleverkosten.
+- **Gas**: een vaste prijs per m³, of dynamisch: de dagprijs plus energiebelasting (€ 0,7268 per m³ in 2026) en opslag.
 - **Vaste kosten per maand**: leverings- en netbeheerkosten samen, zoals op je rekening. De **vermindering energiebelasting** (€ 628,96 in 2026) wordt verspreid over het jaar afgetrokken.
 - **Water**: prijs per m³.
 

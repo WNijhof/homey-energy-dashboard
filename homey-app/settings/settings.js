@@ -174,13 +174,30 @@ function onHomeyReady(Homey) {
     form.monthly.value = value(contract.monthly);
     form.taxReduction.value = value(contract.taxReduction);
     form.waterPrice.value = value(contract.water);
-    // Choosing a supplier fills in its usual markup, which can still be changed
+    // Choosing a supplier fills in its usual markup, which can still be changed; the note says
+    // whether the supplier publishes these amounts itself
+    const showSupplierNote = supplier => {
+      const note = document.getElementById('supplier-note');
+      if (!supplier || supplier.id === 'other') {
+        note.textContent = __('supplierOther');
+        return;
+      }
+      const confirmed = supplier.confirmed || {};
+      const gasKnown = typeof supplier.gasMarkup === 'number';
+      const key = confirmed.markup && (confirmed.gasMarkup || !gasKnown)
+        ? 'supplierConfirmed'
+        : confirmed.markup ? 'supplierPartly' : 'supplierUnconfirmed';
+      note.textContent = `${__(key, { name: supplier.name })}${gasKnown ? '' : ` ${__('supplierNoGas')}`}`;
+    };
     form.supplier.onchange = () => {
       const supplier = suppliers.find(s => s.id === form.supplier.value);
+      showSupplierNote(supplier);
       if (!supplier || supplier.id === 'other') return;
       form.elecMarkup.value = supplier.markup;
-      if (typeof supplier.gasMarkup === 'number') form.gasMarkup.value = supplier.gasMarkup;
+      // An unknown gas markup is left empty rather than keeping another supplier's amount
+      form.gasMarkup.value = typeof supplier.gasMarkup === 'number' ? supplier.gasMarkup : '';
     };
+    showSupplierNote(suppliers.find(s => s.id === e.supplier));
     form.elecType.onchange = showContractFields;
     form.gasType.onchange = showContractFields;
     showContractFields();
