@@ -4,10 +4,13 @@ const Homey = require('homey');
 const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
-  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, buildZoneFlow, consumptionDevices,
+  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
+  expectedSolar,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
-const { ForecastService } = require('./lib/forecast');
+const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
+const { WeatherService } = require('./lib/weather');
+const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
 const { contractFrom, allInElectricity, SUPPLIERS } = require('./lib/tariffs');
 const { WebServer } = require('./lib/webserver');
 
@@ -16,6 +19,7 @@ const HISTORY_CACHE_TTL = 60 * 1000;
 const LOGS_CACHE_TTL = 10 * 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
 const ZONES_CACHE_TTL = 10 * 60 * 1000;
+const NETTING_CACHE_TTL = 60 * 60 * 1000;
 
 const DEFAULTS = {
   port: 8080,
@@ -43,6 +47,11 @@ function slimDevice(d) {
   };
 }
 
+// A named layout set back to "default" keeps its own copy of the automatic layout
+function defaultLayoutFor(saved) {
+  return Array.isArray(saved.layout) && saved.layout.length ? saved.layout : null;
+}
+
 class EnergyDashboardApp extends Homey.App {
 
   async onInit() {
@@ -55,15 +64,24 @@ class EnergyDashboardApp extends Homey.App {
     this.zonesCache = { at: 0, names: null };
     this.prices = new PriceService({ log: this.log.bind(this) });
     this.forecast = new ForecastService({ log: this.log.bind(this) });
+    this.weather = new WeatherService({ log: this.log.bind(this) });
     this.pinGuard = new PinGuard();
 
     this.webServer = new WebServer({ app: this, log: this.log.bind(this), error: this.error.bind(this) });
     await this.webServer.start(this.getConfig().port);
 
+    // Once a minute: which devices are on, for the warnings (and their notifications)
+    this.alertMonitor = new AlertMonitor();
+    this.notified = new Map();
+    this.homey.setInterval(() => this.checkAlerts().catch(err => this.error(`Alerts: ${err.message}`)), 60 * 1000);
+
     // New settings can change the port, the devices and the prices
-    this.homey.settings.on('set', () => {
+    // Only the settings themselves; the app's own logs are kept in other keys
+    this.homey.settings.on('set', key => {
+      if (key !== 'config') return;
       this.historyCache.clear();
       this.baseloadCache = { at: 0, data: null };
+      this.nettingCache = null;
       this.webServer.start(this.getConfig().port).catch(this.error);
     });
   }
@@ -96,29 +114,43 @@ class EnergyDashboardApp extends Homey.App {
       contract: saved.contract || null,
       forecast: { enabled: false, planes: [], ...saved.forecast },
       layout: Array.isArray(saved.layout) && saved.layout.length ? saved.layout : null,
+      layouts: saved.layouts && typeof saved.layouts === 'object' ? saved.layouts : {},
       editPin: saved.editPin || '',
       accessCode: saved.accessCode || '',
+      alerts: { hours: 4, notify: false, ...saved.alerts },
     };
   }
 
   // ---------- Layout editing from the dashboard ----------
 
-  async getLayoutInfo() {
+  async getLayoutInfo(name = '') {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
+    const layout = layoutName(name);
     return {
       blocks: blockCatalog(),
-      layout: resolveLayout(cfg.layout, found, cfg),
+      name: layout,
+      names: Object.keys(cfg.layouts),
+      layout: resolveLayout(savedLayout(cfg, layout), found, cfg),
       defaultLayout: defaultLayout(found, cfg),
-      customLayout: Boolean(cfg.layout),
+      customLayout: Boolean(savedLayout(cfg, layout)),
       pinRequired: Boolean(cfg.editPin),
     };
   }
 
-  async saveLayout({ layout, pin }) {
+  // Saves the default layout, or a named one; `remove` deletes a named layout
+  async saveLayout({ layout, pin, name, remove }) {
     this.pinGuard.check(this.getConfig().editPin, pin);
     const saved = this.homey.settings.get('config') || {};
+    const target = layoutName(name);
+    if (target) {
+      const layouts = { ...(saved.layouts || {}) };
+      if (remove) delete layouts[target];
+      else layouts[target] = validateLayout(layout) || defaultLayoutFor(saved);
+      this.homey.settings.set('config', { ...saved, layouts });
+      return this.getLayoutInfo(remove ? '' : target);
+    }
     this.homey.settings.set('config', { ...saved, layout: validateLayout(layout) });
     return this.getLayoutInfo();
   }
@@ -172,6 +204,21 @@ class EnergyDashboardApp extends Homey.App {
     return this.zonesCache.names;
   }
 
+  // The power of this moment, for the Energy now widget: a few numbers, drawn by the widget
+  async getWidgetNow() {
+    const cfg = this.getConfig();
+    const devices = await this.getDevices();
+    const live = buildLive(devices, discover(devices, cfg.devices), cfg);
+    return {
+      solarW: live.solarW,
+      gridW: live.gridW,
+      homeW: live.homeW,
+      batteryW: live.battery ? live.battery.watts : null,
+      soc: live.battery?.soc ?? null,
+      flows: live.flows,
+    };
+  }
+
   // The live flow from sources through rooms to devices, for the Energy flows widget
   async getWidgetFlow({ perZone = 3 } = {}) {
     const cfg = this.getConfig();
@@ -192,11 +239,11 @@ class EnergyDashboardApp extends Homey.App {
     return { ...flow, solarW: live.solarW, gridW: live.gridW, updated: live.updated };
   }
 
-  async getLive() {
+  async getLive(name = '') {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
-    const live = buildLive(devices, found, cfg);
+    const live = buildLive(devices, found, { ...cfg, layout: savedLayout(cfg, layoutName(name)) });
     live.version = this.homey.manifest.version;
     const shown = new Set(live.layout.map(b => b.id));
 
@@ -205,6 +252,8 @@ class EnergyDashboardApp extends Homey.App {
     const today = await Promise.race([this.getHistory('today').catch(() => null), new Promise(r => setTimeout(r, 1500))]);
     live.today = todayTotals(today?.totals);
     if (shown.has('baseload')) live.baseload = await this.getBaseload(found, cfg).catch(() => null);
+    if (shown.has('netting')) live.netting = await this.getNetting().catch(() => null);
+    if (shown.has('alerts')) live.alerts = await this.getAlerts(found, cfg, 'nl').catch(() => []);
     if (shown.has('prices')) {
       const contract = contractFrom(cfg);
       const allIn = contract.electricity.type === 'dynamic' ? p => allInElectricity(contract, p) : null;
@@ -213,12 +262,112 @@ class EnergyDashboardApp extends Homey.App {
     return live;
   }
 
+  // The end of net metering, from last year (or this year while last year has too little data).
+  // Calculated at most once an hour; the first time reads a year of Insights and prices.
+  async getNetting() {
+    if (this.nettingCache && Date.now() - this.nettingCache.at < NETTING_CACHE_TTL) return this.nettingCache.data;
+    if (!this.nettingPending) {
+      this.nettingPending = (async () => {
+        const last = await this.getHistory('lastYear', { light: true }).catch(() => null);
+        const lastSummary = nettingSummary(last, 'lastYear');
+        const data = lastSummary.months >= 10 && lastSummary.extra !== null
+          ? lastSummary
+          : nettingSummary(await this.getHistory('year', { light: true }).catch(() => null), 'year');
+        this.nettingCache = { at: Date.now(), data };
+        return data;
+      })().finally(() => { this.nettingPending = null; });
+    }
+    return this.nettingPending;
+  }
+
   async getBaseload(found, cfg) {
     if (Date.now() - this.baseloadCache.at > BASELOAD_CACHE_TTL) {
       const market = await this.prices.get({}).catch(() => null);
       this.baseloadCache = { at: Date.now(), data: await buildBaseload(this, found, cfg, market?.avg) };
+      // Kept per day, to notice when standby use rises
+      const log = this.homey.settings.get('baseloadLog') || {};
+      this.homey.settings.set('baseloadLog', recordBaseload(log, this.baseloadCache.data?.watts));
     }
     return this.baseloadCache.data;
+  }
+
+  // ---------- Warnings ----------
+
+  async getAlerts(found, cfg, lang) {
+    const baseload = await this.getBaseload(found, cfg).catch(() => null);
+    return buildAlerts({
+      monitor: this.alertMonitor,
+      found,
+      baseload,
+      baseloadLog: this.homey.settings.get('baseloadLog') || {},
+      hours: Number(cfg.alerts.hours) || 4,
+      lang,
+    });
+  }
+
+  // Tracks the devices, and sends new warnings to the Homey timeline when that is turned on
+  async checkAlerts() {
+    const cfg = this.getConfig();
+    const devices = await this.getDevices();
+    const found = discover(devices, cfg.devices);
+    this.alertMonitor.track(devices, found);
+    if (!cfg.alerts.notify) return;
+    const lang = this.homey.i18n.getLanguage() === 'nl' ? 'nl' : 'en';
+    const today = new Date().toDateString();
+    for (const [id, day] of this.notified) if (day !== today) this.notified.delete(id);
+    for (const alert of await this.getAlerts(found, cfg, lang)) {
+      if (this.notified.has(alert.id)) continue;
+      this.notified.set(alert.id, today);
+      await this.homey.notifications.createNotification({ excerpt: alert.text }).catch(this.error);
+    }
+  }
+
+  // ---------- Export ----------
+
+  async getExport(period, lang) {
+    if (!PERIODS[period]) throw Object.assign(new Error(`Onbekende periode: ${period}`), { status: 400 });
+    return historyCsv(await this.getHistory(period), lang);
+  }
+
+  // ---------- Diagnosis ----------
+
+  // What the app finds and reads, for when something does not show: /api/diagnose
+  async getDiagnosis() {
+    const cfg = this.getConfig();
+    const devices = await this.getDevices();
+    const found = discover(devices, cfg.devices);
+    const logs = await this.getLogIds().catch(() => new Set());
+    const describe = d => (d ? {
+      name: d.name,
+      class: d.virtualClass || d.class,
+      available: d.available !== false,
+      capabilities: d.capabilities,
+      insights: d.capabilities.filter(c => logs.has(`homey:device:${d.id}:${c}`)),
+    } : null);
+    const today = await this.getHistory('today').catch(err => ({ error: err.message }));
+    const count = async (d, cap) => (d ? (await this.getEntries(d.id, cap, 'today').catch(() => [])).length : null);
+    return {
+      version: this.homey.manifest.version,
+      homey: { language: this.homey.i18n.getLanguage(), timezone: this.homey.clock.getTimezone() },
+      layout: resolveLayout(cfg.layout, found, cfg).map(b => b.id),
+      found: {
+        p1: describe(found.p1),
+        solar: found.solar.map(describe),
+        batteries: found.batteries.map(describe),
+        boiler: describe(found.boiler),
+        heating: found.heating.map(describe),
+        evChargers: found.evChargers.map(describe),
+        water: describe(found.water),
+      },
+      today: {
+        error: today.error || null,
+        p1PowerReadings: await count(found.p1, 'measure_power'),
+        powerPoints: today.power ? today.power.points.filter(Boolean).length : null,
+        totals: today.totals ? { import: today.totals.import, export: today.totals.export, solar: today.totals.solar } : null,
+      },
+      contract: contractFrom(cfg),
+      alerts: await this.getAlerts(found, cfg, 'nl').catch(err => [{ error: err.message }]),
+    };
   }
 
   async getHistory(period = 'today', { light = false } = {}) {
@@ -243,10 +392,15 @@ class EnergyDashboardApp extends Homey.App {
   async buildHistory(period, light) {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
-    const data = await buildHistory(this, devices, discover(devices, cfg.devices), period, cfg, { light, prices: this.prices });
+    const location = { lat: this.homey.geolocation.getLatitude(), lon: this.homey.geolocation.getLongitude() };
+    const data = await buildHistory(this, devices, discover(devices, cfg.devices), period, cfg, { light, prices: this.prices, weather: this.weather, location });
     if (period === 'today' && !light && cfg.forecast.enabled) {
-      const location = { lat: this.homey.geolocation.getLatitude(), lon: this.homey.geolocation.getLongitude() };
       data.forecast = await this.forecast.get({ ...location, planes: cfg.forecast.planes }).catch(() => null);
+      if (data.forecast) this.homey.settings.set('forecastLog', recordForecast(this.homey.settings.get('forecastLog') || {}, data.forecast));
+    }
+    if (!light && cfg.forecast.enabled) {
+      data.expectedSolar = expectedSolar(period, data.rows.map(r => ({ start: new Date(r.start) })), this.homey.settings.get('forecastLog'));
+      data.kwp = totalKwp(cfg.forecast.planes) || null;
     }
     if (!light && PREVIOUS[period]) {
       const previous = await this.getHistory(PREVIOUS[period], { light: true }).catch(() => null);

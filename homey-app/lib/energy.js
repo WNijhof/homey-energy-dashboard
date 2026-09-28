@@ -1,6 +1,7 @@
 'use strict';
 
 const { contractFrom, tariffFor, hasPrices, typicalImportPrice } = require('./tariffs');
+const { degreeDays, dayKey } = require('./weather');
 
 const PERIODS = {
   today: { resolution: 'today', bucket: 'hour' },
@@ -115,16 +116,19 @@ const BLOCKS = [
   { id: 'tiles', title: 'Totalen', size: 'full', available: () => true },
   { id: 'prices', title: 'Stroomprijs', size: 'large', available: (f, cfg) => cfg.prices?.source !== 'off' },
   { id: 'gauges', title: 'Kengetallen', size: 'small', available: f => f.solar.length > 0 || f.batteries.length > 0 },
+  { id: 'consumers', title: 'Apparaten nu', size: 'small', available: () => true },
   { id: 'electricity', title: 'Elektriciteit', size: 'large', available: () => true },
   { id: 'power', title: 'Vermogen vandaag', size: 'full', available: f => Boolean(f.p1) },
-  { id: 'consumers', title: 'Apparaten nu', size: 'small', available: () => true },
   { id: 'sankey', title: 'Energiestromen', size: 'full', available: () => true },
   { id: 'devices', title: 'Verbruik per apparaat', size: 'half', available: () => true },
   { id: 'costs', title: 'Kosten', size: 'half', available: (f, cfg) => hasPrices(contractFrom(cfg)) },
+  { id: 'netting', title: 'Einde salderen', size: 'half', available: f => f.solar.length > 0 },
+  { id: 'solarperf', title: 'Zonprestatie', size: 'half', available: f => f.solar.length > 0 },
   { id: 'solar', title: 'Zonne-energie', size: 'half', available: f => f.solar.length > 0 },
   { id: 'gas', title: 'Gas', size: 'half', available: f => Boolean(f.p1 && has(f.p1, 'meter_gas')) },
   { id: 'water', title: 'Water', size: 'half', available: f => Boolean(f.water) },
   { id: 'baseload', title: 'Sluipverbruik', size: 'small', available: f => Boolean(f.p1) },
+  { id: 'alerts', title: 'Meldingen', size: 'small', available: () => true },
   { id: 'phases', title: 'Fasebelasting', size: 'small', available: f => phaseCapabilities(f.p1).length > 0 },
 ];
 
@@ -159,6 +163,24 @@ function todayTotals(totals) {
   if (!totals) return null;
   const { solar, import: imported, export: exported, consumption, charge, discharge } = totals;
   return { solar, import: imported, export: exported, consumption, charge, discharge };
+}
+
+// Named layouts, for screens that show something else (a tablet in the kitchen, the office):
+// short names of lowercase letters, digits and dashes. An empty name is the default layout.
+const LAYOUT_NAME = /^[a-z0-9][a-z0-9-]{0,23}$/;
+const layoutName = name => {
+  const clean = String(name || '').trim().toLowerCase();
+  return LAYOUT_NAME.test(clean) ? clean : '';
+};
+const savedLayout = (cfg, name) => (name && Array.isArray(cfg.layouts?.[name]) ? cfg.layouts[name] : cfg.layout);
+
+// The blocks shown in any layout, so the history reads what any screen needs
+function shownBlocks(cfg, found) {
+  const ids = new Set(resolveLayout(cfg.layout, found, cfg).map(b => b.id));
+  for (const layout of Object.values(cfg.layouts || {})) {
+    resolveLayout(layout, found, cfg).forEach(b => ids.add(b.id));
+  }
+  return ids;
 }
 
 // Checks a layout sent by the dashboard's edit mode; null means "back to the automatic layout"
@@ -538,6 +560,59 @@ function addMeterCost(target, buckets, entries, price, sign = 1) {
   return known;
 }
 
+// Stretches of time with the energy that went into (charge) or out of (discharge) a battery,
+// from its kWh counter or from its power
+function meterStretches(entries, kind) {
+  const out = [];
+  for (let i = 1; i < entries.length; i++) {
+    const kWh = entries[i].v - entries[i - 1].v;
+    if (kWh > 0) out.push({ t0: entries[i - 1].t.getTime(), t1: entries[i].t.getTime(), kWh, kind });
+  }
+  return out;
+}
+
+function powerStretches(entries, sign) {
+  const out = [];
+  for (let i = 1; i < entries.length; i++) {
+    const hours = (entries[i].t - entries[i - 1].t) / 3600000;
+    const watts = entries[i - 1].v * sign;
+    if (hours <= 0 || hours > 2 || Math.abs(watts) < 1) continue;
+    out.push({ t0: entries[i - 1].t.getTime(), t1: entries[i].t.getTime(), kWh: Math.abs(watts) * hours / 1000, kind: watts > 0 ? 'charge' : 'discharge' });
+  }
+  return out;
+}
+
+// What the battery earned: energy it delivered is worth the price it saved (or, when it went to
+// the grid, what export earned); energy it stored cost the import price, or, when it came from
+// the sun, what that solar power would have earned as export. Where the energy came from or
+// went to follows the flows of the bucket it falls in. Calculated with today's rules and as if
+// net metering had already ended.
+function batteryEarnings(stretches, buckets, rows, tariff) {
+  const result = { withNetting: 0, withoutNetting: 0, charged: 0, discharged: 0, known: false };
+  for (const s of stretches) {
+    const idx = bucketIndex(buckets, new Date(s.t0));
+    if (idx < 0) continue;
+    const row = rows[idx];
+    const buy = tariff.importPrice(s.t0, s.t1);
+    const sellNow = tariff.exportPrice(s.t0, s.t1);
+    const sellLater = tariff.exportNoNetting(s.t0, s.t1);
+    if (typeof buy !== 'number' || typeof sellNow !== 'number' || typeof sellLater !== 'number') continue;
+    result.known = true;
+    if (s.kind === 'discharge') {
+      const toGrid = row.discharge > 0 ? Math.min(1, (row.batteryToGrid || 0) / row.discharge) : 0;
+      result.withNetting += s.kWh * ((1 - toGrid) * buy + toGrid * sellNow);
+      result.withoutNetting += s.kWh * ((1 - toGrid) * buy + toGrid * sellLater);
+      result.discharged += s.kWh;
+    } else {
+      const fromSun = row.charge > 0 ? Math.min(1, (row.solarToBattery || 0) / row.charge) : 0;
+      result.withNetting -= s.kWh * (fromSun * sellNow + (1 - fromSun) * buy);
+      result.withoutNetting -= s.kWh * (fromSun * sellLater + (1 - fromSun) * buy);
+      result.charged += s.kWh;
+    }
+  }
+  return result.known ? result : null;
+}
+
 // Converts a power (W) series to kWh per bucket, for devices without an energy meter.
 // sign picks which part is counted: 1 for positive values, -1 for negative, 0 for both as absolute.
 function addPowerIntegral(target, buckets, entries, sign = 0) {
@@ -579,6 +654,7 @@ function summarize(period, buckets, series, costs = null, extra = {}, now = new 
       heating: series.heating[i],
       ev: series.ev[i],
       water: series.water[i] * 1000, // liters
+      degreeDays: series.degreeDays ? series.degreeDays[i] : 0,
     };
     Object.assign(row, allocateFlows({
       solar: row.solar, imported: row.import, exported: row.export, charge: row.charge, discharge: row.discharge,
@@ -591,6 +667,7 @@ function summarize(period, buckets, series, costs = null, extra = {}, now = new 
       row.costGas = costs.known.gas ? costs.gas[i] : null;
       row.costWater = typeof costs.water === 'number' ? series.water[i] * costs.water : null;
       row.costFixed = typeof costs.fixedPerDay === 'number' ? costs.fixedPerDay * elapsedDays(period, b, now) : null;
+      row.nettingValue = costs.known.netting ? costs.netting[i] : null;
     }
     return row;
   });
@@ -611,7 +688,7 @@ function summarize(period, buckets, series, costs = null, extra = {}, now = new 
   };
 }
 
-const TOTAL_KEYS = ['import', 'export', 'solar', 'charge', 'discharge', 'gas', 'water', 'heating', 'ev', 'solarUsed', 'consumption', ...FLOW_KEYS];
+const TOTAL_KEYS = ['import', 'export', 'solar', 'charge', 'discharge', 'gas', 'water', 'heating', 'ev', 'solarUsed', 'consumption', 'degreeDays', ...FLOW_KEYS];
 const COST_KEYS = { import: 'costImport', export: 'costExport', gas: 'costGas', water: 'costWater', fixed: 'costFixed' };
 
 function totalsOf(rows) {
@@ -628,6 +705,8 @@ function totalsOf(rows) {
     const known = rows.filter(r => typeof r[field] === 'number');
     costs[key] = known.length ? known.reduce((sum, r) => sum + r[field], 0) : null;
   }
+  const netted = rows.filter(r => typeof r.nettingValue === 'number');
+  totals.nettingValue = netted.length ? netted.reduce((sum, r) => sum + r.nettingValue, 0) : null;
   const priced = Object.values(costs).some(c => c !== null);
   totals.costs = priced ? costs : null;
   totals.cost = priced ? Object.values(costs).reduce((sum, c) => sum + (c || 0), 0) : null;
@@ -853,6 +932,20 @@ function buildPowerCurve(start, end, until, { grid, solar, battery }) {
   return { start: start.toISOString(), end: end.toISOString(), step: POWER_STEP / 1000, points };
 }
 
+// Grid power (W, positive when taking from the grid) of the P1 meter: its power readings, or,
+// when those are not in Insights, the increase of its import minus export counters
+async function gridPower(p1, read) {
+  const measured = await read(p1, 'measure_power');
+  if (measured.length) return measured;
+  const byTime = new Map();
+  const add = (list, sign) => {
+    for (const e of powerFromMeter(list)) byTime.set(e.t.getTime(), (byTime.get(e.t.getTime()) || 0) + sign * e.v);
+  };
+  for (const cap of meterCapabilities(p1, 'import')) add(await read(p1, cap), 1);
+  for (const cap of meterCapabilities(p1, 'export')) add(await read(p1, cap), -1);
+  return [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({ t: new Date(t), v }));
+}
+
 async function buildPowerHistory(client, found, period, cfg) {
   if (!found.p1) return null;
   const { resolution } = PERIODS[period];
@@ -865,7 +958,7 @@ async function buildPowerHistory(client, found, period, cfg) {
   const sign = cfg.battery?.invertPower ? -1 : 1;
 
   const [grid, solar, battery] = await Promise.all([
-    read(found.p1, 'measure_power'),
+    gridPower(found.p1, read),
     Promise.all(found.solar.map(async panel => {
       let entries = has(panel, 'measure_power') ? await read(panel, 'measure_power') : [];
       if (!entries.length && has(panel, 'meter_power')) entries = powerFromMeter(await read(panel, 'meter_power'));
@@ -883,7 +976,31 @@ async function buildPowerHistory(client, found, period, cfg) {
 
 // `light` is for the comparison with the previous period: totals and costs only.
 // `prices` is the PriceService, for the costs of a dynamic contract.
-async function buildHistory(client, devices, found, period, cfg, { light = false, prices = null } = {}) {
+// Degree days per bucket from the mean temperature per day; today only for the part that has
+// passed, like its gas use
+function degreeDayBuckets(period, buckets, temps, now = new Date()) {
+  const out = buckets.map(() => 0);
+  const hourly = PERIODS[period].bucket === 'hour';
+  for (const [key, temp] of Object.entries(temps)) {
+    const day = new Date(`${key}T00:00:00`);
+    const dd = degreeDays(temp, day);
+    if (!dd) continue;
+    const next = new Date(day);
+    next.setDate(next.getDate() + 1);
+    const passed = Math.max(0, Math.min(1, (Math.min(now, next) - day) / (next - day)));
+    if (hourly) {
+      buckets.forEach((b, i) => {
+        if (b.start >= day && b.start < next && b.start < now) out[i] += dd / 24;
+      });
+    } else {
+      const idx = bucketIndex(buckets, day);
+      if (idx >= 0) out[idx] += dd * passed;
+    }
+  }
+  return out;
+}
+
+async function buildHistory(client, devices, found, period, cfg, { light = false, prices = null, weather = null, location = null } = {}) {
   const { resolution } = PERIODS[period];
   const buckets = makeBuckets(period);
   const series = {};
@@ -892,16 +1009,22 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
   }
   const entries = (device, capability) => client.getEntries(device.id, capability, resolution);
   // Details are only read for the blocks on the dashboard, to spare Homey
-  const shown = new Set(resolveLayout(cfg.layout, found, cfg).map(b => b.id));
+  const shown = shownBlocks(cfg, found);
 
   const start = periodStart(period);
   const contract = contractFrom(cfg);
   const tariff = await tariffFor(contract, prices, start.getTime(), periodEnd(period, start).getTime());
+  // Degree days, to compare gas use between periods regardless of the weather
+  if (weather && location && found.p1 && has(found.p1, 'meter_gas')) {
+    const temps = await weather.temperatures(location, start, periodEnd(period, start)).catch(() => ({}));
+    series.degreeDays = degreeDayBuckets(period, buckets, temps);
+  }
   const costs = {
     import: buckets.map(() => 0),
     export: buckets.map(() => 0),
     gas: buckets.map(() => 0),
-    known: { import: false, export: false, gas: false },
+    netting: buckets.map(() => 0),
+    known: { import: false, export: false, gas: false, netting: false },
     water: tariff.water,
     fixedPerDay: tariff.fixedPerDay,
   };
@@ -917,6 +1040,13 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
     jobs.push(entries(found.p1, cap).then(e => {
       addMeterDeltas(series.export, buckets, e);
       if (addMeterCost(costs.export, buckets, e, tariff.exportPrice, -1)) costs.known.export = true;
+      // What net metering is worth: the price you avoid minus what export earns without it
+      const nettingValue = (t0, t1) => {
+        const withNetting = tariff.importPrice(t0, t1);
+        const without = tariff.exportNoNetting(t0, t1);
+        return typeof withNetting === 'number' && typeof without === 'number' ? withNetting - without : null;
+      };
+      if (addMeterCost(costs.netting, buckets, e, nettingValue)) costs.known.netting = true;
     }));
   }
   if (found.p1 && has(found.p1, 'meter_gas')) {
@@ -925,24 +1055,40 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
       if (addMeterCost(costs.gas, buckets, e, tariff.gasPrice)) costs.known.gas = true;
     }));
   }
+  // Solar per panel or inverter, summed; the kWh of each is kept for the solar performance block
+  const solarDevices = [];
   for (const panel of found.solar) {
+    const own = buckets.map(() => 0);
+    const add = () => {
+      own.forEach((v, i) => { series.solar[i] += v; });
+      solarDevices.push({ name: panel.name, kWh: own.reduce((a, b) => a + b, 0) });
+    };
     if (has(panel, 'meter_power')) {
-      jobs.push(entries(panel, 'meter_power').then(e => addMeterDeltas(series.solar, buckets, e)));
+      jobs.push(entries(panel, 'meter_power').then(e => { addMeterDeltas(own, buckets, e); add(); }));
     } else if (has(panel, 'measure_power')) {
-      jobs.push(entries(panel, 'measure_power').then(e => addPowerIntegral(series.solar, buckets, e)));
+      jobs.push(entries(panel, 'measure_power').then(e => { addPowerIntegral(own, buckets, e); add(); }));
     }
   }
+  // Battery energy per stretch of time is kept for its earnings, when that block is shown
+  const batteryStretches = !light && shown.has('battery') ? [] : null;
   for (const battery of found.batteries) {
     const chargeCap = batteryMeterCapability(battery, 'charge');
     const dischargeCap = batteryMeterCapability(battery, 'discharge');
     if (chargeCap && dischargeCap) {
-      jobs.push(entries(battery, chargeCap).then(e => addMeterDeltas(series.charge, buckets, e)));
-      jobs.push(entries(battery, dischargeCap).then(e => addMeterDeltas(series.discharge, buckets, e)));
+      jobs.push(entries(battery, chargeCap).then(e => {
+        addMeterDeltas(series.charge, buckets, e);
+        batteryStretches?.push(...meterStretches(e, 'charge'));
+      }));
+      jobs.push(entries(battery, dischargeCap).then(e => {
+        addMeterDeltas(series.discharge, buckets, e);
+        batteryStretches?.push(...meterStretches(e, 'discharge'));
+      }));
     } else if (has(battery, 'measure_power')) {
       const sign = cfg.battery?.invertPower ? -1 : 1;
       jobs.push(entries(battery, 'measure_power').then(e => {
         addPowerIntegral(series.charge, buckets, e, sign);
         addPowerIntegral(series.discharge, buckets, e, -sign);
+        batteryStretches?.push(...powerStretches(e, sign));
       }));
     }
   }
@@ -996,7 +1142,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
   }
 
   await Promise.all(jobs);
-  return summarize(period, buckets, series, costs, {
+  const summary = summarize(period, buckets, series, costs, {
     boilerTemperature,
     batterySoc,
     power,
@@ -1010,6 +1156,89 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
       water: Boolean(found.water),
     },
   });
+  if (batteryStretches?.length) summary.batteryEarnings = batteryEarnings(batteryStretches, buckets, summary.rows, tariff);
+  if (!light && shown.has('solarperf')) summary.solarDevices = solarDevices.sort((a, b) => b.kWh - a.kWh);
+  return summary;
+}
+
+// Expected solar kWh per bucket from the forecast log, for the days of a period that are in it
+function expectedSolar(period, buckets, log) {
+  if (!log || !Object.keys(log).length) return null;
+  const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const kind = PERIODS[period].bucket;
+  const values = buckets.map(b => {
+    if (kind === 'hour') return null;
+    const end = new Date(b.start);
+    if (kind === 'day') end.setDate(end.getDate() + 1);
+    else end.setMonth(end.getMonth() + 1);
+    let sum = 0;
+    let known = false;
+    for (let d = new Date(b.start); d < end && d <= new Date(); d.setDate(d.getDate() + 1)) {
+      if (typeof log[key(d)] === 'number') { sum += log[key(d)]; known = true; }
+    }
+    return known ? sum : null;
+  });
+  const today = log[key(new Date(buckets[0].start))];
+  return { perBucket: values, day: kind === 'hour' ? (today ?? null) : null };
+}
+
+// A period as CSV, for a spreadsheet: Dutch uses ; and a decimal comma, English , and a point
+const CSV_COLUMNS = [
+  ['start', 'Begin', 'Start'],
+  ['consumption', 'Verbruik (kWh)', 'Consumption (kWh)'],
+  ['import', 'Van het net (kWh)', 'From grid (kWh)'],
+  ['export', 'Teruggeleverd (kWh)', 'Exported (kWh)'],
+  ['solar', 'Zon opgewekt (kWh)', 'Solar produced (kWh)'],
+  ['solarToHome', 'Zelfverbruik zon (kWh)', 'Solar self-consumption (kWh)'],
+  ['charge', 'Batterij geladen (kWh)', 'Battery charged (kWh)'],
+  ['discharge', 'Batterij ontladen (kWh)', 'Battery discharged (kWh)'],
+  ['gas', 'Gas (m³)', 'Gas (m³)'],
+  ['water', 'Water (L)', 'Water (L)'],
+  ['degreeDays', 'Graaddagen', 'Degree days'],
+  ['costImport', 'Kosten afname (€)', 'Import cost (€)'],
+  ['costExport', 'Teruglevering (€)', 'Export (€)'],
+  ['costGas', 'Kosten gas (€)', 'Gas cost (€)'],
+  ['costWater', 'Kosten water (€)', 'Water cost (€)'],
+  ['costFixed', 'Vaste kosten (€)', 'Fixed costs (€)'],
+];
+
+function historyCsv(history, lang = 'nl') {
+  const dutch = lang === 'nl';
+  const sep = dutch ? ';' : ',';
+  const number = v => {
+    if (typeof v !== 'number' || !Number.isFinite(v)) return '';
+    const text = String(Math.round(v * 10000) / 10000);
+    return dutch ? text.replace('.', ',') : text;
+  };
+  const date = iso => {
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const header = CSV_COLUMNS.map(c => (dutch ? c[1] : c[2])).join(sep);
+  const lines = history.rows.map(row => CSV_COLUMNS.map(([key]) => (key === 'start' ? date(row.start) : number(row[key]))).join(sep));
+  // A byte order mark, so Excel reads € and ³ correctly
+  return `\uFEFF${[header, ...lines].join('\r\n')}\r\n`;
+}
+
+// What the end of net metering (1 January 2027) costs, from a year of history: the value of
+// net metering over the exported energy, for the part that is netted against import (export
+// beyond the year's import was never netted). `basis` says which year the numbers come from.
+function nettingSummary(history, basis) {
+  const t = history?.totals;
+  if (!t || !(t.export > 0)) return { basis, export: t?.export || 0, extra: null };
+  const nettedShare = Math.min(1, (t.import || 0) / t.export);
+  const monthsMeasured = history.rows.filter(r => (r.import || 0) + (r.export || 0) > 0).length;
+  return {
+    basis,
+    months: monthsMeasured,
+    import: t.import,
+    export: t.export,
+    netted: t.export * nettedShare,
+    extra: typeof t.nettingValue === 'number' ? t.nettingValue * nettedShare : null,
+    // What each exported kWh used by the house itself instead saves once netting has ended
+    perKWh: typeof t.nettingValue === 'number' ? t.nettingValue / t.export : null,
+  };
 }
 
 // Standby use: the lowest power of the house last night (1:00 to 5:00), when nothing
@@ -1017,7 +1246,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
 // `marketAverage` is today's average market price, for the yearly cost with a dynamic contract
 async function buildBaseload(client, found, cfg, marketAverage = null) {
   if (!found.p1) return null;
-  const grid = await client.getEntries(found.p1.id, 'measure_power', 'yesterday');
+  const grid = await gridPower(found.p1, (device, capability) => client.getEntries(device.id, capability, 'yesterday').catch(() => []));
   const batteries = await Promise.all(found.batteries.map(b => client.getEntries(b.id, 'measure_power', 'yesterday')));
   const sign = cfg.battery?.invertPower ? -1 : 1;
   const batteryAt = t => batteries.reduce((sum, list) => {
@@ -1048,6 +1277,7 @@ async function buildBaseload(client, found, cfg, marketAverage = null) {
 }
 
 module.exports = {
+  degreeDayBuckets,
   PERIODS,
   PREVIOUS,
   comparableTotals,
@@ -1060,6 +1290,9 @@ module.exports = {
   blockCatalog,
   todayTotals,
   validateLayout,
+  layoutName,
+  savedLayout,
+  shownBlocks,
   PinGuard,
   allocateFlows,
   liveTotals,
@@ -1068,6 +1301,9 @@ module.exports = {
   consumptionDevices,
   buildLive,
   buildHistory,
+  nettingSummary,
+  expectedSolar,
+  historyCsv,
   buildPowerCurve,
   makeBuckets,
   periodStart,

@@ -80,7 +80,7 @@
     "markup": "Supplier markup (€/kWh)",
     "energyTax": "Energy tax (€/kWh)",
     "netting": "Net metering (salderen)",
-    "nettingHelp": "Export is then credited at the full price of that hour. Ends on 1 January 2027.",
+    "nettingHelp": "Export is then credited at the price you pay at that moment. Ends on 1 January 2027.",
     "exportFee": "Export fee without net metering (€/kWh)",
     "supplierHelp": "Price per hour = market price + energy tax + markup. The energy tax of 2026 is filled in.",
     "gasContract": "Gas contract",
@@ -110,9 +110,16 @@
     "supplierPartly": "__name__ publishes the electricity markup on its own website (checked in September 2026); the gas markup comes from a comparison site. Check both on your contract.",
     "supplierUnconfirmed": "__name__ does not publish its markup openly; these amounts come from a comparison site (September 2026). Look them up on your contract or in the __name__ app and change them.",
     "supplierNoGas": "The gas markup is not known: fill it in yourself.",
-    "supplierOther": "Fill in your supplier's markup yourself; you find it on your contract or in its app."
+    "supplierOther": "Fill in your supplier's markup yourself; you find it on your contract or in its app.",
+    "alerts": "Warnings",
+    "alertHours": "Warn when a device is on for longer than (hours)",
+    "alertNotify": "Also in the Homey timeline",
+    "alertNotifyHelp": "Each warning at most once a day. Devices that are always on (fridge, network) are left out by themselves.",
+    "exportAfter": "Export compensation after net metering (€/kWh)",
+    "exportAfterHelp": "What your supplier pays per exported kWh from 2027. Empty: the legal minimum, half of the supply price without energy tax."
   },
   "blocks": {
+    "alerts": "Warnings",
     "flow": "Energy now",
     "waterheater": "Hot water",
     "heating": "Heating",
@@ -127,7 +134,9 @@
     "sankey": "Energy flows",
     "devices": "Use per device",
     "costs": "Costs",
+    "netting": "End of net metering",
     "solar": "Solar energy",
+    "solarperf": "Solar performance",
     "gas": "Gas",
     "water": "Water",
     "baseload": "Standby use",
@@ -144,5 +153,14 @@
     "more": "More",
     "noP1": "No P1 meter found. Choose one in the app settings.",
     "noFlow": "No energy flow right now"
+  },
+  "widgetNow": {
+    "name": "Energy now",
+    "solar": "Solar",
+    "grid": "Grid",
+    "export": "Export",
+    "home": "Home",
+    "battery": "Battery",
+    "noP1": "No P1 meter found. Choose one in the app settings."
   }
 }

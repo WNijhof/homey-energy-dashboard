@@ -45,6 +45,8 @@ function onHomeyReady(Homey) {
       form.pricesOn.checked = config.prices?.source !== 'off';
       fillContract(list.contract, list.suppliers);
       fillForecast(config.forecast || {});
+      form.alertHours.value = config.alerts?.hours ?? 4;
+      form.alertNotify.checked = Boolean(config.alerts?.notify);
       fillChecks('heating-list', 'heating', list.devices, devices.heating || [],
         d => d.class === 'heatpump' || d.class === 'boiler' || /warmtepomp|heat ?pump|cv|ketel/i.test(d.name),
         __('noHeating'));
@@ -88,6 +90,7 @@ function onHomeyReady(Homey) {
         prices: { source: form.pricesOn.checked ? 'energyzero' : 'off' },
         contract: contractToSave(number),
         forecast: forecastToSave(number),
+        alerts: { hours: number('alertHours') ?? 4, notify: form.alertNotify.checked },
         layout: layoutToSave(),
         battery: { invertPower: form.invertPower.checked },
         boiler: Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
@@ -156,6 +159,7 @@ function onHomeyReady(Homey) {
     form.elecNormal.value = value(e.normal);
     form.elecLow.value = value(e.low);
     form.elecExport.value = value(e.export);
+    form.exportAfter.value = value(e.exportAfter);
     form.lowFrom.value = e.lowFrom;
     form.lowTo.value = e.lowTo;
     form.lowWeekend.checked = e.lowWeekend;
@@ -211,6 +215,7 @@ function onHomeyReady(Homey) {
         normal: empty('elecNormal'),
         low: empty('elecLow'),
         export: empty('elecExport'),
+        exportAfter: empty('exportAfter'),
         lowFrom: number('lowFrom') ?? 23,
         lowTo: number('lowTo') ?? 7,
         lowWeekend: form.lowWeekend.checked,

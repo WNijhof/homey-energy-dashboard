@@ -10,7 +10,9 @@ The dashboard is built from blocks you arrange yourself:
 - Costs with your own contract: fixed (normal and off-peak) or dynamic (market price per hour plus tax and your supplier's markup), gas, water and fixed costs
 - Electricity prices per hour, solar forecast, heating, EV charger, standby use and phase load
 
-A widget for Homey Dashboards shows the live flow from your sources through your rooms to the devices using the most power.
+New: what the end of net metering (salderen) in 2027 costs you, based on your own data; what your home battery earns; solar performance against the forecast; gas per degree day; warnings for devices left on and rising standby use; prices per quarter hour; a layout per screen; CSV export; install on your home screen.
+
+Two widgets for Homey Dashboards: "Energy now" with the live flow between solar, grid, home and battery, and "Energy flows" from your sources through your rooms to the devices using the most power.
 
 For a tablet on the wall: full screen, keep the screen on, and a night mode that dims the screen or turns it black.
 

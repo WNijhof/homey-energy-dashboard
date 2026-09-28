@@ -42,6 +42,7 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json',
 };
 
 function sendJson(res, status, data) {
@@ -49,14 +50,21 @@ function sendJson(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-function serveFile(res, urlPath) {
+// The page refers to its scripts and styles with the app version, so a browser or a cache in
+// between (such as a tunnel to the internet) always loads the files of the running version
+function versioned(html, version) {
+  return html.replace(/(src|href)="((?:dashboard|i18n|screen|site)\.(?:js|css))"/g, (m, attr, file) => `${attr}="${file}?v=${version}"`);
+}
+
+function serveFile(res, urlPath, version) {
   const file = path.normalize(path.join(WEB_DIR, urlPath === '/' ? 'index.html' : urlPath));
   if (!file.startsWith(WEB_DIR + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Niet gevonden');
     return;
   }
-  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
-  fs.createReadStream(file).pipe(res);
+  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+  if (path.extname(file) === '.html') res.end(versioned(fs.readFileSync(file, 'utf8'), version));
+  else fs.createReadStream(file).pipe(res);
 }
 
 // ---------- Access code ----------
@@ -164,7 +172,7 @@ class WebServer {
       res.writeHead(303, { Location: '/' }).end();
       return false;
     }
-    if (url.pathname === '/icon.svg') return true;
+    if (/^\/(icon\.svg|icon-\d+\.png|apple-touch-icon\.png|manifest\.webmanifest)$/.test(url.pathname)) return true;
 
     let given = null;
     if (url.pathname === '/login' && req.method === 'POST') given = new URLSearchParams(await readBody(req)).get('code') || '';
@@ -192,14 +200,25 @@ class WebServer {
     try {
       if (!(await this.checkAccess(req, res, url))) return;
       if (url.pathname === '/api/layout') {
-        if (req.method === 'GET') return sendJson(res, 200, await this.app.getLayoutInfo());
+        if (req.method === 'GET') return sendJson(res, 200, await this.app.getLayoutInfo(url.searchParams.get('layout') || ''));
         if (req.method === 'POST') return sendJson(res, 200, await this.app.saveLayout(await readJson(req)));
       }
       if (req.method !== 'GET') {
         res.writeHead(405).end();
         return;
       }
-      if (url.pathname === '/api/live') return sendJson(res, 200, await this.app.getLive());
+      if (url.pathname === '/api/live') return sendJson(res, 200, await this.app.getLive(url.searchParams.get('layout') || ''));
+      if (url.pathname === '/api/diagnose') return sendJson(res, 200, await this.app.getDiagnosis());
+      if (url.pathname === '/api/export') {
+        const period = url.searchParams.get('period') || 'today';
+        const csv = await this.app.getExport(period, url.searchParams.get('lang') || 'nl');
+        res.writeHead(200, {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="energie-${period}-${new Date().toISOString().slice(0, 10)}.csv"`,
+          'Cache-Control': 'no-store',
+        });
+        return res.end(csv);
+      }
       if (url.pathname === '/api/history') {
         return sendJson(res, 200, await this.app.getHistory(url.searchParams.get('period') || 'today'));
       }
@@ -209,7 +228,7 @@ class WebServer {
       } catch {
         return sendJson(res, 400, { error: 'Ongeldig adres' });
       }
-      return serveFile(res, pathname);
+      return serveFile(res, pathname, this.app.homey?.manifest?.version || '0');
     } catch (err) {
       if (!err.status) this.error(`${url.pathname}: ${err.message}`);
       return sendJson(res, err.status || 500, { error: err.message });

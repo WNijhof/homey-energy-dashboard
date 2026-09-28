@@ -9,6 +9,11 @@
   <meta name="mobile-web-app-capable" content="yes">
   <title>Energie</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <!-- Installable on a phone or tablet: "Add to home screen" opens it without the browser bar -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Energie">
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
@@ -44,6 +49,9 @@
     <div class="edit-hidden" id="edit-hidden"></div>
     <div class="edit-actions">
       <input id="edit-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="Pincode" hidden>
+      <select id="edit-layout" aria-label="Indeling"></select>
+      <input id="edit-layout-name" type="text" maxlength="24" placeholder="Naam, bijv. keuken" hidden>
+      <button type="button" class="link" id="edit-layout-remove" hidden>Indeling verwijderen</button>
       <button type="button" class="link" id="edit-default">Standaard</button>
       <span class="edit-status" id="edit-status"></span>
       <button type="button" class="secondary" id="edit-cancel">Annuleren</button>
@@ -138,6 +146,48 @@
         <ul class="facts" id="battery-facts"></ul>
       </div>
       <div class="chart fill" id="battery-chart" data-height="90" data-battery></div>
+    </section>
+  </template>
+
+  <template id="block-netting">
+    <section class="card">
+      <div class="card-head">
+        <h2>Einde salderen</h2>
+        <span class="muted" id="netting-basis"></span>
+      </div>
+      <p class="block-empty" id="netting-empty" hidden></p>
+      <div data-netting>
+        <div class="big-fact">
+          <span class="big-number" id="netting-extra">–</span>
+          <span class="big-unit">per jaar extra vanaf 2027</span>
+        </div>
+        <ul class="facts" id="netting-facts"></ul>
+        <p class="note" id="netting-note"></p>
+      </div>
+    </section>
+  </template>
+
+  <template id="block-solarperf">
+    <section class="card">
+      <div class="card-head">
+        <h2>Zonprestatie</h2>
+        <span class="muted" id="solarperf-period"></span>
+      </div>
+      <div class="big-fact">
+        <span class="big-number" id="solarperf-kwh">–</span>
+        <span class="big-unit" id="solarperf-unit">kWh opgewekt</span>
+      </div>
+      <ul class="facts" id="solarperf-facts"></ul>
+      <div class="chart fill" id="solarperf-chart" data-height="130"></div>
+    </section>
+  </template>
+
+  <template id="block-alerts">
+    <section class="card">
+      <div class="card-head">
+        <h2>Meldingen</h2>
+      </div>
+      <ul class="alerts fill scroll" id="alerts"></ul>
     </section>
   </template>
 

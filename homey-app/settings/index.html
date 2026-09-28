@@ -96,6 +96,10 @@
     <label><span data-i18n="settings.showerFlow"></span> <input name="showerFlow" type="number" min="3" max="20" step="0.5"></label>
     <label><span data-i18n="settings.warmFrom"></span> <input name="warmFrom" type="number" min="35" max="75" step="1"></label>
 
+    <h3 data-i18n="settings.alerts"></h3>
+    <label><span data-i18n="settings.alertHours"></span> <input name="alertHours" type="number" min="1" max="48" step="1"></label>
+    <label class="check-row"><span><span data-i18n="settings.alertNotify"></span><br><small class="muted" data-i18n="settings.alertNotifyHelp"></small></span> <input name="alertNotify" type="checkbox"></label>
+
     <h3 data-i18n="settings.connection"></h3>
     <label><span data-i18n="settings.fuseAmps"></span> <input name="fuseAmps" type="number" min="6" max="80" step="1"></label>
 
@@ -116,16 +120,19 @@
       <label class="check-row"><span data-i18n="settings.lowWeekend"></span> <input name="lowWeekend" type="checkbox"></label>
       <label><span data-i18n="settings.exportRate"></span> <input name="elecExport" type="number" step="0.0001"></label>
       <p class="muted" data-i18n="settings.exportRateHelp"></p>
+      <label><span data-i18n="settings.exportAfter"></span> <input name="exportAfter" type="number" step="0.0001"></label>
+      <p class="muted" data-i18n="settings.exportAfterHelp"></p>
     </div>
     <div data-contract="elec-dynamic">
       <label><span data-i18n="settings.supplier"></span> <select name="supplier"></select></label>
       <p class="warning" id="supplier-note"></p>
       <label><span data-i18n="settings.markup"></span> <input name="elecMarkup" type="number" step="0.0001"></label>
       <label><span data-i18n="settings.energyTax"></span> <input name="elecTax" type="number" min="0" step="0.00001"></label>
-      <label class="check-row"><span><span data-i18n="settings.netting"></span><br><small class="muted" data-i18n="settings.nettingHelp"></small></span> <input name="netting" type="checkbox"></label>
-      <label><span data-i18n="settings.exportFee"></span> <input name="exportFee" type="number" step="0.0001"></label>
       <p class="muted" data-i18n="settings.supplierHelp"></p>
     </div>
+    <!-- For both kinds of contract -->
+    <label class="check-row"><span><span data-i18n="settings.netting"></span><br><small class="muted" data-i18n="settings.nettingHelp"></small></span> <input name="netting" type="checkbox"></label>
+    <label><span data-i18n="settings.exportFee"></span> <input name="exportFee" type="number" step="0.0001"></label>
 
     <h3 data-i18n="settings.gasContract"></h3>
     <label><span data-i18n="settings.contractType"></span>

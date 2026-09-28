@@ -10,7 +10,9 @@ Het dashboard bestaat uit blokken die je zelf indeelt:
 - Kosten met je eigen contract: vast (normaal en dal) of dynamisch (marktprijs per uur plus belasting en de opslag van je leverancier), gas, water en vaste kosten
 - Stroomprijzen per uur, zonneverwachting, verwarming, laadpaal, sluipverbruik en fasebelasting
 
-Een widget voor Homey Dashboards toont de live stroom van je bronnen via je ruimtes naar de apparaten die het meeste gebruiken.
+Nieuw: wat het einde van salderen in 2027 jou kost, berekend met je eigen metingen; wat je thuisbatterij oplevert; zonprestatie tegenover de verwachting; gas per graaddag; meldingen bij apparaten die blijven aanstaan en stijgend sluipverbruik; prijzen per kwartier; een indeling per scherm; CSV-export; op je beginscherm te zetten.
+
+Twee widgets voor Homey Dashboards: "Energie nu" met de live stroom tussen zon, net, huis en batterij, en "Energiestromen" van je bronnen via je ruimtes naar de apparaten die het meeste gebruiken.
 
 Voor een tablet aan de muur: volledig scherm, scherm aan houden, en een nachtstand die het scherm dimt of zwart maakt.
 

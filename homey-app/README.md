@@ -94,13 +94,37 @@ Op dezelfde instellingenpagina:
 
 Alle bedragen zijn inclusief btw. Laat een veld leeg om die kosten weg te laten.
 
-- **Vast contract**: normaaltarief, en eventueel een daltarief met de daluren (standaard 23:00–07:00 en het hele weekend). Vul ook de terugleververgoeding in; met salderen is die meestal gelijk aan het normaaltarief.
-- **Dynamisch contract**: de prijs per uur is de marktprijs (EPEX, via EnergyZero) plus de energiebelasting plus de opslag van je leverancier. Kies je leverancier om de gebruikelijke opslag in te vullen (negentien leveranciers, van ANWB tot Zonneplan; waar bekend ook de gasopslag). Onder de keuze staat of de leverancier die bedragen zelf publiceert of dat ze van een vergelijkingssite komen. **Controleer ze altijd op je eigen contract of in de app van je leverancier.** De energiebelasting van 2026 (€ 0,11085 per kWh) staat al ingevuld. Met **Salderen** aan wordt teruglevering verrekend tegen de volledige prijs van dat uur; salderen stopt op 1 januari 2027. Daarna telt de marktprijs min eventuele terugleverkosten.
+- **Vast contract**: normaaltarief, en eventueel een daltarief met de daluren (standaard 23:00–07:00 en het hele weekend). Vul ook de terugleververgoeding in; met salderen is die meestal gelijk aan het normaaltarief. Bij **Terugleververgoeding na salderen** vul je in wat je leverancier vanaf 2027 betaalt; leeg rekent met het wettelijk minimum (de helft van de leveringsprijs zonder energiebelasting).
+- **Dynamisch contract**: de prijs per uur is de marktprijs (EPEX, via EnergyZero) plus de energiebelasting plus de opslag van je leverancier. Kies je leverancier om de gebruikelijke opslag in te vullen (negentien leveranciers, van ANWB tot Zonneplan; waar bekend ook de gasopslag). Onder de keuze staat of de leverancier die bedragen zelf publiceert of dat ze van een vergelijkingssite komen. **Controleer ze altijd op je eigen contract of in de app van je leverancier.** De energiebelasting van 2026 (€ 0,11085 per kWh) staat al ingevuld. Stroom rekent de app per kwartier, zoals de meeste dynamische leveranciers; voor maanden en jaren per uur.
 - **Gas**: een vaste prijs per m³, of dynamisch: de dagprijs plus energiebelasting (€ 0,7268 per m³ in 2026) en opslag.
 - **Vaste kosten per maand**: leverings- en netbeheerkosten samen, zoals op je rekening. De **vermindering energiebelasting** (€ 628,96 in 2026) wordt verspreid over het jaar afgetrokken.
 - **Water**: prijs per m³.
+- **Salderen** (voor beide soorten contract): teruglevering wordt verrekend tegen de prijs die je op dat moment betaalt. Salderen stopt op 1 januari 2027; zet het dan uit. Zonder salderen levert teruglevering de terugleververgoeding (vast contract) of de marktprijs (dynamisch) op, min eventuele **terugleverkosten**.
 
 De kosten worden per meterstand berekend met de prijs van dat moment, dus bij een dynamisch contract per uur. Het blok Kosten toont afname, teruglevering, gas, water en vaste kosten, en vergelijkt met de vorige periode tot hetzelfde moment. Het blok Stroomprijs toont bij een dynamisch contract de prijs die je echt betaalt, en wat je verbruik of teruglevering op dit moment per uur kost of oplevert.
+
+## Einde salderen
+
+Het blok **Einde salderen** rekent uit wat het stoppen van salderen op 1 januari 2027 jou kost: per teruggeleverde kWh het verschil tussen de prijs die je dan niet meer vermijdt en wat teruglevering zonder salderen oplevert, met je eigen metingen van vorig jaar (of dit jaar tot nu, als vorig jaar te weinig gegevens heeft) en je contract uit de instellingen. Teruglevering boven je verbruik van dat jaar werd nooit gesaldeerd en telt niet mee. Het blok laat ook zien wat elke kWh die je zelf gebruikt in plaats van teruglevert na 2027 bespaart.
+
+## Zonprestatie
+
+Het blok **Zonprestatie** vergelijkt de opbrengst met de zonneverwachting (vandaag: met de verwachting tot nu), toont de opbrengst per kWp, de beste dag of maand en, bij meer omvormers, de opbrengst per omvormer. De grafiek toont per dag de opbrengst met een streepje voor de verwachting. De app bewaart daarvoor elke dag de verwachte kWh (tot ruim een jaar terug); de vergelijking begint dus op de dag dat je de zonneverwachting aanzet.
+
+## Gas per graaddag
+
+Hoeveel gas je nodig hebt, hangt af van het weer. De app haalt daarom de gemiddelde buitentemperatuur per dag op bij [Open-Meteo](https://open-meteo.com) (gratis, zonder account, voor de locatie van je Homey) en rekent die om naar gewogen graaddagen. In de blokken Gas en Verwarming staat dan het gas per graaddag, en in Verwarming de verandering ten opzichte van dezelfde periode vorig jaar. Zo zie je of je echt zuiniger stookt, ook als de winter zachter was.
+
+## Meldingen
+
+Het blok **Meldingen** laat zien als:
+
+- een apparaat ongewoon lang aan staat (meer dan 20 W, langer dan het aantal uren bij de instellingen; standaard 4). Apparaten die altijd aan staan, zoals een koelkast of netwerkkast, en verwarming, laadpaal, batterij en zonnepanelen tellen niet mee;
+- het sluipverbruik duidelijk hoger is dan normaal (de afgelopen twee weken);
+- de P1-meter of een omvormer niet reageert;
+- er meer dan één thuisbatterij gevonden is, mogelijk dezelfde batterij via twee apps.
+
+Zet **Ook in de Homey-tijdlijn** aan om elke melding hooguit één keer per dag als melding in de Homey-app te krijgen.
 
 ## Zonneverwachting
 
@@ -116,15 +140,33 @@ Met het **schermicoon** rechtsboven stel je per scherm in:
 
 Een dashboard dat dagen aan staat, schuift af en toe een paar pixels op tegen inbranden. Na een update van de app laadt het dashboard zichzelf opnieuw.
 
+Onder **Beweging** kies je of de stromen bewegen: **Standaard** laat ze altijd bewegen (sierlijke effecten volgen de instelling "minder beweging" van je systeem), **Alle effecten** zet ook die aan, **Uit** zet alles stil. Via **Periode exporteren (CSV)** download je de gekozen periode als spreadsheet.
+
+## Meerdere indelingen
+
+Elk scherm kan een eigen indeling hebben, bijvoorbeeld een compacte voor de tablet in de keuken. Kies in de bewerkmodus (potlood) bij de indeling **Nieuwe indeling…**, geef een naam en sla op. Een scherm onthoudt zijn indeling; je kunt er ook een kiezen met het adres, bijvoorbeeld `http://<ip-van-je-homey>:8080/?indeling=keuken`. De standaardindeling stel je ook in bij de instellingen van de app.
+
+## Op je beginscherm
+
+Op een telefoon of tablet kun je het dashboard met **Zet op beginscherm** als app installeren, met eigen icoon en zonder adresbalk. Op iPhone en iPad werkt dat altijd; Android opent het via een gewoon http-adres in je thuisnetwerk als snelkoppeling in de browser, en pas als echte app via https (bijvoorbeeld via een tunnel).
+
 ## Widget voor Homey Dashboards
 
-De app heeft een widget **Energiestromen** voor de Dashboards in de Homey-app. Die toont live waar je stroom vandaan komt (zon, net, batterij), in welke ruimtes die gebruikt wordt, en de grootste verbruikers per ruimte. In de widget kies je hoeveel apparaten per ruimte je ziet en of de stromen bewegen. Apparaten zonder stroommeting vallen onder "Overig". De widget is licht: Homey stuurt alleen een klein lijstje met waarden, de widget tekent zelf.
+De app heeft twee widgets voor de Dashboards in de Homey-app. **Energie nu** toont het schema zon, net, huis en batterij met het vermogen van dit moment. **Energiestromen** is de uitgebreide versie. Die toont live waar je stroom vandaan komt (zon, net, batterij), in welke ruimtes die gebruikt wordt, en de grootste verbruikers per ruimte. In de widget kies je hoeveel apparaten per ruimte je ziet en of de stromen bewegen. Apparaten zonder stroommeting vallen onder "Overig". De widget is licht: Homey stuurt alleen een klein lijstje met waarden, de widget tekent zelf.
 
 ## Veiligheid
 
 De webpagina is alleen bereikbaar binnen je thuisnetwerk, niet vanaf internet (tenzij je zelf poorten doorstuurt in je router, doe dat niet). Zonder toegangscode kan iedereen op je wifi het dashboard bekijken; stel er een in bij de instellingen als je dat niet wilt (na 5 foute pogingen is inloggen een minuut geblokkeerd). De pagina kan niets bedienen. Het enige dat je er kunt wijzigen is de indeling. Wil je niet dat iedereen op je wifi dat kan, stel dan een pincode in (na 5 foute pogingen is bewerken een minuut geblokkeerd). Apparaten, tarieven en andere instellingen wijzig je alleen via de Homey-app.
 
-Voor de prijzen haalt de app elk half uur de marktprijzen op bij EnergyZero, en voor de zonneverwachting eens per uur de verwachting bij Forecast.Solar. Naar EnergyZero gaan geen gegevens over jouw huis. Naar Forecast.Solar gaan alleen de locatie van je Homey (afgerond) en de gegevens van je dakvlakken, geen verbruik.
+Maak je het dashboard via een tunnel of doorverwijzing bereikbaar vanaf internet, **stel dan altijd een toegangscode in**: anders kan iedereen die het adres vindt je verbruik zien, en daarmee ook wanneer je thuis bent.
+
+Voor de prijzen haalt de app elk half uur de marktprijzen op bij EnergyZero, voor de zonneverwachting eens per uur de verwachting bij Forecast.Solar, en voor de graaddagen de buitentemperatuur bij Open-Meteo. Naar EnergyZero gaan geen gegevens over jouw huis. Naar Forecast.Solar en Open-Meteo gaan alleen de locatie van je Homey (afgerond) en, voor Forecast.Solar, de gegevens van je dakvlakken, geen verbruik.
+
+## Problemen oplossen
+
+Toont een blok geen gegevens, open dan `http://<ip-van-je-homey>:8080/api/diagnose`. Die pagina laat zien welke apparaten de app vond, welke metingen daarvan in Insights staan, hoeveel vermogensmetingen er vandaag zijn en welke meldingen er zijn. Plak die tekst bij een vraag op het forum (er staan geen wachtwoorden in).
+
+Heeft je P1-meter geen vermogensmetingen (W) in Insights, dan rekent de app het vermogen voor "Vermogen vandaag" en het sluipverbruik uit met de kWh-tellers van de meter.
 
 ## Thuisbatterij
 

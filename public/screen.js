@@ -90,9 +90,13 @@
       ? `<label class="screen-row"><span>Scherm aan houden</span><input type="checkbox" data-action="keepOn" ${settings.keepOn ? 'checked' : ''}></label>`
       : '';
     const option = (value, label) => `<option value="${value}" ${settings.night === value ? 'selected' : ''}>${label}</option>`;
+    const exportLink = window.EnergyDashboard?.exportUrl
+      ? `<a class="screen-row" href="${window.EnergyDashboard.exportUrl()}" download><span>Periode exporteren (CSV)</span><b>⤓</b></a>`
+      : '';
     return `
       ${fullscreen}
       ${keepOn}
+      ${exportLink}
       <label class="screen-row"><span>Beweging</span>
         <select data-action="motion">
           <option value="auto" ${settings.motion === 'auto' ? 'selected' : ''}>Standaard</option>

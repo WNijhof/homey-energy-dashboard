@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Kept light: one small SVG with a few values, drawn again every 10 seconds */
+    body { margin: 0; }
+    #now { display: block; width: 100%; height: auto; }
+    .line { fill: none; stroke: var(--homey-line-color, rgba(128, 128, 128, 0.25)); stroke-width: 3; stroke-linecap: round; }
+    .flow { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 10; animation: run 1.2s linear infinite; }
+    .flow.still { animation: none; stroke-dasharray: none; stroke-opacity: 0.7; }
+    @keyframes run { to { stroke-dashoffset: -12; } }
+    .ring { fill: var(--homey-background-color, #fff); stroke-width: 3; }
+    .value { font-size: 11px; font-weight: 700; fill: var(--homey-text-color, #1c1c1e); text-anchor: middle; }
+    .label { font-size: 10px; fill: var(--homey-text-color-light, #8a8a8e); text-anchor: middle; }
+    .empty { font-size: var(--homey-font-size-small, 14px); color: var(--homey-text-color-light, #8a8a8e); text-align: center; padding: 24px 0; }
+  </style>
+</head>
+<body class="homey-widget-small">
+  <svg id="now" viewBox="0 0 300 200" role="img"></svg>
+  <div id="empty" class="empty" hidden></div>
+
+  <script>
+    'use strict';
+
+    const COLORS = { solar: '#ffb400', grid: '#3d8bfd', export: '#a55eea', home: '#20c07c', battery: '#14b8a6' };
+    const ICONS = {
+      solar: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+      home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+      grid: '<path d="M8 22 12 3l4 19"/><path d="M5 8h14M6.5 13h11M9.2 17h5.6"/>',
+      battery: '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M11 9l-2 3h3l-2 3"/>',
+    };
+
+    function onHomeyReady(Homey) {
+      const settings = Homey.getSettings() || {};
+      const svg = document.getElementById('now');
+      const empty = document.getElementById('empty');
+      const locale = (navigator.language || 'nl').startsWith('nl') ? 'nl-NL' : 'en-GB';
+      const nf = digits => new Intl.NumberFormat(locale, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+      const power = w => {
+        const abs = Math.abs(w || 0);
+        return abs >= 1000 ? `${nf(abs >= 10000 ? 1 : 2).format(abs / 1000)} kW` : `${nf(0).format(abs)} W`;
+      };
+      const text = key => Homey.__(`widgetNow.${key}`) || key;
+      let busy = false;
+
+      // A circle with an icon, the power and a label below it, or beside it (`side`)
+      const node = (x, y, color, icon, value, label, side = false) => `
+        <g transform="translate(${x} ${y})">
+          <circle r="29" class="ring" stroke="${color}"/>
+          <g transform="translate(-8 -22)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[icon]}</svg></g>
+          <text class="value" y="10">${value}</text>
+          ${side ? `<text class="label" x="36" y="4" style="text-anchor:start">${label}</text>` : `<text class="label" y="44">${label}</text>`}
+        </g>`;
+
+      // A line between two circles; with power flowing it gets the color and moving dashes
+      // in the direction of the flow (\`reverse\` when the power flows from end to start)
+      const line = (d, watts, color, reverse = false) => {
+        if (!(watts > 5)) return `<path class="line" d="${d}"/>`;
+        const still = settings.animate === false ? ' still' : '';
+        const style = reverse ? ' style="animation-direction: reverse"' : '';
+        return `<path class="line" d="${d}"/><path class="flow${still}" d="${d}" stroke="${color}"${style}/>`;
+      };
+
+      function draw(now) {
+        if (typeof now.homeW !== 'number') {
+          svg.style.display = 'none';
+          empty.hidden = false;
+          empty.textContent = text('noP1');
+          return;
+        }
+        svg.style.display = '';
+        empty.hidden = true;
+        const f = now.flows || {};
+        const hasSolar = typeof now.solarW === 'number';
+        const hasBattery = typeof now.batteryW === 'number';
+        const top = hasSolar ? 36 : -50;
+        const y = top + 86;
+        const by = y + 88;
+        const height = (hasBattery ? by + 34 : y + 52) - (hasSolar ? 0 : top + 36);
+        svg.setAttribute('viewBox', `0 ${hasSolar ? 0 : top + 36} 300 ${height}`);
+        const exporting = now.gridW < -5;
+        let out = '';
+        out += line(`M 72 ${y} L 228 ${y}`, f.gridToHome, COLORS.grid);
+        if (hasSolar) {
+          out += line(`M 172 ${top + 22} Q 205 ${top + 45} 228 ${y - 20}`, f.solarToHome, COLORS.solar);
+          out += line(`M 128 ${top + 22} Q 95 ${top + 45} 72 ${y - 20}`, f.solarToGrid, COLORS.export);
+        }
+        if (hasBattery) {
+          out += line(`M 172 ${by - 22} Q 205 ${by - 45} 228 ${y + 20}`, f.batteryToHome, COLORS.battery);
+          out += line(`M 72 ${y + 20} Q 95 ${by - 45} 128 ${by - 22}`, (f.gridToBattery || 0) + (f.batteryToGrid || 0), f.gridToBattery > 5 ? COLORS.grid : COLORS.export, f.batteryToGrid > 5);
+          if (hasSolar) out += line(`M 150 ${top + 29} L 150 ${by - 29}`, f.solarToBattery, COLORS.solar);
+          out += node(150, by, COLORS.battery, 'battery', power(now.batteryW), `${text('battery')}${typeof now.soc === 'number' ? ` ${nf(0).format(now.soc)}%` : ''}`, true);
+        }
+        if (hasSolar) out += node(150, top, COLORS.solar, 'solar', power(now.solarW), text('solar'), true);
+        out += node(45, y, exporting ? COLORS.export : COLORS.grid, 'grid', power(now.gridW), exporting ? text('export') : text('grid'));
+        out += node(255, y, COLORS.home, 'home', power(now.homeW), text('home'));
+        svg.setAttribute('aria-label', text('name'));
+        svg.innerHTML = out;
+      }
+
+      async function update() {
+        if (busy || document.hidden) return;
+        busy = true;
+        try {
+          draw(await Homey.api('GET', '/now'));
+        } catch (err) {
+          svg.style.display = 'none';
+          empty.hidden = false;
+          empty.textContent = err.message || String(err);
+        } finally {
+          busy = false;
+        }
+      }
+
+      update().finally(() => Homey.ready({ height: document.body.scrollHeight || 200 }));
+      setInterval(update, 10 * 1000);
+      document.addEventListener('visibilitychange', update);
+    }
+  </script>
+</body>
+</html>

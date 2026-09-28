@@ -1,4 +1,8 @@
 {
+  "0.1.0": {
+    "en": "New: end of net metering calculator, battery earnings, solar performance, gas per degree day, warnings (devices left on, standby use), prices per quarter hour, a layout per screen, CSV export, install on your home screen and the \"Energy now\" widget. Power today also works for P1 meters without power readings in Insights, flows always move, and updates are picked up by every browser.",
+    "nl": "Nieuw: wat het einde van salderen kost, opbrengst van je thuisbatterij, zonprestatie, gas per graaddag, meldingen (apparaten die aan blijven, sluipverbruik), prijzen per kwartier, een indeling per scherm, CSV-export, op je beginscherm te zetten en de widget \"Energie nu\". Vermogen vandaag werkt ook voor P1-meters zonder vermogensmetingen in Insights, de stromen bewegen altijd, en elke browser haalt een update op."
+  },
   "0.0.2": {
     "en": "Nineteen dynamic suppliers to choose from, with markups checked at the suppliers themselves, a clear note on which amounts to check, and the 2026 energy tax on gas corrected.",
     "nl": "Negentien dynamische leveranciers om uit te kiezen, met opslagen gecontroleerd bij de leveranciers zelf, een duidelijke melding welke bedragen je moet controleren, en de energiebelasting op gas voor 2026 gecorrigeerd."

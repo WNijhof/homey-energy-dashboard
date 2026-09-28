@@ -80,7 +80,7 @@
     "markup": "Opslag leverancier (€/kWh)",
     "energyTax": "Energiebelasting (€/kWh)",
     "netting": "Salderen",
-    "nettingHelp": "Teruglevering wordt dan verrekend tegen de volledige prijs van dat uur. Stopt op 1 januari 2027.",
+    "nettingHelp": "Teruglevering wordt dan verrekend tegen de prijs die je op dat moment betaalt. Stopt op 1 januari 2027.",
     "exportFee": "Terugleverkosten zonder salderen (€/kWh)",
     "supplierHelp": "Prijs per uur = marktprijs + energiebelasting + opslag. De energiebelasting van 2026 staat al ingevuld.",
     "gasContract": "Gascontract",
@@ -110,9 +110,16 @@
     "supplierPartly": "__name__ publiceert de stroomopslag op de eigen website (gecontroleerd in september 2026); de gasopslag komt van een vergelijkingssite. Controleer beide op je contract.",
     "supplierUnconfirmed": "__name__ publiceert de opslag niet openbaar; deze bedragen komen van een vergelijkingssite (september 2026). Zoek ze op in je contract of in de app van __name__ en pas ze aan.",
     "supplierNoGas": "De gasopslag is niet bekend: vul die zelf in.",
-    "supplierOther": "Vul de opslag van je leverancier zelf in; die staat op je contract of in de app."
+    "supplierOther": "Vul de opslag van je leverancier zelf in; die staat op je contract of in de app.",
+    "alerts": "Meldingen",
+    "alertHours": "Melden als een apparaat langer aan staat dan (uur)",
+    "alertNotify": "Ook in de Homey-tijdlijn",
+    "alertNotifyHelp": "Elke melding hooguit één keer per dag. Apparaten die altijd aan staan (koelkast, netwerk) vallen vanzelf af.",
+    "exportAfter": "Terugleververgoeding na salderen (€/kWh)",
+    "exportAfterHelp": "Wat je leverancier vanaf 2027 per teruggeleverde kWh betaalt. Leeg: het wettelijk minimum, de helft van de leveringsprijs zonder energiebelasting."
   },
   "blocks": {
+    "alerts": "Meldingen",
     "flow": "Energie nu",
     "waterheater": "Warm water",
     "heating": "Verwarming",
@@ -127,7 +134,9 @@
     "sankey": "Energiestromen",
     "devices": "Verbruik per apparaat",
     "costs": "Kosten",
+    "netting": "Einde salderen",
     "solar": "Zonne-energie",
+    "solarperf": "Zonprestatie",
     "gas": "Gas",
     "water": "Water",
     "baseload": "Sluipverbruik",
@@ -144,5 +153,14 @@
     "more": "Meer",
     "noP1": "Geen P1-meter gevonden. Kies er een in de instellingen van de app.",
     "noFlow": "Nu geen energiestroom"
+  },
+  "widgetNow": {
+    "name": "Energie nu",
+    "solar": "Zon",
+    "grid": "Net",
+    "export": "Terug",
+    "home": "Huis",
+    "battery": "Batterij",
+    "noP1": "Geen P1-meter gevonden. Kies er een in de instellingen van de app."
   }
 }

@@ -1,0 +1,25 @@
+{
+  "name": {
+    "en": "Energy now",
+    "nl": "Energie nu"
+  },
+  "height": 220,
+  "transparent": false,
+  "settings": [
+    {
+      "id": "animate",
+      "type": "checkbox",
+      "title": {
+        "en": "Moving flows",
+        "nl": "Bewegende stromen"
+      },
+      "value": true
+    }
+  ],
+  "api": {
+    "getNow": {
+      "method": "GET",
+      "path": "/now"
+    }
+  }
+}
