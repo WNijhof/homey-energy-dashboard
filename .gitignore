@@ -1,0 +1,5 @@
+node_modules/
+.homeybuild/
+env.json
+# Holds the Homey address and API key
+config.json

@@ -1,0 +1,41 @@
+{
+  "port": 8080,
+  "homey": {
+    "address": "http://192.168.1.50",
+    "token": "PLAK-HIER-JE-HOMEY-API-KEY"
+  },
+  "devices": {
+    "p1": "",
+    "solar": [],
+    "batteries": [],
+    "boiler": "",
+    "heating": [],
+    "thermostat": "",
+    "evChargers": [],
+    "water": ""
+  },
+  "boiler": {
+    "liters": 80,
+    "coldWaterTemp": 10,
+    "showerTemp": 40,
+    "showerFlow": 8,
+    "warmFrom": 50
+  },
+  "battery": {
+    "invertPower": false
+  },
+  "grid": {
+    "fuseAmps": 25
+  },
+  "prices": {
+    "source": "energyzero",
+    "surcharge": 0
+  },
+  "tariffs": {
+    "electricityImport": 0.25,
+    "electricityExport": 0.05,
+    "gas": 1.35,
+    "water": 1.1
+  },
+  "layout": null
+}

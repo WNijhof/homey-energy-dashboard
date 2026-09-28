@@ -1,0 +1,14 @@
+{
+  "name": "com.drpeppers.energydashboard",
+  "version": "1.0.0",
+  "description": "Energy dashboard widgets for Homey Pro",
+  "main": "app.js",
+  "private": true,
+  "license": "MIT",
+  "dependencies": {
+    "homey-api": "^3.20.0"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

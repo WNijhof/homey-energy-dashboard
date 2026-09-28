@@ -1,0 +1,56 @@
+{
+  "id": "com.drpeppers.energydashboard",
+  "version": "1.0.0",
+  "compatibility": ">=12.1.0",
+  "sdk": 3,
+  "runtime": "nodejs",
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "Energy Dashboard",
+    "nl": "Energie Dashboard"
+  },
+  "description": {
+    "en": "Energy dashboard on your own network, served by Homey: live energy flow, solar, grid, gas and your boiler's shower minutes",
+    "nl": "Energiedashboard in je eigen netwerk, direct vanaf Homey: live energiestroom, zon, net, gas en de doucheminuten van je boiler"
+  },
+  "category": [
+    "energy"
+  ],
+  "tags": {
+    "en": [
+      "energy",
+      "dashboard",
+      "solar",
+      "p1",
+      "boiler"
+    ],
+    "nl": [
+      "energie",
+      "dashboard",
+      "zonnepanelen",
+      "p1",
+      "boiler"
+    ]
+  },
+  "permissions": [
+    "homey:manager:api"
+  ],
+  "brandColor": "#20C07C",
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "author": {
+    "name": "DrPeppers",
+    "email": "drpeppers@duck.com"
+  },
+  "api": {
+    "getSettingsInfo": {
+      "method": "GET",
+      "path": "/settings-info"
+    }
+  }
+}
