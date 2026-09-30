@@ -394,7 +394,9 @@ h2 { font-size: 17px; font-weight: 600; }
 /* Sankey */
 
 #sankey { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.grid.rows #sankey { --min: 160px; overflow-y: auto; }
+/* The chart is fitted to the height of its block; a vertical scrollbar for a pixel too many would
+   narrow it, which brings a horizontal one, and the chart then flickers between the two sizes */
+.grid.rows #sankey { --min: 160px; overflow-y: hidden; }
 .sankey-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .segmented.small button { font-size: 12px; padding: 3px 10px; }
 #sankey svg { display: block; min-width: 100%; }

@@ -173,7 +173,22 @@
     }, 120);
   }
 
-  const sizeWatcher = typeof ResizeObserver === 'function' ? new ResizeObserver(redrawSoon) : null;
+  // Only a real change of size redraws: a chart that changes its own size by a pixel or two while
+  // it is drawn would otherwise keep redrawing itself
+  const lastSizes = new WeakMap();
+  const sizeWatcher = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
+    let changedSize = false;
+    for (const entry of entries) {
+      const { width, height } = entry.contentRect;
+      // Compared with the size it was last drawn at, so small steps still add up to a redraw
+      const last = lastSizes.get(entry.target);
+      if (!last || Math.abs(last.width - width) > 2 || Math.abs(last.height - height) > 2) {
+        changedSize = true;
+        lastSizes.set(entry.target, { width, height });
+      }
+    }
+    if (changedSize) redrawSoon();
+  }) : null;
   function watchSizes() {
     if (!sizeWatcher) return;
     sizeWatcher.disconnect();
