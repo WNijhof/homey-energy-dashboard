@@ -123,6 +123,20 @@ button.secondary {
   cursor: pointer;
 }
 
+/* The diagnosis report, shown before it is shared */
+.report {
+  width: 100%;
+  min-height: 180px;
+  margin-top: 10px;
+  box-sizing: border-box;
+  font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line, rgba(128, 128, 128, 0.3));
+  border-radius: 10px;
+  padding: 8px;
+}
+
 /* Roof planes of the solar forecast */
 .plane p { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 button.link {

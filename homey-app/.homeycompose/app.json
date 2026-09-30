@@ -58,6 +58,10 @@
     "getSettingsInfo": {
       "method": "GET",
       "path": "/settings-info"
+    },
+    "getDiagnosisReport": {
+      "method": "GET",
+      "path": "/diagnosis-report"
     }
   }
 }

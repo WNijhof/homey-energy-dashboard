@@ -41,6 +41,8 @@ function slimDevice(d) {
     name: d.name,
     class: d.class,
     virtualClass: d.virtualClass,
+    // The app and driver, e.g. homey:app:com.tweakers.zendure:zendure, for the diagnosis
+    driverId: d.driverId || d.driverUri || null,
     zone: d.zone,
     available: d.available,
     capabilities: d.capabilities || [],
@@ -428,13 +430,21 @@ class EnergyDashboardApp extends Homey.App {
   // ---------- Diagnosis ----------
 
   // What the app finds and reads, for when something does not show: /api/diagnose
-  async getDiagnosis() {
+  // `anonymous` is for the report a user shares from the settings: no device names, ids, rooms,
+  // location or warning texts, only which apps and capabilities the devices have and their values
+  async getDiagnosis({ anonymous = false } = {}) {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
     const logs = await this.getLogIds().catch(() => new Set());
-    const describe = d => (d ? {
-      name: d.name,
+    const counters = {};
+    const label = (d, role) => {
+      counters[role] = (counters[role] || 0) + 1;
+      return anonymous ? `${role} ${counters[role]}` : d.name;
+    };
+    const describeAs = role => d => (d ? {
+      name: label(d, role),
+      app: d.driverId,
       class: d.virtualClass || d.class,
       available: d.available !== false,
       capabilities: d.capabilities,
@@ -445,19 +455,28 @@ class EnergyDashboardApp extends Homey.App {
     } : null);
     const today = await this.getHistory('today').catch(err => ({ error: err.message }));
     const count = async (d, cap) => (d ? (await this.getEntries(d.id, cap, 'today').catch(() => [])).length : null);
+    // Devices that look like a battery (or an inverter with one) but were not taken as a battery,
+    // to learn how other apps report them
+    const taken = new Set(found.batteries.map(d => d.id));
+    const batteryLike = devices.filter(d => !taken.has(d.id)
+      && (d.capabilities || []).some(c => /batt|battery_charging_state|^measure_battery$|soc/i.test(c))
+      && (d.capabilities || []).some(c => /^(measure_power|meter_power)/.test(c)));
+    const estimated = await this.getEstimated(devices, found).catch(err => [{ error: err.message }]);
+    const alerts = await this.getAlerts(found, cfg, 'nl').catch(err => [{ error: err.message }]);
     return {
       version: this.homey.manifest.version,
       homey: { language: this.homey.i18n.getLanguage(), timezone: this.homey.clock.getTimezone() },
       layout: resolveLayout(cfg.layout, found, cfg).map(b => b.id),
       found: {
-        p1: describe(found.p1),
-        solar: found.solar.map(describe),
-        batteries: found.batteries.map(describe),
-        boiler: describe(found.boiler),
-        heating: found.heating.map(describe),
-        evChargers: found.evChargers.map(describe),
-        water: describe(found.water),
+        p1: describeAs('p1')(found.p1),
+        solar: found.solar.map(describeAs('solar')),
+        batteries: found.batteries.map(describeAs('battery')),
+        boiler: describeAs('boiler')(found.boiler),
+        heating: found.heating.map(describeAs('heating')),
+        evChargers: found.evChargers.map(describeAs('evcharger')),
+        water: describeAs('water')(found.water),
       },
+      batteryLike: batteryLike.slice(0, 10).map(describeAs('battery-like')),
       today: {
         error: today.error || null,
         p1PowerReadings: await count(found.p1, 'measure_power'),
@@ -467,9 +486,15 @@ class EnergyDashboardApp extends Homey.App {
       contract: contractFrom(cfg),
       prices: await this.getPriceInfo(),
       peak: this.getPeak(found, cfg),
-      estimated: (await this.getEstimated(devices, found).catch(err => [{ error: err.message }])).slice(0, 10),
-      alerts: await this.getAlerts(found, cfg, 'nl').catch(err => [{ error: err.message }]),
+      estimated: estimated.slice(0, 10).map(d => (anonymous ? { watts: d.watts, estimated: d.estimated, error: d.error } : d)),
+      // Warning texts hold device names; the anonymous report keeps only which warnings there are
+      alerts: anonymous ? alerts.map(a => ({ id: a.id?.replace(/-[\w-]{8,}$/, ''), level: a.level })) : alerts,
     };
+  }
+
+  // The report for "Share diagnosis" in the settings: anonymous, with the date it was made
+  async getDiagnosisReport() {
+    return { made: new Date().toISOString().slice(0, 10), ...(await this.getDiagnosis({ anonymous: true })) };
   }
 
   async getHistory(period = 'today', { light = false } = {}) {

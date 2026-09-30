@@ -156,6 +156,18 @@
     </div>
   </form>
 
+  <!-- Share an anonymous diagnosis on GitHub: shown first, then copied and an issue opened -->
+  <section class="card">
+    <h2 data-i18n="settings.shareTitle"></h2>
+    <p class="muted" data-i18n="settings.shareHelp"></p>
+    <button type="button" class="secondary" id="share-make" data-i18n="settings.shareMake"></button>
+    <textarea id="share-report" class="report" readonly hidden></textarea>
+    <div class="form-actions" id="share-actions" hidden>
+      <button type="button" id="share-send" data-i18n="settings.shareSend"></button>
+    </div>
+    <p class="muted" id="share-status"></p>
+  </section>
+
   <script src="settings.js"></script>
 </body>
 </html>

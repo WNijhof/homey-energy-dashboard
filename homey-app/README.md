@@ -177,6 +177,8 @@ Voor de prijzen gebruikt de app de prijzen die Homey zelf ophaalt, of haalt hij 
 
 Toont een blok geen gegevens, open dan `http://<ip-van-je-homey>:8080/api/diagnose`. Die pagina laat zien welke apparaten de app vond, welke metingen daarvan in Insights staan, hoeveel vermogensmetingen er vandaag zijn en welke meldingen er zijn. Plak die tekst bij een vraag op het forum (er staan geen wachtwoorden in).
 
+Wordt een apparaat niet (goed) herkend, zoals een batterij of hybride omvormer? Gebruik dan **Diagnose delen** onderaan de instellingen van de app. Dat maakt een anoniem rapport: welke apps en metingen je apparaten hebben en hun huidige waarden, zonder namen, ruimtes, locatie of adres. Je ziet het rapport eerst; daarna kopieert de app het en opent een GitHub-issue waar het in staat (of waarin je het plakt).
+
 Heeft je P1-meter geen vermogensmetingen (W) in Insights, dan rekent de app het vermogen voor "Vermogen vandaag" en het sluipverbruik uit met de kWh-tellers van de meter.
 
 ## Thuisbatterij

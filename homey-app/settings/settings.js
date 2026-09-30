@@ -398,6 +398,48 @@ function onHomeyReady(Homey) {
       + devices.map(d => `<option value="${d.id}" ${d.id === selected ? 'selected' : ''}>${escapeText(d.name)}</option>`).join('');
   }
 
+  // ---------- Share diagnosis ----------
+
+  // The report is shown first; sharing copies it and opens a GitHub issue with it filled in
+  // (when it fits in the address; otherwise the user pastes it)
+  const ISSUES = 'https://github.com/WNijhof/homey-energy-dashboard/issues/new';
+  const shareStatus = document.getElementById('share-status');
+  const reportBox = document.getElementById('share-report');
+  let report = null;
+
+  document.getElementById('share-make').onclick = async () => {
+    shareStatus.textContent = '…';
+    try {
+      report = await call('GET', '/diagnosis-report');
+      reportBox.value = JSON.stringify(report, null, 2);
+      reportBox.hidden = false;
+      document.getElementById('share-actions').hidden = false;
+      shareStatus.textContent = '';
+    } catch (err) {
+      shareStatus.textContent = __('shareFailed', { error: err.message || err });
+    }
+  };
+
+  document.getElementById('share-send').onclick = async () => {
+    const text = reportBox.value;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      reportBox.select();
+      try { document.execCommand('copy'); } catch { /* the user can still select it */ }
+    }
+    // The apps of the devices, e.g. com.tweakers.zendure, as the title of the issue
+    const apps = [...new Set([...(report.found?.batteries || []), ...(report.found?.solar || []), ...(report.batteryLike || []), report.found?.p1]
+      .map(d => /^homey:app:([^:]+)/.exec(d?.app || '')?.[1]).filter(Boolean))];
+    const title = __('shareIssueTitle', { apps: apps.join(', ') || report.version });
+    const full = `${__('shareIssueIntro')}\n\n\n\`\`\`json\n${text}\n\`\`\`\n`;
+    const body = encodeURIComponent(full).length < 7000 ? full : `${__('shareIssueIntro')}\n\n\n`;
+    const url = `${ISSUES}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+    shareStatus.textContent = __('shareCopied');
+    if (Homey.openURL) Homey.openURL(url);
+    else window.open(url, '_blank');
+  };
+
   function escapeText(text) {
     const span = document.createElement('span');
     span.textContent = text;
