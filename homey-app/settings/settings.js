@@ -400,9 +400,10 @@ function onHomeyReady(Homey) {
 
   // ---------- Share diagnosis ----------
 
-  // The report is shown first. Sharing copies it and opens an e-mail to the developer (the
-  // default, no account needed) or a GitHub issue, with the report filled in when it fits in the
-  // address; otherwise the user pastes it from the clipboard.
+  // Sharing makes the report, shows it below the buttons, copies it and opens an e-mail to the
+  // developer (the default, no account needed) or a GitHub issue, with the report filled in when
+  // it fits in the address; otherwise the user pastes it from the clipboard. Nothing is sent
+  // until the user sends the e-mail or submits the issue, where they see the report too.
   const ISSUES = 'https://github.com/WNijhof/homey-energy-dashboard/issues/new';
   // Mail programs cut off long mailto addresses, GitHub allows more
   const MAIL_LIMIT = 1800;
@@ -411,19 +412,20 @@ function onHomeyReady(Homey) {
   const reportBox = document.getElementById('share-report');
   let shared = null;
 
-  document.getElementById('share-make').onclick = async () => {
+  // A fresh report for each share; false when it could not be made
+  async function makeReport() {
     shareStatus.textContent = '…';
     try {
       shared = await call('GET', '/diagnosis-report');
       reportBox.value = JSON.stringify(shared.report, null, 2);
       reportBox.hidden = false;
-      document.getElementById('share-actions').hidden = false;
-      document.getElementById('share-mail').hidden = !shared.email;
       shareStatus.textContent = '';
+      return true;
     } catch (err) {
       shareStatus.textContent = __('shareFailed', { error: err.message || err });
+      return false;
     }
-  };
+  }
 
   async function copyReport() {
     try {
@@ -449,7 +451,13 @@ function onHomeyReady(Homey) {
   }
 
   document.getElementById('share-mail').onclick = async () => {
+    if (!await makeReport()) return;
     await copyReport();
+    // Without a contact address in the manifest, GitHub is the way
+    if (!shared.email) {
+      document.getElementById('share-github').onclick(false);
+      return;
+    }
     // Without spaces the report takes less room, so more often fits in the mail itself
     const compact = JSON.stringify(shared.report);
     const full = `${__('shareIssueIntro')}\n\n\n${compact}\n`;
@@ -457,7 +465,9 @@ function onHomeyReady(Homey) {
     open(`mailto:${shared.email}?subject=${encodeURIComponent(subject())}&body=${encodeURIComponent(body)}`);
   };
 
-  document.getElementById('share-github').onclick = async () => {
+  // A click makes a new report; from the e-mail button (fresh = false) it is already made
+  document.getElementById('share-github').onclick = async fresh => {
+    if (fresh !== false && !await makeReport()) return;
     await copyReport();
     const full = `${__('shareIssueIntro')}\n\n\n\`\`\`json\n${reportBox.value}\n\`\`\`\n`;
     const body = encodeURIComponent(full).length < GITHUB_LIMIT ? full : `${__('shareIssueIntro')}\n\n\n${__('sharePaste')}\n`;
