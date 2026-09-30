@@ -245,6 +245,10 @@ class EnergyDashboardApp extends Homey.App {
     const found = discover(devices, cfg.devices);
     const live = buildLive(devices, found, { ...cfg, layout: savedLayout(cfg, layoutName(name)) });
     live.version = this.homey.manifest.version;
+    // Roughly where the Homey is, for a screen that turns dark from sunset to sunrise
+    const lat = this.homey.geolocation.getLatitude();
+    const lon = this.homey.geolocation.getLongitude();
+    if (typeof lat === 'number' && typeof lon === 'number') live.place = { lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 };
     const shown = new Set(live.layout.map(b => b.id));
 
     // Today's totals for the live diagram. The history is cached; while it is being built

@@ -1,7 +1,8 @@
 'use strict';
 
 // Screen options for a tablet on the wall, per screen (kept in the browser): full screen,
-// keeping the screen on, and a night mode that dims the page or turns it black (a tap wakes it
+// keeping the screen on, light or dark (or dark from sunset to sunrise), the house mood color
+// behind the blocks, and a night mode that dims the page or turns it black (a tap wakes it
 // for a minute). While the page is black it does not ask Homey for data. Pages that stay on
 // for days move a pixel now and then, against burn-in.
 // Edit this file in /shared and run `npm run sync`.
@@ -10,7 +11,7 @@
 
   const KEY = 'energy-dashboard-screen';
   const WAKE_FOR = 60 * 1000;
-  const defaults = { night: 'off', from: '23:00', to: '07:00', keepOn: false, motion: 'auto' };
+  const defaults = { night: 'off', from: '23:00', to: '07:00', keepOn: false, motion: 'auto', theme: 'auto', mood: true };
   const systemReduced = matchMedia('(prefers-reduced-motion: reduce)');
 
   let settings = { ...defaults };
@@ -23,6 +24,7 @@
   let wokenUntil = 0;
   let wakeLock = null;
   let onWake = null;
+  let place = null;
 
   const minutes = text => {
     const [h, m] = String(text).split(':').map(Number);
@@ -50,6 +52,56 @@
     document.documentElement.classList.toggle('motion-on', settings.motion === 'on');
     document.documentElement.classList.toggle('motion-off', settings.motion === 'off');
     window.dispatchEvent(new Event('energy-motion'));
+  }
+
+  // Height of the sun in degrees (a common approximation, good to a fraction of a degree)
+  function sunHeight(lat, lon, date = new Date()) {
+    const rad = Math.PI / 180;
+    const d = (date.getTime() - 946728000000) / 86400000; // days since 1 January 2000, 12:00 UTC
+    const g = (357.529 + 0.98560028 * d) * rad;
+    const q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+    const e = (23.439 - 0.00000036 * d) * rad;
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
+    const dec = Math.asin(Math.sin(e) * Math.sin(L));
+    const hourAngle = (18.697374558 + 24.06570982441908 * d) * 15 * rad + lon * rad - ra;
+    return Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(hourAngle)) / rad;
+  }
+
+  // 'light', 'dark' or null to follow the system. "Follows the sun" is dark from sunset to
+  // sunrise; without a known location it follows the system.
+  function chosenTheme() {
+    if (settings.theme === 'light' || settings.theme === 'dark') return settings.theme;
+    if (settings.theme === 'sun' && place) return sunHeight(place.lat, place.lon) > -0.833 ? 'light' : 'dark';
+    return null;
+  }
+
+  const themeColors = { light: '#f2f2f7', dark: '#000000' };
+  function applyTheme() {
+    const root = document.documentElement;
+    const theme = chosenTheme();
+    if ((root.dataset.theme || null) === theme) return;
+    if (theme) root.dataset.theme = theme;
+    else delete root.dataset.theme;
+    // The browser bar on a phone takes the color of the page
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+      if (!meta.dataset.system) meta.dataset.system = meta.content;
+      meta.content = theme ? themeColors[theme] : meta.dataset.system;
+    }
+    window.dispatchEvent(new Event('energy-theme'));
+  }
+
+  function applyMood() {
+    document.documentElement.classList.toggle('no-mood', !settings.mood);
+  }
+
+  // Where the Homey is, for "follows the sun"; sent along with the live data
+  function setPlace(value) {
+    const ok = value && typeof value.lat === 'number' && typeof value.lon === 'number';
+    const next = ok ? { lat: value.lat, lon: value.lon } : null;
+    if (JSON.stringify(next) === JSON.stringify(place)) return;
+    place = next;
+    applyTheme();
   }
 
   function update() {
@@ -90,6 +142,7 @@
       ? `<label class="screen-row"><span>Scherm aan houden</span><input type="checkbox" data-action="keepOn" ${settings.keepOn ? 'checked' : ''}></label>`
       : '';
     const option = (value, label) => `<option value="${value}" ${settings.night === value ? 'selected' : ''}>${label}</option>`;
+    const themeOption = (value, label) => `<option value="${value}" ${settings.theme === value ? 'selected' : ''}>${label}</option>`;
     const exportLink = window.EnergyDashboard?.exportUrl
       ? `<a class="screen-row" href="${window.EnergyDashboard.exportUrl()}" download><span>Periode exporteren (CSV)</span><b>⤓</b></a>`
       : '';
@@ -97,6 +150,10 @@
       ${fullscreen}
       ${keepOn}
       ${exportLink}
+      <label class="screen-row"><span>Licht of donker</span>
+        <select data-action="theme">${themeOption('auto', 'Automatisch')}${themeOption('light', 'Licht')}${themeOption('dark', 'Donker')}${themeOption('sun', 'Volgt de zon')}</select>
+      </label>
+      <label class="screen-row"><span>Sfeerkleur achtergrond</span><input type="checkbox" data-action="mood" ${settings.mood ? 'checked' : ''}></label>
       <label class="screen-row"><span>Beweging</span>
         <select data-action="motion">
           <option value="auto" ${settings.motion === 'auto' ? 'selected' : ''}>Standaard</option>
@@ -145,6 +202,14 @@
       const action = event.target.dataset.action;
       if (action === 'keepOn') settings.keepOn = event.target.checked;
       if (action === 'night') settings.night = event.target.value;
+      if (action === 'theme' || action === 'mood') {
+        if (action === 'theme') settings.theme = event.target.value;
+        else settings.mood = event.target.checked;
+        save();
+        applyTheme();
+        applyMood();
+        return;
+      }
       if (action === 'motion') {
         settings.motion = event.target.value;
         save();
@@ -174,6 +239,8 @@
     });
     addButton();
     applyMotion();
+    applyTheme();
+    applyMood();
     systemReduced.addEventListener?.('change', applyMotion);
     update();
     applyKeepOn();
@@ -181,12 +248,13 @@
     setInterval(() => {
       const wasSleeping = overlay.classList.contains('black');
       update();
+      applyTheme();
       if (wasSleeping && !sleeping() && onWake) onWake();
     }, 30 * 1000);
     setInterval(shiftPixels, 5 * 60 * 1000);
     document.addEventListener('visibilitychange', applyKeepOn);
   }
 
-  window.EnergyScreen = { start, sleeping, reducedMotion, flowsStill };
+  window.EnergyScreen = { start, sleeping, reducedMotion, flowsStill, setPlace };
 
 })();

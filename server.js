@@ -111,6 +111,10 @@ async function getLive(name = '') {
     }
   }
   live.version = VERSION;
+  // Roughly where the house is, for a screen that turns dark from sunset to sunrise
+  const place = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null)
+    || (cfg.demo ? { lat: 52.1, lon: 5.1 } : null);
+  if (typeof place?.lat === 'number' && typeof place?.lon === 'number') live.place = { lat: Math.round(place.lat * 10) / 10, lon: Math.round(place.lon * 10) / 10 };
   // Today's totals for the live diagram; the history is cached, so this is cheap
   live.today = todayTotals((await getHistory('today').catch(() => null))?.totals);
   if (live.layout.some(b => b.id === 'prices')) {

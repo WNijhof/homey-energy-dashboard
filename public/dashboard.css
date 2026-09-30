@@ -25,11 +25,13 @@
 
   --track: color-mix(in srgb, var(--text) 9%, transparent);
   --radius: 22px;
+  --mood-strength: 16%;
   color-scheme: light;
 }
 
+/* Dark follows the system, unless the screen menu (screen.js) chooses light or dark for this screen */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #000000;
     --card: #1c1c1e;
     --card-2: #2c2c2e;
@@ -38,13 +40,50 @@
     --line: rgba(235, 235, 245, 0.12);
     --shadow: none;
     --grid: #4c9bff;
+    --mood-strength: 26%;
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --card: #1c1c1e;
+  --card-2: #2c2c2e;
+  --text: #f5f5f7;
+  --muted: #98989f;
+  --line: rgba(235, 235, 245, 0.12);
+  --shadow: none;
+  --grid: #4c9bff;
+  --mood-strength: 26%;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
+
+/* The house mood: a soft glow behind the blocks in the color of where the power comes from
+   right now (sun, grid or battery), set by dashboard.js. It fades slowly from one to the next. */
+@property --mood {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+html { --mood: transparent; transition: --mood 4s ease; }
+html[data-mood="solar"] { --mood: var(--solar); }
+html[data-mood="grid"] { --mood: var(--grid); }
+html[data-mood="battery"] { --mood: var(--battery); }
+html[data-mood="error"] { --mood: var(--hot); }
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(1000px 560px at 85% -12%, color-mix(in srgb, var(--mood) var(--mood-strength), transparent), transparent 70%),
+    radial-gradient(800px 520px at -10% 40%, color-mix(in srgb, var(--mood) calc(var(--mood-strength) / 2), transparent), transparent 70%);
+}
+html.no-mood body::before { display: none; }
 
 body {
   margin: 0;
@@ -103,6 +142,25 @@ h2 { font-size: 17px; font-weight: 600; }
 .status.error i { background: var(--hot); }
 .status.demo i { background: var(--warm); }
 
+/* Warnings in the header: only there while something needs attention, and gone once it is solved */
+.alert-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 10px 3px 8px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--warm);
+  background: color-mix(in srgb, var(--warm) 14%, transparent);
+  cursor: pointer;
+}
+.alert-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alert-pill i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
 @keyframes pulse {
   70% { box-shadow: 0 0 0 7px rgba(48, 209, 88, 0); }
   100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0); }
@@ -131,8 +189,9 @@ h2 { font-size: 17px; font-weight: 600; }
   font-weight: 600;
 }
 @media (prefers-color-scheme: dark) {
-  .segmented button.active { background: #636366; }
+  :root:not([data-theme="light"]) .segmented button.active { background: #636366; }
 }
+:root[data-theme="dark"] .segmented button.active { background: #636366; }
 
 .banner {
   background: var(--card);
@@ -244,6 +303,8 @@ h2 { font-size: 17px; font-weight: 600; }
 .boiler-facts { flex: 1; min-width: 0; }
 .big-fact { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; margin-bottom: 8px; }
 .big-number { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+/* Numbers that change while you look keep their width, so they do not jump with every update */
+:is(.big-number, .tile-value, .node-value, .node-sub, .node-total, .gauge .temp, .gauge-value, .facts strong, .costs td, .consumer-row strong, .tooltip, .sankey-value, .size-badge) { font-variant-numeric: tabular-nums; }
 .big-unit { color: var(--muted); font-weight: 500; }
 
 .facts { list-style: none; margin: 0; padding: 0; }
@@ -720,6 +781,20 @@ body.editing #blocks { padding-bottom: 160px; }
 .battery-charging { animation: battery-glow 2.4s ease-in-out infinite; }
 @keyframes battery-glow { 50% { opacity: 0.6; } }
 
+/* Touch screens get larger targets: at least 44 px for the buttons you tap most */
+@media (pointer: coarse) {
+  .icon-button { width: 44px; height: 44px; border-radius: 12px; }
+  .segmented button { min-height: 40px; padding-inline: 14px; }
+  .segmented.small button { min-height: 34px; }
+  .screen-panel { width: 290px; }
+  .screen-row { min-height: 44px; }
+  .screen-row select, .screen-row input[type="time"] { min-height: 34px; }
+  .block-tools .tool { width: 44px; height: 44px; }
+  .edit-actions button, #edit-pin, #edit-layout, #edit-layout-name { min-height: 44px; }
+  .chip-button { min-height: 36px; }
+  .alert-pill { min-height: 32px; }
+}
+
 /* Less motion: when the system asks for it (unless the screen menu says "always"), or when the menu says "off" */
 @media (prefers-reduced-motion: reduce) {
   html:not(.motion-on) :is(.node-pulse, .node-spin, .sankey-link.grow, .power-reveal, .power-now, .battery-charging) { animation: none; stroke-dashoffset: 0; }
@@ -727,3 +802,4 @@ body.editing #blocks { padding-bottom: 160px; }
 }
 html.motion-off :is(.node-pulse, .node-spin, .sankey-link.grow, .power-reveal, .power-now, .battery-charging) { animation: none; stroke-dashoffset: 0; }
 html.motion-off .node-pulse { display: none; }
+html.motion-off { transition: none; }

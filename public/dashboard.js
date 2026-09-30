@@ -760,6 +760,57 @@
       : '<li class="alert ok"><i></i><span>Geen meldingen</span></li>';
   }
 
+  // In the header while there are warnings, so they are seen without scrolling; a tap goes to the block
+  function renderAlertPill(alerts) {
+    const status = $('status');
+    if (!status) return;
+    let pill = $('alert-pill');
+    const warnings = (alerts || []).filter(a => a.level === 'warning' && a.text);
+    if (!warnings.length) {
+      if (pill) pill.remove();
+      return;
+    }
+    if (!pill) {
+      pill = document.createElement('button');
+      pill.type = 'button';
+      pill.id = 'alert-pill';
+      pill.className = 'alert-pill';
+      pill.addEventListener('click', () => $('alerts')?.closest('.block, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+      status.after(pill);
+    }
+    const text = warnings.length === 1 ? warnings[0].text : `${warnings.length} meldingen`;
+    if (pill.dataset.text !== text) {
+      pill.dataset.text = text;
+      pill.innerHTML = `<i></i><span>${escapeHtml(text)}</span>`;
+    }
+  }
+
+  // ---------- House mood ----------
+
+  // The color behind the blocks: the sun while it covers the home or sends power back, the
+  // battery while it charges or supplies the home, the grid while the home runs on the grid,
+  // red without a connection, and nothing while little is going on
+  function setMood(live) {
+    let mood = '';
+    if (!live) mood = 'error';
+    else {
+      const f = live.flows || {};
+      const solarHome = f.solarToHome || 0;
+      const gridHome = f.gridToHome || 0;
+      const batteryHome = f.batteryToHome || 0;
+      const charging = (f.solarToBattery || 0) + (f.gridToBattery || 0);
+      if ((f.solarToGrid || 0) > 100) mood = 'solar';
+      else if (charging > 100) mood = 'battery';
+      else if (solarHome > 100 && solarHome >= gridHome + batteryHome) mood = 'solar';
+      else if (batteryHome > 100 && batteryHome >= gridHome) mood = 'battery';
+      else if (gridHome > 100) mood = 'grid';
+    }
+    const root = document.documentElement;
+    if ((root.dataset.mood || '') === mood) return;
+    if (mood) root.dataset.mood = mood;
+    else delete root.dataset.mood;
+  }
+
   // ---------- End of net metering ----------
 
   function renderNetting(netting) {
@@ -2212,11 +2263,16 @@
     state.liveBusy = true;
     try {
       const live = await state.options.get(`/live${layoutQuery()}`);
+      // A new version of the app loads the new page, but not while the layout is being edited:
+      // that would throw the changes away. It follows once editing stops.
       if (live.version && state.version && live.version !== state.version) {
-        location.reload();
-        return;
+        if (!state.editing) {
+          location.reload();
+          return;
+        }
+      } else {
+        state.version = live.version || state.version;
       }
-      state.version = live.version || state.version;
       state.live = live;
       // A screen that stays on past midnight shows the new day
       setText('today-label', new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' }));
@@ -2228,6 +2284,9 @@
       renderBattery(live.battery, state.history);
       renderNetting(live.netting);
       renderAlerts(live.alerts);
+      renderAlertPill(live.alerts);
+      setMood(live);
+      window.EnergyScreen?.setPlace?.(live.place);
       renderConsumers(live);
       renderPrices(live.prices);
       renderBaseload(live.baseload);
@@ -2251,6 +2310,7 @@
       }
     } catch (err) {
       setStatus('error', 'Geen verbinding');
+      setMood(null);
       setBanner('error', `<strong>Kan geen gegevens ophalen.</strong> ${escapeHtml(err.message || err)}`);
     } finally {
       state.liveBusy = false;
@@ -2351,8 +2411,10 @@
 
     window.addEventListener('resize', redrawSoon);
 
-    // Colors come from CSS, so redraw when the theme switches between light and dark
+    // Colors come from CSS, so redraw when the theme switches between light and dark, by the
+    // system or by the screen menu
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+    window.addEventListener('energy-theme', redraw);
 
     initEditMode();
     // While the night screen is black the page rests; it catches up when woken

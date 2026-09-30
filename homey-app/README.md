@@ -136,9 +136,13 @@ Met het **schermicoon** rechtsboven stel je per scherm in:
 
 - **Volledig scherm**.
 - **Scherm aan houden**, zodat de tablet niet op slot gaat (als de browser dat ondersteunt).
+- **Licht of donker**: **Automatisch** volgt het apparaat, **Licht** en **Donker** staan vast, en **Volgt de zon** is donker van zonsondergang tot zonsopkomst op de plek van je Homey.
+- **Sfeerkleur achtergrond**: een zachte gloed achter de blokken in de kleur van waar de stroom nu vandaan komt: geel voor de zon, blauw voor het net, groen-blauw voor de batterij, en rood zonder verbinding. Gebeurt er weinig, dan is er geen gloed.
 - **Nachtstand**: van een tijd tot een tijd het scherm **dimmen** of **zwart** maken. Tik op het zwarte scherm om het een minuut te wekken. Zolang het zwart is, vraagt het dashboard niets op bij Homey.
 
-Een dashboard dat dagen aan staat, schuift af en toe een paar pixels op tegen inbranden. Na een update van de app laadt het dashboard zichzelf opnieuw.
+Een dashboard dat dagen aan staat, schuift af en toe een paar pixels op tegen inbranden. Na een update van de app laadt het dashboard zichzelf opnieuw, maar niet terwijl je de indeling bewerkt; dat gebeurt dan na Opslaan of Annuleren.
+
+Staat het blok Meldingen in je indeling, dan verschijnt een waarschuwing ook bovenin naast "Live". Tik erop om naar het blok te gaan. Is het opgelost, dan verdwijnt hij vanzelf. Op een touchscreen zijn de knoppen groter.
 
 Onder **Beweging** kies je of de stromen bewegen: **Standaard** laat ze altijd bewegen (sierlijke effecten volgen de instelling "minder beweging" van je systeem), **Alle effecten** zet ook die aan, **Uit** zet alles stil. Via **Periode exporteren (CSV)** download je de gekozen periode als spreadsheet.
 
