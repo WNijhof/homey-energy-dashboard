@@ -2448,6 +2448,112 @@
     });
   }
 
+  // ---------- Help and diagnosis ----------
+
+  // A help button next to the pencil: the manual, and "Share diagnosis" like in the app settings.
+  // Sharing makes the report, copies it, and opens an e-mail to the maker or a GitHub issue with
+  // the report in it when it fits; nothing is sent until the user sends it there.
+  const MANUAL = 'https://github.com/WNijhof/homey-energy-dashboard/blob/main/homey-app/README.md';
+  const ISSUES = 'https://github.com/WNijhof/homey-energy-dashboard/issues/new';
+  const MAIL_LIMIT = 1800;
+  const GITHUB_LIMIT = 7000;
+
+  function copyText(text) {
+    // The dashboard runs on http in the home network, where navigator.clipboard is often missing
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).catch(() => copyFallback(text));
+    copyFallback(text);
+    return Promise.resolve();
+  }
+
+  function copyFallback(text) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.cssText = 'position:fixed;opacity:0;left:0;top:0';
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); } catch { /* the report is shown, it can be selected */ }
+    area.remove();
+  }
+
+  function subjectOf(report) {
+    const apps = [...new Set([...(report.found?.batteries || []), ...(report.found?.solar || []), ...(report.batteryLike || []), report.found?.p1]
+      .map(d => /^homey:app:([^:]+)/.exec(d?.app || '')?.[1]).filter(Boolean))];
+    return `Diagnose: ${apps.join(', ') || report.version || ''}`;
+  }
+
+  function initHelpMenu() {
+    const actions = document.querySelector('.header-actions');
+    if (!actions || !state.options.get) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'screen-menu help-menu';
+    wrap.innerHTML = `
+      <button class="icon-button" type="button" title="Hulp" aria-label="Hulp" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.1-2.4 3.8"/><path d="M12 17h.01"/></svg>
+      </button>
+      <div class="screen-panel" hidden>
+        <a class="screen-row" href="${MANUAL}" target="_blank" rel="noopener"><span>Handleiding</span><b>↗</b></a>
+        <p class="screen-note">Wordt een apparaat niet gevonden of klopt er iets niet? Stuur de maker een rapport: welke apps en metingen je apparaten hebben, zonder namen, ruimtes of locatie.</p>
+        <label class="screen-row"><span>Mijn dashboard meesturen</span><input type="checkbox" data-help="snapshot"></label>
+        <button type="button" class="screen-row" data-help="mail"><span>Diagnose mailen</span><b>✉</b></button>
+        <button type="button" class="screen-row" data-help="github"><span>Delen op GitHub</span><b>↗</b></button>
+        <p class="screen-note" data-help="status"></p>
+        <textarea class="help-report" readonly hidden></textarea>
+      </div>`;
+    const button = wrap.querySelector('button');
+    const panel = wrap.querySelector('.screen-panel');
+    const status = panel.querySelector('[data-help="status"]');
+    const box = panel.querySelector('.help-report');
+    const close = () => { panel.hidden = true; button.setAttribute('aria-expanded', 'false'); };
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      if (!panel.hidden) return close();
+      panel.hidden = false;
+      button.setAttribute('aria-expanded', 'true');
+    });
+    document.addEventListener('click', event => { if (!wrap.contains(event.target)) close(); });
+
+    panel.addEventListener('click', async event => {
+      const kind = event.target.closest('[data-help="mail"], [data-help="github"]')?.dataset.help;
+      if (!kind) return;
+      // A window opened right away is not blocked; it gets its address once the report is made
+      const tab = kind === 'github' ? window.open('about:blank', '_blank') : null;
+      status.textContent = 'Rapport maken…';
+      let shared;
+      try {
+        const snapshot = panel.querySelector('[data-help="snapshot"]').checked;
+        shared = await state.options.get(`/diagnosis-report${snapshot ? '?snapshot=1' : ''}`);
+      } catch (err) {
+        if (tab) tab.close();
+        status.textContent = `Rapport maken mislukt: ${err.message || err}`;
+        return;
+      }
+      const pretty = JSON.stringify(shared.report, null, 2);
+      box.value = pretty;
+      box.hidden = false;
+      await copyText(pretty);
+      // The e-mail and issue in the language of the page
+      const tr = text => window.EnergyI18n?.translate(text) ?? text;
+      const intro = tr('Wat werkt er niet goed? (bijvoorbeeld: mijn batterij wordt niet gevonden)');
+      const paste = tr('(Plak hier het rapport; het staat op je klembord.)');
+      const subject = subjectOf(shared.report);
+      if (kind === 'mail' && shared.email) {
+        const compact = JSON.stringify(shared.report);
+        const full = `${intro}\n\n\n${compact}\n`;
+        const body = encodeURIComponent(full).length < MAIL_LIMIT ? full : `${intro}\n\n\n${paste}\n`;
+        location.href = `mailto:${shared.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      } else {
+        const full = `${intro}\n\n\n\`\`\`json\n${pretty}\n\`\`\`\n`;
+        const body = encodeURIComponent(full).length < GITHUB_LIMIT ? full : `${intro}\n\n\n${paste}\n`;
+        const url = `${ISSUES}?title=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+      }
+      status.textContent = 'Het rapport staat op je klembord. Staat het nog niet in de mail of het issue, plak het er dan in.';
+    });
+    actions.insertBefore(wrap, actions.querySelector('#edit-toggle'));
+  }
+
   // ---------- Consumers ----------
 
   function renderConsumers(live) {
@@ -2641,6 +2747,8 @@
         if (needsHistory()) loadHistory();
       },
     });
+    // After the screen menu, so the help button sits right next to the pencil
+    initHelpMenu();
     loadLive();
     setInterval(() => { if (!resting()) loadLive(); }, LIVE_INTERVAL);
     if (needsHistory()) {

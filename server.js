@@ -352,6 +352,23 @@ async function getDeviceList() {
   };
 }
 
+// "Share diagnosis" from the help menu: the pc version has no anonymous device report of its own
+// (see /api/devices), but can include the dashboard, like the Homey app. The address is the
+// contact address of the Homey app.
+async function getDiagnosisReport(withSnapshot) {
+  let email = null;
+  try {
+    email = JSON.parse(fs.readFileSync(path.join(HOMEY_APP_DIR, '.homeycompose', 'app.json'), 'utf8')).author?.email || null;
+  } catch { /* no Homey app next to this server */ }
+  const report = { made: new Date().toISOString().slice(0, 10), version: VERSION, source: 'pc', demo: cfg.demo };
+  if (withSnapshot) {
+    const [live, today] = await Promise.all([getLive(''), getHistory('today').catch(err => ({ error: err.message }))]);
+    delete live.place;
+    report.snapshot = { made: new Date().toISOString(), live, history: { today } };
+  }
+  return { email, report };
+}
+
 // Development preview of the Homey app settings page, with a stand-in for the Homey object
 const HOMEY_APP_DIR = path.join(__dirname, 'homey-app');
 
@@ -445,6 +462,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, await getHistory(period));
     }
     if (url.pathname === '/api/devices') return sendJson(res, 200, await getDeviceList());
+    if (url.pathname === '/api/diagnosis-report') return sendJson(res, 200, await getDiagnosisReport(url.searchParams.get('snapshot') === '1'));
     if (servePreview(res, url.pathname)) return;
     return serveStatic(res, decodeURIComponent(url.pathname));
   } catch (err) {

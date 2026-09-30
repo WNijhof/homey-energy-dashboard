@@ -209,6 +209,10 @@ class WebServer {
       }
       if (url.pathname === '/api/live') return sendJson(res, 200, await this.app.getLive(url.searchParams.get('layout') || ''));
       if (url.pathname === '/api/diagnose') return sendJson(res, 200, await this.app.getDiagnosis());
+      // The report of "Share diagnosis", from the help menu of the dashboard
+      if (url.pathname === '/api/diagnosis-report') {
+        return sendJson(res, 200, await this.app.getDiagnosisReport({ snapshot: url.searchParams.get('snapshot') === '1' }));
+      }
       if (url.pathname === '/api/export') {
         const period = url.searchParams.get('period') || 'today';
         const csv = await this.app.getExport(period, url.searchParams.get('lang') || 'nl');

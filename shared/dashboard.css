@@ -542,6 +542,20 @@ h2 { font-size: 17px; font-weight: 600; }
 .sessions[hidden], .sessions:empty { display: none; }
 .estimate { font-size: 11px; margin-left: 4px; }
 
+/* Help menu: the report that is shared, shown before it is sent */
+.help-report {
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  color: var(--text);
+  background: var(--track);
+  border: 0;
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 6px;
+}
+
 /* Header buttons */
 .header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 /* Language choice (i18n.js): a pill like the period buttons, with a small arrow */

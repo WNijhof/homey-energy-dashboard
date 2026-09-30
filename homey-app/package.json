@@ -1,6 +1,6 @@
 {
   "name": "com.drpeppers.energydashboard",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Energy dashboard web page served by Homey Pro",
   "main": "app.js",
   "private": true,
