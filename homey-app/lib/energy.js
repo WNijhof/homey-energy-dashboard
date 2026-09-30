@@ -53,7 +53,16 @@ const SANKEY_MIN_SHARE = 0.015;
 const SANKEY_MAX_DEVICES = 15;
 
 const has = (device, capability) => (device.capabilities || []).includes(capability);
-const value = (device, capability) => device?.capabilitiesObj?.[capability]?.value ?? null;
+// The value of a capability; a number that is not a real number (NaN, Infinity) counts as unknown
+const value = (device, capability) => {
+  const v = device?.capabilitiesObj?.[capability]?.value ?? null;
+  return typeof v === 'number' && !Number.isFinite(v) ? null : v;
+};
+// A measured amount, or null when the app sends something that is not a number
+const amount = (device, capability) => {
+  const v = value(device, capability);
+  return typeof v === 'number' ? v : null;
+};
 const isClass = (d, cls) => d.class === cls || d.virtualClass === cls;
 
 // Finds the P1 meter, solar panels, home batteries and boiler, unless they are pinned in the config
@@ -193,18 +202,21 @@ function shownBlocks(cfg, found) {
   return ids;
 }
 
-// Checks a layout sent by the dashboard's edit mode; null means "back to the automatic layout"
+// Checks a layout sent by the dashboard's edit mode; null means "back to the automatic layout".
+// Its errors are the sender's fault (400), not the server's.
+const layoutError = message => Object.assign(new Error(message), { status: 400 });
+
 function validateLayout(input) {
   if (input === null) return null;
-  if (!Array.isArray(input) || !input.length) throw new Error('Kies minstens één blok');
+  if (!Array.isArray(input) || !input.length) throw layoutError('Kies minstens één blok');
   input = current(input).filter((b, i, all) => all.findIndex(x => x?.id === b?.id) === i);
   const known = new Set(BLOCKS.map(b => b.id));
   const seen = new Set();
   const layout = [];
   for (const item of input) {
-    if (!item || !known.has(item.id) || seen.has(item.id)) throw new Error(`Onbekend blok: ${item?.id}`);
-    if (!SIZES.includes(item.size)) throw new Error(`Onbekende breedte: ${item.size}`);
-    if (item.rows !== undefined && item.rows !== null && !validRows(item.rows)) throw new Error(`Onbekende hoogte: ${item.rows}`);
+    if (!item || !known.has(item.id) || seen.has(item.id)) throw layoutError(`Onbekend blok: ${item?.id}`);
+    if (!SIZES.includes(item.size)) throw layoutError(`Onbekende breedte: ${item.size}`);
+    if (item.rows !== undefined && item.rows !== null && !validRows(item.rows)) throw layoutError(`Onbekende hoogte: ${item.rows}`);
     seen.add(item.id);
     layout.push(layoutItem(item.id, item.size, item.rows));
   }
@@ -256,7 +268,7 @@ function meterCapabilities(device, direction) {
   const pattern = direction === 'import'
     ? /^meter_power\.(imported|consumed|delivered|import)/
     : /^meter_power\.(exported|produced|returned|export)/;
-  const matches = device.capabilities.filter(c => pattern.test(c));
+  const matches = (device.capabilities || []).filter(c => pattern.test(c));
   const totals = matches.filter(c => !/\.t\d$/.test(c));
   if (totals.length) return totals.slice(0, 1);
   if (matches.length) return matches;
@@ -275,7 +287,7 @@ function batteryMeterCapability(device, direction) {
   const pattern = direction === 'charge'
     ? /^(meter_power\.(charged|charge|imported|import|in)|iqbattery_charge)$/
     : /^(meter_power\.(discharged|discharge|exported|export|out)|iqbattery_discharge)$/;
-  return device.capabilities.find(c => pattern.test(c)) || null;
+  return (device.capabilities || []).find(c => pattern.test(c)) || null;
 }
 
 // For a battery that only has kWh counters (Enphase IQ Battery), the power follows from how
@@ -286,8 +298,8 @@ const COUNTER_FRESH = 30 * 60 * 1000;
 function counterPower(device, now = Date.now()) {
   const read = direction => {
     const cap = batteryMeterCapability(device, direction);
-    const kWh = cap ? value(device, cap) : null;
-    if (typeof kWh !== 'number') return 0;
+    const kWh = cap ? amount(device, cap) : null;
+    if (kWh === null) return 0;
     const key = `${device.id}:${cap}`;
     const seen = counterReadings.get(key) || { last: null, before: null };
     if (!seen.last || seen.last.kWh !== kWh) {
@@ -351,10 +363,10 @@ function batteryPower(device, cfg) {
     return batteryMeterCapability(device, 'charge') ? counterPower(device) : 0;
   }
   if (caps.net) {
-    watts = value(device, caps.net);
-    if (typeof watts !== 'number') return 0;
+    watts = amount(device, caps.net);
+    if (watts === null) return 0;
   } else {
-    const read = cap => (cap ? Math.abs(value(device, cap) || 0) : 0);
+    const read = cap => (cap ? Math.abs(amount(device, cap) || 0) : 0);
     watts = read(caps.charge) - read(caps.discharge);
   }
   learnDirection(device, watts);
@@ -453,7 +465,7 @@ function buildBoiler(device, cfg) {
 
 function buildBattery(devices, cfg) {
   if (!devices.length) return null;
-  const socs = devices.map(d => value(d, 'measure_battery')).filter(v => typeof v === 'number');
+  const socs = devices.map(d => amount(d, 'measure_battery')).filter(v => v !== null);
   return {
     names: devices.map(d => d.name),
     watts: devices.reduce((sum, d) => sum + batteryPower(d, cfg), 0),
@@ -559,8 +571,8 @@ function estimatedDevices(report, devices, found) {
 }
 
 function buildLive(devices, found, cfg, { estimated = [] } = {}) {
-  const gridW = found.p1 ? value(found.p1, 'measure_power') : null;
-  const solarW = found.solar.reduce((sum, d) => sum + Math.abs(value(d, 'measure_power') || 0), 0);
+  const gridW = found.p1 ? amount(found.p1, 'measure_power') : null;
+  const solarW = found.solar.reduce((sum, d) => sum + Math.abs(amount(d, 'measure_power') || 0), 0);
   const battery = buildBattery(found.batteries, cfg.battery);
   const batteryW = battery ? battery.watts : 0;
   const homeW = gridW === null ? null : Math.max(0, gridW + solarW - batteryW);
@@ -1062,9 +1074,26 @@ function consumptionDevices(devices, found, capability = 'meter_power') {
     && !isClass(d, 'battery'));
 }
 
+// Runs `fn` over the items with at most `limit` running at a time: a house with hundreds of
+// metered devices would otherwise send hundreds of Insights requests to Homey at once
+async function mapLimited(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+const INSIGHTS_PARALLEL = 8;
+
 async function buildDeviceEnergy(client, devices, found, resolution) {
   const candidates = consumptionDevices(devices, found);
-  return Promise.all(candidates.map(async d => {
+  return mapLimited(candidates, INSIGHTS_PARALLEL, async d => {
     const entries = await client.getEntries(d.id, 'meter_power', resolution).catch(() => []);
     let kWh = 0;
     for (let i = 1; i < entries.length; i++) {
@@ -1072,7 +1101,7 @@ async function buildDeviceEnergy(client, devices, found, resolution) {
       if (delta > 0) kWh += delta;
     }
     return { id: d.id, name: d.name, kWh };
-  }));
+  });
 }
 
 // Devices from a Homey Energy report that the kWh meters above do not cover: devices that only

@@ -294,7 +294,12 @@ function readJson(req) {
     let body = '';
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > 16 * 1024) req.destroy();
+      if (body.length > 16 * 1024) {
+        // Too much: answer 413, and let the rest arrive without keeping it
+        reject(Object.assign(new Error('Te veel gegevens'), { status: 413 }));
+        req.removeAllListeners('data');
+        req.resume();
+      }
     });
     req.on('end', () => {
       try {
@@ -474,7 +479,7 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(res, decodeURIComponent(url.pathname));
   } catch (err) {
     console.error(`[${new Date().toLocaleTimeString('nl-NL')}] ${url.pathname}: ${err.message}`);
-    if (url.pathname === '/api/layout' && err.status) return sendJson(res, err.status, { error: err.message });
+    if ((url.pathname === '/api/layout' || err.status === 413) && err.status) return sendJson(res, err.status, { error: err.message });
     const hint = err.status === 401 || err.status === 403
       ? 'Homey weigert de API-key. Controleer de key en of die "Apparaten bekijken" en "Insights bekijken" mag.'
       : err.name === 'TimeoutError' || err.cause

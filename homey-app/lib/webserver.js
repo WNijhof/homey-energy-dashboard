@@ -20,7 +20,9 @@ function readBody(req) {
       body += chunk;
       if (body.length > MAX_BODY) {
         reject(Object.assign(new Error('Te veel gegevens'), { status: 413 }));
-        req.destroy();
+        // Stop keeping the rest, but let it arrive, so the answer (413) still reaches the sender
+        req.removeAllListeners('data');
+        req.resume();
       }
     });
     req.on('end', () => resolve(body));
