@@ -132,8 +132,9 @@ const BLOCKS = [
   { id: 'baseload', title: 'Sluipverbruik', size: 'small', available: f => Boolean(f.p1) },
   { id: 'alerts', title: 'Meldingen', size: 'small', available: () => true },
   { id: 'phases', title: 'Fasebelasting', size: 'small', available: f => phaseCapabilities(f.p1).length > 0 },
-  // The Belgian capacity tariff: shown when the meter reports its monthly peak or a tariff is set
-  { id: 'peak', title: 'Maandpiek', size: 'small', available: (f, cfg) => Boolean(peakCapabilities(f.p1).peak) || Number(cfg.grid?.capacityTariff) > 0 },
+  // The Belgian capacity tariff: shown when the meter reports its monthly peak or a tariff is set.
+  // HomeWizard gives every P1 meter the capability, but a Dutch meter leaves it empty.
+  { id: 'peak', title: 'Maandpiek', size: 'small', available: (f, cfg) => typeof value(f.p1, peakCapabilities(f.p1).peak) === 'number' || Number(cfg.grid?.capacityTariff) > 0 },
 ];
 
 const SIZES = ['small', 'half', 'large', 'full'];
