@@ -43,19 +43,21 @@ Wat er gebeurt als je een blok hoger maakt:
 | **Verwarming** | Kamertemperatuur van de thermostaat, vermogen van warmtepomp of cv-ketel, stroom- en gasverbruik, grafiek |
 | **Laadpaal** | Laadvermogen, status, geladen kWh, accu van de auto, grafiek |
 | **Totalen** | Verbruik, net, zon, teruglevering, gas, water, batterij, zelfvoorzienend en kosten, met ▲/▼ ten opzichte van de vorige periode |
-| **Stroomprijs** | Dynamische uurprijzen van vandaag en morgen (EnergyZero), met het goedkoopste blok van 3 uur |
+| **Stroomprijs** | Dynamische prijzen van vandaag en morgen (van Homey Energie of EnergyZero), met het goedkoopste blok van 3 uur |
 | **Kengetallen** | Meters voor zelfvoorzienend, eigen zon gebruikt en netto afgenomen of geleverd |
 | **Elektriciteit** | Waar je stroom vandaan kwam (net, zon, batterij) en waar overschot heen ging, per uur of dag |
 | **Vermogen vandaag** | Het vermogen door de dag heen, zoals in de HomeWizard-app: zelfverbruik van de zon onderaan, daarboven afname van het net en teruglevering, met de dagtotalen erboven. Het laatste stuk loopt live mee. Bij Week of Maand toont het blok vandaag |
-| **Apparaten nu** | Wat er op dit moment het meeste stroom gebruikt |
+| **Apparaten nu** | Wat er op dit moment het meeste stroom gebruikt, ook apparaten waarvan Homey het verbruik schat ("geschat") |
 | **Energiestromen** | Sankey-grafiek zoals in Home Assistant: bronnen → huis → individuele verbruikers, live of voor de gekozen periode |
-| **Verbruik per apparaat** | Ranglijst van kWh per apparaat in de gekozen periode |
+| **Verbruik per apparaat** | Ranglijst van kWh per apparaat in de gekozen periode, ook apparaten die alleen vermogen meten of een schatting in Homey hebben |
 | **Kosten** | Kosten per bron: stroom, teruglevering, gas en water |
 | **Zonne-energie** | Opwek per uur of dag |
 | **Gas** | Gasverbruik per uur of dag |
 | **Water** | Waterverbruik per uur of dag in liters, en het huidige verbruik |
 | **Sluipverbruik** | Wat er 's nachts altijd aan staat, en wat dat per jaar kost |
-| **Fasebelasting** | Stroom per fase ten opzichte van je hoofdzekering |
+| **Fasebelasting** | Stroom per fase ten opzichte van je hoofdzekering, en L1, L2 en L3 door de dag heen in één grafiek |
+| **Batterijgebruik** | Wat de thuisbatterij per uur, dag of maand laadde (van de zon of het net) en leverde (aan huis of net), wat laden gemiddeld kostte en ontladen bespaarde, en per dag wanneer hij laadde of leverde en tegen welke prijs |
+| **Maandpiek** | Voor het Belgische capaciteitstarief: je hoogste kwartiervermogen van deze maand, het lopende kwartier, de afgelopen 12 maanden en wat het kost |
 
 Blokken zonder passend apparaat laat de standaardindeling weg. Het dashboard werkt dus ook voor een huis zonder zonnepanelen, met een hybride of all-electric warmtepomp, of met een laadpaal.
 
@@ -85,12 +87,14 @@ Op dezelfde instellingenpagina:
 - **Indeling**: zet blokken aan of uit, verplaats ze met ↑ en ↓, en kies de breedte: smal (1/3), half, breed (2/3) of volledig. De hoogte stel je in op het dashboard zelf. Hier kun je die met **Eigen hoogte ✕** weer op automatisch zetten. Op een telefoon staan alle blokken onder elkaar. Zolang je geen eigen indeling kiest, verschijnen nieuwe blokken vanzelf zodra er een passend apparaat bijkomt, bijvoorbeeld een thuisbatterij of laadpaal. Met **Standaardindeling gebruiken** ga je daar weer naar terug.
 - **Apparaten**: laat op "Automatisch" staan. De app zoekt zelf naar een P1-meter, zonnepanelen, thuisbatterij, boiler, warmtepomp of cv-ketel, thermostaat, laadpaal en watermeter.
 - **Boiler**: inhoud (Lydos Hybrid: 80 of 110 liter), koud water, douchetemperatuur, liters per minuut van je douchekop, en vanaf welke temperatuur de boiler als "Warm" telt.
-- **Aansluiting**: je hoofdzekering per fase, meestal 25 A, voor het blok Fasebelasting.
-- **Zonneverwachting**: zet aan en vul per dakvlak het vermogen (kWp), de hellingshoek en de richting in. Twee dakvlakken kan ook, bijvoorbeeld oost en west. Zie hieronder.
+- **Aansluiting**: je hoofdzekering per fase, meestal 25 A, voor het blok Fasebelasting. In België ook je **capaciteitstarief** (€/kW per jaar) en het minimum per maand (2,5 kW), voor het blok Maandpiek.
+- **Zonneverwachting**: zet aan en vul per dakvlak het vermogen (kWp), de hellingshoek en de richting in. Er staan er twee klaar (bijvoorbeeld oost en west); met **+ Dakvlak toevoegen** kunnen het er tot 10 worden. Zie hieronder.
+- **Stroomprijzen**: waar de marktprijzen vandaan komen. Zie *Prijzen en kosten* hieronder.
 - **Stroomcontract**, **gascontract**, **vaste kosten en water**: zie *Prijzen en kosten* hieronder.
-- **Blok stroomprijs**: de uurprijzen van vandaag en morgen aan of uit.
 
 ## Prijzen en kosten
+
+**Waar de prijzen vandaan komen.** Staan er in Homey Energie dynamische prijzen (in de Homey-app bij Energie → Instellingen), dan gebruikt de app die: voor elk land dat Homey kent, per kwartier of uur. Heb je in Homey ook je kosten ingevuld (een formule zoals `([[price]] * 1,21) + 0,13`), dan rekent het dashboard daarmee de all-in prijs uit, en tellen de opslag en energiebelasting van het contract in de app niet mee. Zonder prijzen in Homey komen ze van EnergyZero, de Nederlandse marktprijs inclusief btw. Bij **Stroomprijzen** kun je ook zelf kiezen (Homey, EnergyZero of geen prijzen); daaronder staat wat nu in gebruik is. Laat je het stroomcontract in de app leeg, dan rekenen de kosten met de prijzen en kosten uit Homey, of met de vaste prijs die in Homey staat. Gas komt altijd van EnergyZero: Homey heeft geen dynamische gasprijzen. Bedragen staan in de valuta van Homey Energie.
 
 Alle bedragen zijn inclusief btw. Laat een veld leeg om die kosten weg te laten.
 
@@ -100,6 +104,7 @@ Alle bedragen zijn inclusief btw. Laat een veld leeg om die kosten weg te laten.
 - **Vaste kosten per maand**: leverings- en netbeheerkosten samen, zoals op je rekening. De **vermindering energiebelasting** (€ 628,96 in 2026) wordt verspreid over het jaar afgetrokken.
 - **Water**: prijs per m³.
 - **Salderen** (voor beide soorten contract): teruglevering wordt verrekend tegen de prijs die je op dat moment betaalt. Salderen stopt op 1 januari 2027; zet het dan uit. Zonder salderen levert teruglevering de terugleververgoeding (vast contract) of de marktprijs (dynamisch) op, min eventuele **terugleverkosten**.
+- **Afname en teruglevering apart**: de app rekent afname en teruglevering elk met hun eigen prijs. Afname kost de marktprijs plus energiebelasting en opslag; teruglevering levert na salderen alleen de terugleververgoeding of de marktprijs op, zonder energiebelasting, min de terugleverkosten. Zo kloppen de bedragen ook na 2027, als de energiebelasting op teruglevering wegvalt.
 
 De kosten worden per meterstand berekend met de prijs van dat moment, dus bij een dynamisch contract per uur. Het blok Kosten toont afname, teruglevering, gas, water en vaste kosten, en vergelijkt met de vorige periode tot hetzelfde moment. Het blok Stroomprijs toont bij een dynamisch contract de prijs die je echt betaalt, en wat je verbruik of teruglevering op dit moment per uur kost of oplevert.
 
@@ -122,13 +127,15 @@ Het blok **Meldingen** laat zien als:
 - een apparaat ongewoon lang aan staat (meer dan 20 W, langer dan het aantal uren bij de instellingen; standaard 4). Apparaten die altijd aan staan, zoals een koelkast of netwerkkast, en verwarming, laadpaal, batterij en zonnepanelen tellen niet mee;
 - het sluipverbruik duidelijk hoger is dan normaal (de afgelopen twee weken);
 - de P1-meter of een omvormer niet reageert;
-- er meer dan één thuisbatterij gevonden is, mogelijk dezelfde batterij via twee apps.
+- twee thuisbatterijen hetzelfde laadniveau en vermogen hebben: waarschijnlijk dezelfde batterij via twee apps (meerdere echte batterijen, zoals een groep stekkerbatterijen, geven geen melding);
+- de stroomprijs negatief is terwijl je teruglevert (meer dan 100 W), zodat je iets kunt aanzetten of de panelen kunt terugregelen;
+- met een capaciteitstarief ingevuld: het lopende kwartier boven je maandpiek uitkomt.
 
 Zet **Ook in de Homey-tijdlijn** aan om elke melding hooguit één keer per dag als melding in de Homey-app te krijgen.
 
 ## Zonneverwachting
 
-Met de zonneverwachting aan toont "Vermogen vandaag" een stippellijn met de verwachte opbrengst, en bovenin hoeveel kWh er vandaag en morgen verwacht wordt. De verwachting komt van [Forecast.Solar](https://forecast.solar) (gratis, zonder account) voor de locatie van je Homey, en wordt eens per uur opgehaald.
+Met de zonneverwachting aan toont "Vermogen vandaag" een stippellijn met de verwachte opbrengst, en bovenin hoeveel kWh er vandaag en morgen verwacht wordt. De verwachting komt van [Forecast.Solar](https://forecast.solar) (gratis, zonder account) voor de locatie van je Homey, en wordt eens per uur opgehaald. Forecast.Solar rekent elk dakvlak apart en staat gratis 12 aanvragen per uur toe; met meer dan 10 dakvlakken haalt de app de verwachting daarom wat minder vaak op.
 
 ## Scherm (tablet aan de muur)
 
@@ -156,7 +163,7 @@ Op een telefoon of tablet kun je het dashboard met **Zet op beginscherm** als ap
 
 ## Widget voor Homey Dashboards
 
-De app heeft twee widgets voor de Dashboards in de Homey-app. **Energie nu** toont het schema zon, net, huis en batterij met het vermogen van dit moment. **Energiestromen** is de uitgebreide versie. Die toont live waar je stroom vandaan komt (zon, net, batterij), in welke ruimtes die gebruikt wordt, en de grootste verbruikers per ruimte. In de widget kies je hoeveel apparaten per ruimte je ziet en of de stromen bewegen. Apparaten zonder stroommeting vallen onder "Overig". De widget is licht: Homey stuurt alleen een klein lijstje met waarden, de widget tekent zelf.
+De app heeft twee widgets voor de Dashboards in de Homey-app. **Energie nu** toont het schema zon, net, huis en batterij met het vermogen van dit moment; bij **Tonen** kies je in plaats daarvan de kWh van vandaag, of allebei. **Energiestromen** is de uitgebreide versie. Die toont live waar je stroom vandaan komt (zon, net, batterij), in welke ruimtes die gebruikt wordt, en de grootste verbruikers per ruimte. In de widget kies je hoeveel apparaten per ruimte je ziet en of de stromen bewegen. Apparaten zonder stroommeting vallen onder "Overig". De widget is licht: Homey stuurt alleen een klein lijstje met waarden, de widget tekent zelf.
 
 ## Veiligheid
 
@@ -164,7 +171,7 @@ De webpagina is alleen bereikbaar binnen je thuisnetwerk, niet vanaf internet (t
 
 Maak je het dashboard via een tunnel of doorverwijzing bereikbaar vanaf internet, **stel dan altijd een toegangscode in**: anders kan iedereen die het adres vindt je verbruik zien, en daarmee ook wanneer je thuis bent.
 
-Voor de prijzen haalt de app elk half uur de marktprijzen op bij EnergyZero, voor de zonneverwachting eens per uur de verwachting bij Forecast.Solar, en voor de graaddagen de buitentemperatuur bij Open-Meteo. Naar EnergyZero gaan geen gegevens over jouw huis. Naar Forecast.Solar en Open-Meteo gaan alleen de locatie van je Homey (afgerond) en, voor Forecast.Solar, de gegevens van je dakvlakken, geen verbruik.
+Voor de prijzen gebruikt de app de prijzen die Homey zelf ophaalt, of haalt hij elk half uur de marktprijzen op bij EnergyZero, voor de zonneverwachting eens per uur de verwachting bij Forecast.Solar, en voor de graaddagen de buitentemperatuur bij Open-Meteo. Naar EnergyZero gaan geen gegevens over jouw huis. Naar Forecast.Solar en Open-Meteo gaan alleen de locatie van je Homey (afgerond) en, voor Forecast.Solar, de gegevens van je dakvlakken, geen verbruik.
 
 ## Problemen oplossen
 
@@ -185,7 +192,9 @@ Daarna verschijnen:
 - in de elektriciteitsgrafiek **"Uit batterij"** boven de nul en **"Batterij geladen"** onder de nul;
 - de batterij als bron en bestemming in de **Energiestromen**.
 
-Zelfvoorzienend telt energie uit de batterij mee, net als in Home Assistant. Staan laden en ontladen omgedraaid, zet dan **"Batterij meet vermogen andersom"** aan.
+Zelfvoorzienend telt energie uit de batterij mee, net als in Home Assistant. Heeft de batterij ook een laadstatus (laden, ontladen, rust), dan leert de app zelf welke kant het vermogen op telt. Staan laden en ontladen toch omgedraaid, zet dan **"Batterij meet vermogen andersom"** aan.
+
+Batterijen die hun vermogen op een andere manier doorgeven werken ook: met een apart laad- en ontlaadvermogen (zoals Indevolt), of met alleen kWh-tellers (zoals Enphase IQ Battery; het vermogen volgt dan uit hoe snel de tellers oplopen).
 
 ## Energiestromen (Sankey)
 

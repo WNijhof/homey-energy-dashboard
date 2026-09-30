@@ -44,7 +44,7 @@
     "noSolar": "Geen zonnepanelen gevonden",
     "noBattery": "Nog geen thuisbatterij gevonden. Na het toevoegen van je batterij in Homey verschijnt hij hier vanzelf.",
     "invertPower": "Batterij meet vermogen andersom",
-    "invertPowerHelp": "Aanzetten als laden en ontladen omgedraaid op het dashboard staan",
+    "invertPowerHelp": "Aanzetten als laden en ontladen omgedraaid op het dashboard staan. Heeft je batterij een laadstatus, dan ziet de app dat meestal zelf.",
     "boilerSection": "Boiler",
     "liters": "Inhoud (liter)",
     "coldWaterTemp": "Temperatuur koud water (°C)",
@@ -53,9 +53,7 @@
     "warmFrom": "\"Warm\" vanaf (°C)",
     "connection": "Aansluiting",
     "fuseAmps": "Hoofdzekering per fase (A)",
-    "prices": "Blok stroomprijs",
-    "pricesOn": "Kwartierprijzen tonen",
-    "pricesOnHelp": "Van EnergyZero, voor Nederland. Bij een dynamisch contract inclusief belasting en opslag.",
+    "prices": "Stroomprijzen",
     "water": "Water (€/m³)",
     "save": "Opslaan",
     "saved": "Opgeslagen",
@@ -94,8 +92,6 @@
     "forecast": "Zonneverwachting",
     "forecastOn": "Verwachte zonne-opbrengst tonen",
     "forecastHelp": "Van Forecast.Solar (gratis), voor de locatie van je Homey. Als stippellijn in \"Vermogen vandaag\".",
-    "plane1": "Dakvlak 1",
-    "plane2": "Dakvlak 2 (optioneel, bijvoorbeeld oost/west)",
     "kwp": "Vermogen (kWp)",
     "tilt": "Hellingshoek (°, 0 = plat)",
     "azimuth": "Richting",
@@ -116,7 +112,28 @@
     "alertNotify": "Ook in de Homey-tijdlijn",
     "alertNotifyHelp": "Elke melding hooguit één keer per dag. Apparaten die altijd aan staan (koelkast, netwerk) vallen vanzelf af.",
     "exportAfter": "Terugleververgoeding na salderen (€/kWh)",
-    "exportAfterHelp": "Wat je leverancier vanaf 2027 per teruggeleverde kWh betaalt. Leeg: het wettelijk minimum, de helft van de leveringsprijs zonder energiebelasting."
+    "exportAfterHelp": "Wat je leverancier vanaf 2027 per teruggeleverde kWh betaalt. Leeg: het wettelijk minimum, de helft van de leveringsprijs zonder energiebelasting.",
+    "priceSource": "Prijzen van",
+    "sourceAuto": "Automatisch: Homey als daar dynamische prijzen staan, anders EnergyZero",
+    "sourceHomey": "Homey Energie (elk land)",
+    "sourceEnergyZero": "EnergyZero (Nederland)",
+    "sourceOff": "Geen prijzen ophalen",
+    "sourceInUseHomey": "Nu in gebruik: de dynamische prijzen van Homey Energie.",
+    "sourceInUseEnergyZero": "Nu in gebruik: EnergyZero, de Nederlandse marktprijs inclusief btw.",
+    "sourceInUseOff": "Er worden geen prijzen opgehaald.",
+    "homeyFormula": "Homey rekent met jouw kosten: __formula__. Die formule maakt de all-in prijs; de opslag en energiebelasting hieronder tellen dan niet mee.",
+    "homeyNoFormula": "In Homey staan nog geen kosten bij de dynamische prijzen, dus het dashboard rekent met het contract hieronder.",
+    "homeyFixed": "Homey heeft een vaste prijs van __price__ per kWh; die telt als je hieronder geen tarief invult.",
+    "homeyNoPrices": "In Homey Energie staan geen prijzen. Stel ze in bij Energie → Instellingen in de Homey-app.",
+    "capacityTariff": "Capaciteitstarief (€/kW per jaar)",
+    "capacityMin": "Minimum per maand (kW)",
+    "capacityHelp": "Voor België: je betaalt voor je hoogste kwartiervermogen per maand, gemiddeld over 12 maanden en minstens 2,5 kW. Met een tarief toont het blok Maandpiek de kosten en waarschuwt het dashboard als een kwartier boven je maandpiek uitkomt. In Nederland leeg laten.",
+    "planeFirst": "Dakvlak __n__",
+    "planeOptional": "Dakvlak __n__ (optioneel)",
+    "addPlane": "+ Dakvlak toevoegen",
+    "removePlane": "Verwijderen",
+    "planesHelp": "Bijvoorbeeld oost en west, of ook het dak van de garage. Tot 10 dakvlakken; Forecast.Solar rekent elk dakvlak apart.",
+    "manual": "Handleiding: wat elk blok toont en alle instellingen ↗"
   },
   "blocks": {
     "alerts": "Meldingen",
@@ -139,7 +156,9 @@
     "gas": "Gas",
     "water": "Water",
     "baseload": "Sluipverbruik",
-    "phases": "Fasebelasting"
+    "phases": "Fasebelasting",
+    "batteryhistory": "Batterijgebruik",
+    "peak": "Maandpiek"
   },
   "widget": {
     "name": "Energiestromen",
@@ -160,6 +179,8 @@
     "export": "Terug",
     "home": "Huis",
     "battery": "Batterij",
-    "noP1": "Geen P1-meter gevonden. Kies er een in de instellingen van de app."
+    "noP1": "Geen P1-meter gevonden. Kies er een in de instellingen van de app.",
+    "today": "vandaag",
+    "kwhToday": "kWh vandaag"
   }
 }

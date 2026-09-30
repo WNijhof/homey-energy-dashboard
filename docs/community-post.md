@@ -9,6 +9,21 @@ https://homey.app/a/com.drpeppers.energydashboard/test/
 
 ![Dashboard in dark mode](https://raw.githubusercontent.com/WNijhof/homey-energy-dashboard/main/docs/screenshots/dashboard-dark.png)
 
+## New in 0.2.0
+
+Thanks for the first feedback! This version adds:
+
+- **Prices from Homey Energy, for any country.** When you set up dynamic prices in Homey (Energy → Settings), the dashboard uses them, including the costs formula you entered there, so the all-in price matches Homey. Amounts show in Homey's currency. In the Netherlands EnergyZero still works as before.
+- **Monthly peak (Belgian capacity tariff).** A new block with your highest quarter-hour power this month, the running quarter hour, the last 12 months and what it costs with your tariff. It uses the meter's own peak when your P1 app passes it on (HomeWizard does), and otherwise measures it every quarter hour. A warning appears when the running quarter goes above your monthly peak.
+- **Battery use.** What your home battery stored and delivered per hour, day or month, from the sun or the grid, what charging cost on average and what discharging saved. For a day it lists each session: when it charged or delivered, and at what price.
+- **Phases through the day**: L1, L2 and L3 in one chart, with your main fuse as a dashed line.
+- **Devices with an estimate in Homey** (such as lights) now appear in "Devices now", "Use per device" and the energy flows, marked as estimated.
+- **More roof planes** for the solar forecast: two to start with, up to ten.
+- **A warning for negative prices** while you export, so you can switch something on or curtail the panels.
+- **Today's kWh in the "Energy now" widget**, instead of or next to the power right now.
+- **Ten languages**: English, Dutch, German, Norwegian, Swedish, Danish, Italian, French, Portuguese and Spanish.
+- **More home batteries**: batteries that report charging and discharging power separately (such as Indevolt) now show their power, so their charging no longer looks like grid use. Thanks @MWeijland! Enphase IQ Battery is found as well, batteries that report their power the other way round are recognised by their charging state, and a group of plug-in batteries no longer gives the "same battery twice" warning.
+
 ## Highlight: see where every kWh goes
 
 The block I'm most happy with is **Energy flows**, a Sankey chart. In one picture it shows where your energy comes from, where it goes and which devices use it. The thickness of each band is the amount of energy, so the big users stand out at once.
@@ -39,6 +54,8 @@ The dashboard is made of blocks that you arrange yourself: drag them around, cha
 
 **Costs, with your own contract**: a fixed contract (normal and off-peak rate) or a dynamic one. For a dynamic contract the price per quarter hour is the market price plus energy tax plus your supplier's markup. You can pick one of nineteen suppliers to fill in its usual markup, but please check the amounts against your own contract. Costs are calculated with the price of each quarter hour, so they match a dynamic contract. The block shows import, export, gas, water and fixed costs, compared with the previous period.
 
+**Import and export each have their own price.** Homey's Energy tab uses one price formula for both, but from 2027 in the Netherlands they differ: you pay energy tax on what you import, not on what you export. The dashboard calculates import with the market price plus energy tax and markup, and export after net metering with only your export compensation (or the market price), minus any export fee. So the amounts stay right after 2027.
+
 ![Costs](https://raw.githubusercontent.com/WNijhof/homey-energy-dashboard/main/docs/screenshots/costs.png)
 
 ![Prices](https://raw.githubusercontent.com/WNijhof/homey-energy-dashboard/main/docs/screenshots/prices.png)
@@ -65,9 +82,10 @@ And more:
 - Hot water: temperature and estimated shower minutes of your water heater (made with the Atag Lydos Hybrid in mind)
 - Heating and EV charger
 - Use per device, standby use and phase load
+- Monthly peak for the Belgian capacity tariff, and battery use over time
 - Export the chosen period as CSV
 
-It works in light and dark mode, on any screen size, in English and Dutch (switch at the top right).
+It works in light and dark mode, on any screen size, in ten languages (choose at the top right).
 
 ![Light mode](https://raw.githubusercontent.com/WNijhof/homey-energy-dashboard/main/docs/screenshots/dashboard-light.png)
 
@@ -75,7 +93,7 @@ It works in light and dark mode, on any screen size, in English and Dutch (switc
 
 ## Widgets for Homey Dashboards
 
-**Energy flows** shows live where your power comes from, which rooms use it, and the devices using the most per room. **Energy now** is a compact version of the live flow between solar, grid, home and battery. Both are kept light: Homey only sends a small list of values and the widget draws them itself.
+**Energy flows** shows live where your power comes from, which rooms use it, and the devices using the most per room. **Energy now** is a compact version of the live flow between solar, grid, home and battery, with the power now, today's kWh, or both. Both are kept light: Homey only sends a small list of values and the widget draws them itself.
 
 <img src="https://raw.githubusercontent.com/WNijhof/homey-energy-dashboard/main/docs/screenshots/widget.png" alt="Energy flows widget" width="400"> <img src="https://raw.githubusercontent.com/WNijhof/homey-energy-dashboard/main/docs/screenshots/widget-now.png" alt="Energy now widget" width="400">
 
@@ -90,7 +108,7 @@ The page moves a few pixels now and then against burn-in, and reloads itself aft
 ## How it works
 
 - Devices are found automatically through Homey Energy: a P1 meter, solar panels, a home battery, a water heater, heating, an EV charger and a water meter. You can also pick them yourself in the app settings.
-- History comes from Homey Insights. Market prices come from EnergyZero, the solar forecast from Forecast.Solar and the outside temperature for degree days from Open-Meteo (all free, no account). Nothing about your usage leaves your network.
+- History comes from Homey Insights. Market prices come from Homey Energy, or from EnergyZero for the Netherlands; the solar forecast from Forecast.Solar and the outside temperature for degree days from Open-Meteo (all free, no account). Nothing about your usage leaves your network.
 - The app settings show the address of the dashboard (by default `http://<homey-ip>:8080`).
 - Protect the dashboard with an access code, and editing the layout with a PIN. Please set an access code if you make the dashboard reachable from outside your home.
 
@@ -98,7 +116,7 @@ The page moves a few pixels now and then against burn-in, and reloads itself aft
 
 - Homey Pro with Homey 12.3 or later
 - A P1 meter for the live and power views; solar panels, a battery and the other devices are optional
-- Prices and costs with a dynamic contract are for the Netherlands (EnergyZero)
+- Dynamic prices from Homey Energy (any country Homey supports) or EnergyZero (the Netherlands); the supplier list and energy tax in the settings are Dutch
 
 ## Feedback
 

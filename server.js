@@ -6,13 +6,14 @@ const path = require('path');
 const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
-  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard,
+  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
 const { WeatherService } = require('./lib/weather');
 const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
-const { contractFrom, allInElectricity } = require('./lib/tariffs');
+const { contractFrom, allInFunction } = require('./lib/tariffs');
+const { PeakTracker, peakSummary } = require('./lib/peak');
 const demo = require('./lib/demo');
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
@@ -29,8 +30,8 @@ const DEFAULTS = {
   devices: { p1: '', solar: [], batteries: [], boiler: '', heating: [], thermostat: '', evChargers: [], water: '' },
   boiler: { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 },
   battery: { invertPower: false },
-  grid: { fuseAmps: 25 },
-  prices: { source: 'energyzero' },
+  grid: { fuseAmps: 25, capacityTariff: null, capacityMin: 2.5 },
+  prices: { source: 'auto' },
   tariffs: {},
   demo: false,
 };
@@ -71,7 +72,20 @@ const client = cfg.demo ? null : new HomeyClient(cfg.homey);
 let devicesCache = { at: 0, devices: null };
 let baseloadCache = { at: 0, data: null };
 const historyCache = new Map();
-const prices = new PriceService();
+// Prices from Homey Energy (when the API key may view energy) or EnergyZero; see lib/prices.js
+const prices = new PriceService({
+  source: () => cfg.prices.source,
+  homey: client ? {
+    prices: date => client.energy(`/price/electricity/dynamic?date=${date}`),
+    userCosts: () => client.energy('/price/electricity/dynamic/user-costs'),
+    priceType: () => client.energy('/price/electricity/type'),
+    fixedPrice: () => client.energy('/option/electricityPriceFixed'),
+    currency: () => client.energy('/currency'),
+  } : null,
+});
+// The monthly peak for the Belgian capacity tariff; kept in memory while the server runs
+const peakTracker = new PeakTracker();
+let energyLiveCache = { at: 0, report: null };
 const forecast = new ForecastService();
 let forecastLog = {};
 const weather = new WeatherService();
@@ -86,6 +100,14 @@ async function getDevices() {
   return devicesCache.devices;
 }
 
+// Homey Energy's live report, for devices with an estimated use
+async function getEstimated(devices, found) {
+  if (Date.now() - energyLiveCache.at > 5000) {
+    energyLiveCache = { at: Date.now(), report: await client.energy('/live').catch(() => null) };
+  }
+  return estimatedDevices(energyLiveCache.report, devices, found);
+}
+
 async function getLive(name = '') {
   const view = { ...cfg, layout: savedLayout(cfg, layoutName(name)) };
   let live;
@@ -94,8 +116,12 @@ async function getLive(name = '') {
   } else {
     const devices = await getDevices();
     const found = discover(devices, cfg.devices);
-    live = buildLive(devices, found, view);
+    live = buildLive(devices, found, view, { estimated: await getEstimated(devices, found) });
+    live.currency = await prices.currency().catch(() => null);
     if (live.layout.some(b => b.id === 'baseload')) live.baseload = await getBaseload(found).catch(() => null);
+    if (live.layout.some(b => b.id === 'peak') || live.layout.some(b => b.id === 'alerts')) {
+      live.peak = peakSummary({ tracker: peakTracker, p1: found.p1, grid: cfg.grid });
+    }
   }
   if (live.layout.some(b => b.id === 'netting')) live.netting = await getNetting().catch(() => null);
   if (live.layout.some(b => b.id === 'alerts')) {
@@ -107,7 +133,13 @@ async function getLive(name = '') {
     } else {
       const devices = await getDevices();
       const found = discover(devices, cfg.devices);
-      live.alerts = buildAlerts({ monitor: alertMonitor, found, baseload: live.baseload, baseloadLog, hours: Number(cfg.alerts?.hours) || 4 });
+      const market = cfg.prices.source === 'off' ? null : await prices.get({}).catch(() => null);
+      live.alerts = buildAlerts({
+        monitor: alertMonitor, found, baseload: live.baseload, baseloadLog, hours: Number(cfg.alerts?.hours) || 4,
+        price: market ? { market: market.current, currency: market.currency } : null,
+        gridW: live.gridW,
+        peak: live.peak,
+      });
     }
   }
   live.version = VERSION;
@@ -118,8 +150,7 @@ async function getLive(name = '') {
   // Today's totals for the live diagram; the history is cached, so this is cheap
   live.today = todayTotals((await getHistory('today').catch(() => null))?.totals);
   if (live.layout.some(b => b.id === 'prices')) {
-    const contract = contractFrom(cfg);
-    const allIn = contract.electricity.type === 'dynamic' ? p => allInElectricity(contract, p) : null;
+    const allIn = allInFunction(contractFrom(cfg), await prices.homeyTariff().catch(() => null));
     live.prices = await prices.get(cfg.prices, { allIn }).catch(err => ({ error: err.message }));
   }
   return live;
@@ -140,7 +171,8 @@ async function getNetting() {
 async function getBaseload(found) {
   if (Date.now() - baseloadCache.at > BASELOAD_CACHE_TTL) {
     const market = await prices.get({}).catch(() => null);
-    baseloadCache = { at: Date.now(), data: await buildBaseload(client, found, cfg, market?.avg) };
+    const homey = await prices.homeyTariff().catch(() => null);
+    baseloadCache = { at: Date.now(), data: await buildBaseload(client, found, cfg, market?.avg, homey) };
     baseloadLog = recordBaseload(baseloadLog, baseloadCache.data?.watts);
   }
   return baseloadCache.data;
@@ -405,11 +437,25 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-// Once a minute: which devices are on, for the warnings
+// Once a minute: which devices are on, for the warnings, and the grid power for the monthly peak
 if (!cfg.demo) {
   setInterval(() => {
-    getDevices().then(devices => alertMonitor.track(devices, discover(devices, cfg.devices))).catch(() => {});
+    getDevices().then(devices => {
+      const found = discover(devices, cfg.devices);
+      alertMonitor.track(devices, found);
+      if (!found.p1) return;
+      peakTracker.add(found.p1.capabilitiesObj?.measure_power?.value);
+      const meter = peakSummary({ tracker: null, p1: found.p1, grid: {} });
+      if (meter?.source === 'meter') peakTracker.recordMeter(meter.peakW);
+    }).catch(() => {});
   }, 60 * 1000);
+  // Starts with the quarter hours of yesterday and today from Insights
+  getDevices().then(async devices => {
+    const found = discover(devices, cfg.devices);
+    if (!found.p1) return;
+    const read = resolution => (device, capability) => client.getEntries(device.id, capability, resolution).catch(() => []);
+    peakTracker.seed([...await gridPower(found.p1, read('yesterday')), ...await gridPower(found.p1, read('today'))]);
+  }).catch(() => {});
 }
 
 server.listen(cfg.port, () => {

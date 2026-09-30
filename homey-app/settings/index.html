@@ -13,6 +13,7 @@
     <p class="muted" data-i18n="settings.openLink"></p>
     <p><a id="dashboard-url" class="url" href="#" target="_blank" rel="noopener">…</a></p>
     <p id="server-status" class="muted"></p>
+    <p><a class="url" href="https://github.com/WNijhof/homey-energy-dashboard/blob/main/homey-app/README.md" target="_blank" rel="noopener" data-i18n="settings.manual"></a></p>
   </section>
 
   <form id="settings-form" class="card">
@@ -58,32 +59,10 @@
     <h3 data-i18n="settings.forecast"></h3>
     <label class="check-row"><span><span data-i18n="settings.forecastOn"></span><br><small class="muted" data-i18n="settings.forecastHelp"></small></span> <input name="forecastOn" type="checkbox"></label>
     <div data-forecast>
-      <p class="muted" data-i18n="settings.plane1"></p>
-      <label><span data-i18n="settings.kwp"></span> <input name="kwp1" type="number" min="0" max="100" step="0.01"></label>
-      <label><span data-i18n="settings.tilt"></span> <input name="tilt1" type="number" min="0" max="90" step="1"></label>
-      <label><span data-i18n="settings.azimuth"></span>
-        <select name="azimuth1">
-          <option value="-90" data-i18n="settings.east"></option>
-          <option value="-45" data-i18n="settings.southEast"></option>
-          <option value="0" data-i18n="settings.south"></option>
-          <option value="45" data-i18n="settings.southWest"></option>
-          <option value="90" data-i18n="settings.west"></option>
-          <option value="180" data-i18n="settings.north"></option>
-        </select>
-      </label>
-      <p class="muted" data-i18n="settings.plane2"></p>
-      <label><span data-i18n="settings.kwp"></span> <input name="kwp2" type="number" min="0" max="100" step="0.01"></label>
-      <label><span data-i18n="settings.tilt"></span> <input name="tilt2" type="number" min="0" max="90" step="1"></label>
-      <label><span data-i18n="settings.azimuth"></span>
-        <select name="azimuth2">
-          <option value="-90" data-i18n="settings.east"></option>
-          <option value="-45" data-i18n="settings.southEast"></option>
-          <option value="0" data-i18n="settings.south"></option>
-          <option value="45" data-i18n="settings.southWest"></option>
-          <option value="90" data-i18n="settings.west"></option>
-          <option value="180" data-i18n="settings.north"></option>
-        </select>
-      </label>
+      <!-- Two roof planes to start with; more can be added (settings.js) -->
+      <div id="planes"></div>
+      <button type="button" class="secondary" id="plane-add" data-i18n="settings.addPlane"></button>
+      <p class="muted" data-i18n="settings.planesHelp"></p>
     </div>
 
     <label class="check-row"><span><span data-i18n="settings.invertPower"></span><br><small class="muted" data-i18n="settings.invertPowerHelp"></small></span> <input name="invertPower" type="checkbox"></label>
@@ -102,6 +81,21 @@
 
     <h3 data-i18n="settings.connection"></h3>
     <label><span data-i18n="settings.fuseAmps"></span> <input name="fuseAmps" type="number" min="6" max="80" step="1"></label>
+    <label><span data-i18n="settings.capacityTariff"></span> <input name="capacityTariff" type="number" min="0" step="0.01"></label>
+    <label><span data-i18n="settings.capacityMin"></span> <input name="capacityMin" type="number" min="0" max="20" step="0.1"></label>
+    <p class="muted" data-i18n="settings.capacityHelp"></p>
+
+    <!-- Where market prices come from: Homey Energy or EnergyZero -->
+    <h3 data-i18n="settings.prices"></h3>
+    <label><span data-i18n="settings.priceSource"></span>
+      <select name="priceSource">
+        <option value="auto" data-i18n="settings.sourceAuto"></option>
+        <option value="homey" data-i18n="settings.sourceHomey"></option>
+        <option value="energyzero" data-i18n="settings.sourceEnergyZero"></option>
+        <option value="off" data-i18n="settings.sourceOff"></option>
+      </select>
+    </label>
+    <p class="muted" id="price-source-note"></p>
 
     <!-- Contract: all amounts include VAT; empty fields leave that cost out -->
     <h3 data-i18n="settings.electricityContract"></h3>
@@ -155,8 +149,6 @@
     <p class="muted" data-i18n="settings.monthlyHelp"></p>
     <label><span data-i18n="settings.water"></span> <input name="waterPrice" type="number" min="0" step="0.001"></label>
 
-    <h3 data-i18n="settings.prices"></h3>
-    <label class="check-row"><span><span data-i18n="settings.pricesOn"></span><br><small class="muted" data-i18n="settings.pricesOnHelp"></small></span> <input name="pricesOn" type="checkbox"></label>
 
     <div class="form-actions">
       <button type="submit" data-i18n="settings.save"></button>

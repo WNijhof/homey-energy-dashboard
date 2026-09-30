@@ -44,7 +44,7 @@
     "noSolar": "No solar panels found",
     "noBattery": "No home battery found yet. Once you add your battery to Homey, it appears here by itself.",
     "invertPower": "Battery measures power the other way round",
-    "invertPowerHelp": "Turn on when charging and discharging are swapped on the dashboard",
+    "invertPowerHelp": "Turn on when charging and discharging are the wrong way round on the dashboard. When your battery has a charging state, the app usually notices by itself.",
     "boilerSection": "Water heater",
     "liters": "Capacity (liters)",
     "coldWaterTemp": "Cold water temperature (°C)",
@@ -53,9 +53,7 @@
     "warmFrom": "\"Hot\" from (°C)",
     "connection": "Connection",
     "fuseAmps": "Main fuse per phase (A)",
-    "prices": "Price block",
-    "pricesOn": "Show prices per quarter hour",
-    "pricesOnHelp": "From EnergyZero, for the Netherlands. With a dynamic contract including tax and markup.",
+    "prices": "Electricity prices",
     "water": "Water (€/m³)",
     "save": "Save",
     "saved": "Saved",
@@ -94,8 +92,6 @@
     "forecast": "Solar forecast",
     "forecastOn": "Show expected solar power",
     "forecastHelp": "From Forecast.Solar (free), for the location of your Homey. Shown as a dashed line in \"Power today\".",
-    "plane1": "Roof plane 1",
-    "plane2": "Roof plane 2 (optional, e.g. east/west)",
     "kwp": "Size (kWp)",
     "tilt": "Tilt (°, 0 = flat)",
     "azimuth": "Facing",
@@ -116,7 +112,28 @@
     "alertNotify": "Also in the Homey timeline",
     "alertNotifyHelp": "Each warning at most once a day. Devices that are always on (fridge, network) are left out by themselves.",
     "exportAfter": "Export compensation after net metering (€/kWh)",
-    "exportAfterHelp": "What your supplier pays per exported kWh from 2027. Empty: the legal minimum, half of the supply price without energy tax."
+    "exportAfterHelp": "What your supplier pays per exported kWh from 2027. Empty: the legal minimum, half of the supply price without energy tax.",
+    "priceSource": "Prices from",
+    "sourceAuto": "Automatic: Homey when it has dynamic prices, otherwise EnergyZero",
+    "sourceHomey": "Homey Energy (any country)",
+    "sourceEnergyZero": "EnergyZero (the Netherlands)",
+    "sourceOff": "Do not fetch prices",
+    "sourceInUseHomey": "In use now: the dynamic prices of Homey Energy.",
+    "sourceInUseEnergyZero": "In use now: EnergyZero, the Dutch market price including VAT.",
+    "sourceInUseOff": "No prices are fetched.",
+    "homeyFormula": "Homey calculates with your costs: __formula__. That formula makes the all-in price; the markup and energy tax below then do not count.",
+    "homeyNoFormula": "Homey has no costs set for its dynamic prices yet, so the dashboard uses the contract below.",
+    "homeyFixed": "Homey has a fixed price of __price__ per kWh; it counts when you leave the rate below empty.",
+    "homeyNoPrices": "Homey Energy has no prices. Set them up under Energy → Settings in the Homey app.",
+    "capacityTariff": "Capacity tariff (€/kW per year)",
+    "capacityMin": "Minimum per month (kW)",
+    "capacityHelp": "For Belgium: you pay for your highest quarter-hour power each month, averaged over 12 months and at least 2.5 kW. With a tariff the Monthly peak block shows the cost, and the dashboard warns when a quarter hour goes above your monthly peak. Leave empty in the Netherlands.",
+    "planeFirst": "Roof plane __n__",
+    "planeOptional": "Roof plane __n__ (optional)",
+    "addPlane": "+ Add a roof plane",
+    "removePlane": "Remove",
+    "planesHelp": "For example east and west, or the garage roof as well. Up to 10 roof planes; Forecast.Solar calculates each one separately.",
+    "manual": "Manual (in Dutch): what each block shows and every setting ↗"
   },
   "blocks": {
     "alerts": "Warnings",
@@ -139,7 +156,9 @@
     "gas": "Gas",
     "water": "Water",
     "baseload": "Standby use",
-    "phases": "Phase load"
+    "phases": "Phase load",
+    "batteryhistory": "Battery use",
+    "peak": "Monthly peak"
   },
   "widget": {
     "name": "Energy flows",
@@ -160,6 +179,8 @@
     "export": "Export",
     "home": "Home",
     "battery": "Battery",
-    "noP1": "No P1 meter found. Choose one in the app settings."
+    "noP1": "No P1 meter found. Choose one in the app settings.",
+    "today": "today",
+    "kwhToday": "kWh today"
   }
 }

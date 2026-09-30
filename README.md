@@ -15,7 +15,7 @@ Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht
 - **Thuisbatterij**: laden, ontladen en laadniveau, zodra je er een hebt (zie hieronder)
 - **Apparaten nu**: wat er op dit moment het meeste stroom gebruikt
 
-Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je tussen Nederlands en Engels.
+Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je de taal: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees of Spaans.
 
 ## Wat je nodig hebt
 
@@ -26,7 +26,7 @@ Er hoeft niets geïnstalleerd te worden met `npm install`: er zijn geen extra pa
 
 ## Installeren
 
-1. **Maak een API-key in Homey.** Ga naar [my.homey.app](https://my.homey.app), kies je Homey en ga naar *Instellingen → API Keys → Nieuwe API Key*. Geef hem een naam (bijvoorbeeld "Dashboard") en vink alleen **Apparaten bekijken** en **Insights bekijken** aan. Kopieer de key.
+1. **Maak een API-key in Homey.** Ga naar [my.homey.app](https://my.homey.app), kies je Homey en ga naar *Instellingen → API Keys → Nieuwe API Key*. Geef hem een naam (bijvoorbeeld "Dashboard") en vink alleen **Apparaten bekijken**, **Insights bekijken** en **Energie bekijken** aan (dat laatste voor de prijzen en geschatte apparaten van Homey Energie). Kopieer de key.
 2. **Zoek het IP-adres van je Homey.** Dat staat in de Homey-app onder *Instellingen → Algemeen*, of in je router.
 3. **Maak `config.json`.** Kopieer `config.example.json` naar `config.json` en vul `address` en `token` in:
    ```json
@@ -52,9 +52,10 @@ Zonder `config.json` (of met de voorbeeld-key) draait het dashboard in **demo-mo
 | `boiler.showerFlow` | Liters per minuut van je douchekop (spaardouche ongeveer 6–7, normaal 8–10) |
 | `boiler.warmFrom` | Vanaf deze temperatuur staat de boiler op "Warm" |
 | `grid.fuseAmps` | Hoofdzekering per fase, voor het blok Fasebelasting |
-| `prices` | `source`: `"energyzero"` om het blok Stroomprijs te tonen, of `"off"` |
+| `grid.capacityTariff`, `grid.capacityMin` | Voor het Belgische capaciteitstarief: € per kW per jaar en het minimum per maand (standaard 2,5 kW), voor het blok Maandpiek |
+| `prices` | `source`: `"auto"` (Homey Energie als daar dynamische prijzen staan, anders EnergyZero), `"homey"`, `"energyzero"` of `"off"`. Prijzen uit Homey vragen een API-key die ook **Energie bekijken** mag |
 | `contract` | Stroom (`electricity`: `type` `"fixed"` met `normal`, `low`, `export`, of `"dynamic"` met `markup`, `energyTax`, `netting`, `exportFee`), gas (`gas`: `type` `"fixed"` met `price`, of `"dynamic"` met `markup`, `energyTax`), `water` (€/m³), `monthly` (vaste kosten per maand) en `taxReduction` (per jaar). Alles inclusief btw; zie `config.example.json` en *Prijzen en kosten* in `homey-app/README.md`. Het oude blok `tariffs` werkt nog |
-| `forecast` | Zonneverwachting: `enabled`, `lat`, `lon` en `planes`: een lijst met `kwp`, `tilt` (0–90) en `azimuth` (0 = zuid, -90 = oost, 90 = west) |
+| `forecast` | Zonneverwachting: `enabled`, `lat`, `lon` en `planes`: een lijst met `kwp`, `tilt` (0–90) en `azimuth` (0 = zuid, -90 = oost, 90 = west), zoveel dakvlakken als je hebt |
 | `editPin` | Optionele pincode voor het bewerken van de indeling op het dashboard |
 | `layout` | `null` voor de automatische indeling, of een lijst zoals `[{ "id": "flow", "size": "half", "rows": 20 }, …]`. `rows` is optioneel: de hoogte in rijen van 24 pixels. Blokken en breedtes staan in `homey-app/README.md`. Je kunt de indeling ook op het dashboard aanpassen met het potlood; die wordt dan hier opgeslagen |
 

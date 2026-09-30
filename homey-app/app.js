@@ -5,13 +5,14 @@ const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
-  expectedSolar,
+  expectedSolar, estimatedDevices, gridPower,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
 const { WeatherService } = require('./lib/weather');
 const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
-const { contractFrom, allInElectricity, SUPPLIERS } = require('./lib/tariffs');
+const { contractFrom, allInFunction, SUPPLIERS } = require('./lib/tariffs');
+const { PeakTracker, peakSummary } = require('./lib/peak');
 const { WebServer } = require('./lib/webserver');
 
 const DEVICES_CACHE_TTL = 5 * 1000;
@@ -20,14 +21,15 @@ const LOGS_CACHE_TTL = 10 * 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
 const ZONES_CACHE_TTL = 10 * 60 * 1000;
 const NETTING_CACHE_TTL = 60 * 60 * 1000;
+const ENERGY_LIVE_TTL = 5 * 1000;
 
 const DEFAULTS = {
   port: 8080,
   devices: { p1: '', solar: [], batteries: [], boiler: '', heating: [], thermostat: '', evChargers: [], water: '' },
   boiler: { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 },
   battery: { invertPower: false },
-  grid: { fuseAmps: 25 },
-  prices: { source: 'energyzero' },
+  grid: { fuseAmps: 25, capacityTariff: null, capacityMin: 2.5 },
+  prices: { source: 'auto' },
   tariffs: {},
 };
 
@@ -62,7 +64,22 @@ class EnergyDashboardApp extends Homey.App {
     this.baseloadCache = { at: 0, data: null };
     this.historyCache = new Map();
     this.zonesCache = { at: 0, names: null };
-    this.prices = new PriceService({ log: this.log.bind(this) });
+    this.energyLiveCache = { at: 0, report: null };
+    // Prices from Homey Energy, or EnergyZero; see lib/prices.js
+    this.prices = new PriceService({
+      log: this.log.bind(this),
+      source: () => this.getConfig().prices.source,
+      homey: {
+        prices: async date => (await this.getApi()).energy.fetchDynamicElectricityPrices({ date }),
+        userCosts: async () => (await this.getApi()).energy.getDynamicElectricityPriceUserCosts(),
+        priceType: async () => (await this.getApi()).energy.getElectricityPriceType(),
+        fixedPrice: async () => (await this.getApi()).energy.getOptionElectricityPriceFixed(),
+        currency: async () => (await this.getApi()).energy.getCurrency(),
+      },
+    });
+    // The monthly peak for the Belgian capacity tariff, measured once a minute
+    this.peakTracker = new PeakTracker(this.homey.settings.get('peakLog') || {});
+    this.homey.setTimeout(() => this.seedPeak().catch(err => this.error(`Peak: ${err.message}`)), 30 * 1000);
     this.forecast = new ForecastService({ log: this.log.bind(this) });
     this.weather = new WeatherService({ log: this.log.bind(this) });
     this.pinGuard = new PinGuard();
@@ -80,6 +97,7 @@ class EnergyDashboardApp extends Homey.App {
     this.homey.settings.on('set', key => {
       if (key !== 'config') return;
       this.historyCache.clear();
+      this.prices.homeyInfo = null;
       this.baseloadCache = { at: 0, data: null };
       this.nettingCache = null;
       this.webServer.start(this.getConfig().port).catch(this.error);
@@ -103,13 +121,19 @@ class EnergyDashboardApp extends Homey.App {
 
   getConfig() {
     const saved = this.homey.settings.get('config') || {};
+    // Before the choice of source, the settings saved "energyzero" for every price block that was
+    // on; only a source chosen in the new list counts as a choice, else Homey or EnergyZero follows
+    const prices = { ...DEFAULTS.prices, ...saved.prices };
+    if (prices.source === 'energyzero' && !prices.chosen) prices.source = 'auto';
     return {
       port: Number(saved.port) || DEFAULTS.port,
       devices: { ...DEFAULTS.devices, ...saved.devices },
       boiler: { ...DEFAULTS.boiler, ...saved.boiler },
       battery: { ...DEFAULTS.battery, ...saved.battery },
       grid: { ...DEFAULTS.grid, ...saved.grid },
-      prices: { ...DEFAULTS.prices, ...saved.prices },
+      prices,
+      // Homey has prices that fill in an empty contract, as far as known (for the default layout)
+      homeyPrices: Boolean(this.prices?.homeyInfo?.data?.allIn || this.prices?.homeyInfo?.data?.fixed),
       tariffs: { ...DEFAULTS.tariffs, ...saved.tariffs },
       contract: saved.contract || null,
       forecast: { enabled: false, planes: [], ...saved.forecast },
@@ -180,6 +204,59 @@ class EnergyDashboardApp extends Homey.App {
     return this.logsCache.ids;
   }
 
+  // A Homey Energy report for the devices per period; `request` comes from reportRequest()
+  async energyReport(request) {
+    const energy = (await this.getApi()).energy;
+    if (request.kind === 'day') return energy.getReportDay({ date: request.date });
+    if (request.kind === 'week') return energy.getReportWeek({ isoWeek: request.isoWeek });
+    if (request.kind === 'month') return energy.getReportMonth({ yearMonth: request.yearMonth });
+    return energy.getReportYear({ year: request.year });
+  }
+
+  // Homey Energy's live report, for devices with an estimated use; shared by screens asking at once
+  async getEnergyLive() {
+    if (Date.now() - this.energyLiveCache.at <= ENERGY_LIVE_TTL) return this.energyLiveCache.report;
+    if (!this.energyLivePending) {
+      this.energyLivePending = (async () => {
+        const report = await (await this.getApi()).energy.getLiveReport({}).catch(() => null);
+        this.energyLiveCache = { at: Date.now(), report };
+        return report;
+      })().finally(() => { this.energyLivePending = null; });
+    }
+    return this.energyLivePending;
+  }
+
+  async getEstimated(devices, found) {
+    return estimatedDevices(await this.getEnergyLive(), devices, found);
+  }
+
+  // ---------- Monthly peak ----------
+
+  // A new installation starts with the quarter hours of yesterday and today from Insights
+  async seedPeak() {
+    const cfg = this.getConfig();
+    const devices = await this.getDevices();
+    const found = discover(devices, cfg.devices);
+    if (!found.p1) return;
+    const read = resolution => (device, capability) => this.getEntries(device.id, capability, resolution).catch(() => []);
+    const entries = [...await gridPower(found.p1, read('yesterday')), ...await gridPower(found.p1, read('today'))];
+    if (this.peakTracker.seed(entries)) this.homey.settings.set('peakLog', this.peakTracker.log);
+  }
+
+  getPeak(found, cfg) {
+    return peakSummary({ tracker: this.peakTracker, p1: found.p1, grid: cfg.grid });
+  }
+
+  // The grid power of this minute for the monthly peak, and the meter's own peak when it has one
+  trackPeak(found) {
+    const p1 = found.p1;
+    if (!p1) return;
+    const meter = peakSummary({ tracker: null, p1, grid: {} });
+    let changed = this.peakTracker.add(p1.capabilitiesObj?.measure_power?.value);
+    if (meter?.source === 'meter' && this.peakTracker.recordMeter(meter.peakW)) changed = true;
+    if (changed) this.homey.settings.set('peakLog', this.peakTracker.log);
+  }
+
   // Insights entries of a device capability as [{ t: Date, v: number }], or [] without a log
   async getEntries(deviceId, capability, resolution) {
     const id = `homey:device:${deviceId}:${capability}`;
@@ -205,10 +282,12 @@ class EnergyDashboardApp extends Homey.App {
   }
 
   // The power of this moment, for the Energy now widget: a few numbers, drawn by the widget
+  // With today's totals, for the widget's "today" view (null while the history is being built)
   async getWidgetNow() {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const live = buildLive(devices, discover(devices, cfg.devices), cfg);
+    const today = await Promise.race([this.getHistory('today').catch(() => null), new Promise(r => setTimeout(r, 1500))]);
     return {
       solarW: live.solarW,
       gridW: live.gridW,
@@ -216,6 +295,7 @@ class EnergyDashboardApp extends Homey.App {
       batteryW: live.battery ? live.battery.watts : null,
       soc: live.battery?.soc ?? null,
       flows: live.flows,
+      today: todayTotals(today?.totals),
     };
   }
 
@@ -226,9 +306,12 @@ class EnergyDashboardApp extends Homey.App {
     const found = discover(devices, cfg.devices);
     const live = buildLive(devices, found, cfg);
     if (live.homeW === null) return { nodes: [], links: [], homeW: null, error: 'noP1' };
+    const zoneOf = new Map(devices.map(d => [d.id, d.zone]));
     const powered = consumptionDevices(devices, found, 'measure_power')
       .map(d => ({ id: d.id, name: d.name, zone: d.zone, value: d.capabilitiesObj.measure_power?.value }))
-      .filter(d => typeof d.value === 'number' && d.value > 0);
+      .filter(d => typeof d.value === 'number' && d.value > 0)
+      .concat((await this.getEstimated(devices, found).catch(() => []))
+        .map(d => ({ id: d.id, name: `≈ ${d.name}`, zone: zoneOf.get(d.id), value: d.watts })));
     const flow = buildZoneFlow({
       solarW: live.solarW || 0,
       gridW: live.gridW || 0,
@@ -243,8 +326,11 @@ class EnergyDashboardApp extends Homey.App {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
-    const live = buildLive(devices, found, { ...cfg, layout: savedLayout(cfg, layoutName(name)) });
+    const view = { ...cfg, layout: savedLayout(cfg, layoutName(name)) };
+    const estimated = await this.getEstimated(devices, found).catch(() => []);
+    const live = buildLive(devices, found, view, { estimated });
     live.version = this.homey.manifest.version;
+    live.currency = await this.prices.currency().catch(() => null);
     // Roughly where the Homey is, for a screen that turns dark from sunset to sunrise
     const lat = this.homey.geolocation.getLatitude();
     const lon = this.homey.geolocation.getLongitude();
@@ -257,10 +343,10 @@ class EnergyDashboardApp extends Homey.App {
     live.today = todayTotals(today?.totals);
     if (shown.has('baseload')) live.baseload = await this.getBaseload(found, cfg).catch(() => null);
     if (shown.has('netting')) live.netting = await this.getNetting().catch(() => null);
+    if (shown.has('peak')) live.peak = this.getPeak(found, cfg);
     if (shown.has('alerts')) live.alerts = await this.getAlerts(found, cfg, 'nl').catch(() => []);
     if (shown.has('prices')) {
-      const contract = contractFrom(cfg);
-      const allIn = contract.electricity.type === 'dynamic' ? p => allInElectricity(contract, p) : null;
+      const allIn = allInFunction(contractFrom(cfg), await this.prices.homeyTariff().catch(() => null));
       live.prices = await this.prices.get(cfg.prices, { allIn }).catch(err => ({ error: err.message }));
     }
     return live;
@@ -287,7 +373,8 @@ class EnergyDashboardApp extends Homey.App {
   async getBaseload(found, cfg) {
     if (Date.now() - this.baseloadCache.at > BASELOAD_CACHE_TTL) {
       const market = await this.prices.get({}).catch(() => null);
-      this.baseloadCache = { at: Date.now(), data: await buildBaseload(this, found, cfg, market?.avg) };
+      const homey = await this.prices.homeyTariff().catch(() => null);
+      this.baseloadCache = { at: Date.now(), data: await buildBaseload(this, found, cfg, market?.avg, homey) };
       // Kept per day, to notice when standby use rises
       const log = this.homey.settings.get('baseloadLog') || {};
       this.homey.settings.set('baseloadLog', recordBaseload(log, this.baseloadCache.data?.watts));
@@ -299,7 +386,11 @@ class EnergyDashboardApp extends Homey.App {
 
   async getAlerts(found, cfg, lang) {
     const baseload = await this.getBaseload(found, cfg).catch(() => null);
+    const market = cfg.prices.source === 'off' ? null : await this.prices.get({}).catch(() => null);
     return buildAlerts({
+      price: market ? { market: market.current, currency: market.currency } : null,
+      gridW: found.p1?.capabilitiesObj?.measure_power?.value ?? null,
+      peak: this.getPeak(found, cfg),
       monitor: this.alertMonitor,
       found,
       baseload,
@@ -315,6 +406,7 @@ class EnergyDashboardApp extends Homey.App {
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
     this.alertMonitor.track(devices, found);
+    this.trackPeak(found);
     if (!cfg.alerts.notify) return;
     const lang = this.homey.i18n.getLanguage() === 'nl' ? 'nl' : 'en';
     const today = new Date().toDateString();
@@ -346,6 +438,9 @@ class EnergyDashboardApp extends Homey.App {
       class: d.virtualClass || d.class,
       available: d.available !== false,
       capabilities: d.capabilities,
+      // The values of now, to see which capability holds what (for a hybrid inverter: PV, battery)
+      values: Object.fromEntries(Object.entries(d.capabilitiesObj || {}).map(([id, cap]) => [id, cap.value])),
+      energy: d.energyObj,
       insights: d.capabilities.filter(c => logs.has(`homey:device:${d.id}:${c}`)),
     } : null);
     const today = await this.getHistory('today').catch(err => ({ error: err.message }));
@@ -370,6 +465,9 @@ class EnergyDashboardApp extends Homey.App {
         totals: today.totals ? { import: today.totals.import, export: today.totals.export, solar: today.totals.solar } : null,
       },
       contract: contractFrom(cfg),
+      prices: await this.getPriceInfo(),
+      peak: this.getPeak(found, cfg),
+      estimated: (await this.getEstimated(devices, found).catch(err => [{ error: err.message }])).slice(0, 10),
       alerts: await this.getAlerts(found, cfg, 'nl').catch(err => [{ error: err.message }]),
     };
   }
@@ -413,6 +511,15 @@ class EnergyDashboardApp extends Homey.App {
     return data;
   }
 
+  // Where prices come from now, and what Homey Energy has, for the explanation in the settings
+  async getPriceInfo() {
+    const state = await this.prices.homeyState().catch(() => null);
+    return {
+      source: await this.prices.source().catch(() => 'energyzero'),
+      homey: state ? { type: state.type, formula: state.formula, usable: Boolean(state.allIn), fixed: state.fixed, currency: state.currency } : null,
+    };
+  }
+
   async getDashboardUrl() {
     const address = await this.homey.cloud.getLocalAddress().catch(() => null);
     const host = address ? address.split(':')[0] : '<ip-van-je-homey>';
@@ -434,6 +541,7 @@ class EnergyDashboardApp extends Homey.App {
       customLayout: Boolean(cfg.layout),
       contract: contractFrom(cfg),
       suppliers: SUPPLIERS,
+      prices: await this.getPriceInfo(),
       found: {
         p1: found.p1?.id || null,
         solar: found.solar.map(d => d.id),

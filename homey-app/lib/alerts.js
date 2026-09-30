@@ -1,11 +1,13 @@
 'use strict';
 
 // Warnings for the dashboard (and optionally the Homey timeline): a device that has been on for
-// unusually long, standby use that is higher than usual, a meter that does not respond, and
-// more than one home battery (possibly the same one twice). Kept light: once a minute the power
-// of each device is looked at, and per device only 24 numbers are kept.
+// unusually long, standby use that is higher than usual, a meter that does not respond, more
+// than one home battery that looks like the same one twice, a negative electricity price while power
+// goes back to the grid, and a quarter hour above this month's peak (Belgian capacity tariff).
+// Kept light: once a minute the power of each device is looked at, and per device only 24
+// numbers are kept.
 
-const { isGridMeter } = require('./energy');
+const { isGridMeter, batteryPower } = require('./energy');
 
 const ON_WATTS = 20;
 const HOUR = 3600000;
@@ -93,17 +95,54 @@ const TEXTS = {
     baseload: (w, u) => `Sluipverbruik is ${w} W, normaal ${u} W`,
     longOn: (n, h, w) => `${n} staat al ${h} uur aan (${w} W)`,
     batteries: (c, names) => `${c} thuisbatterijen gevonden: ${names}. Is dit dezelfde batterij via twee apps? Kies er één bij de instellingen.`,
+    negativePrice: (price, kw) => `Negatieve stroomprijs (${price}/kWh) terwijl je ${kw} kW teruglevert`,
+    peak: (kw, peak) => `Dit kwartier ${kw} kW, boven je maandpiek van ${peak} kW`,
   },
   en: {
     offline: n => `${n} does not respond`,
     baseload: (w, u) => `Standby use is ${w} W, usually ${u} W`,
     longOn: (n, h, w) => `${n} has been on for ${h} hours (${w} W)`,
     batteries: (c, names) => `${c} home batteries found: ${names}. Is this the same battery through two apps? Choose one in the settings.`,
+    negativePrice: (price, kw) => `Negative electricity price (${price}/kWh) while you export ${kw} kW`,
+    peak: (kw, peak) => `This quarter hour ${kw} kW, above your monthly peak of ${peak} kW`,
   },
 };
 
-// All current warnings, each with an id so a notification is sent once
-function buildAlerts({ monitor, found, baseload, baseloadLog, hours = 4, lang = 'nl' }) {
+// Numbers in the warnings, in the style of the language: 1,2 or 1.2
+const decimal = (value, digits, lang) => {
+  const text = value.toFixed(digits);
+  return lang === 'nl' ? text.replace('.', ',') : text;
+};
+const money = (value, currency, lang) => {
+  const symbol = { EUR: '€', GBP: '£', USD: '$', NOK: 'kr', SEK: 'kr', DKK: 'kr' }[currency || 'EUR'] || currency;
+  return `${value < 0 ? '−' : ''}${symbol} ${decimal(Math.abs(value), 3, lang)}`;
+};
+
+// Two batteries that look like one battery through two apps: the same charge level and the same
+// power, while that power is not zero. Several real batteries (HomeWizard plug-in batteries often
+// come in groups of two to four) each have their own power and are no reason for a warning.
+function sameBattery(batteries) {
+  const read = d => ({ soc: d.capabilitiesObj?.measure_battery?.value, watts: Math.abs(batteryPower(d, {})) });
+  for (let i = 0; i < batteries.length; i++) {
+    for (let j = i + 1; j < batteries.length; j++) {
+      const a = read(batteries[i]);
+      const b = read(batteries[j]);
+      if (typeof a.soc !== 'number' || typeof b.soc !== 'number' || Math.abs(a.soc - b.soc) > 0.5) continue;
+      if (a.watts < 20 || b.watts < 20) continue;
+      if (Math.abs(a.watts - b.watts) <= Math.max(10, a.watts * 0.05)) return [batteries[i], batteries[j]];
+    }
+  }
+  return null;
+}
+
+// The price warning needs at least this much export; the peak warning five minutes of the quarter
+const EXPORT_WATTS = 100;
+const PEAK_AFTER = 5 * 60 * 1000;
+
+// All current warnings, each with an id so a notification is sent once. `price` is the market
+// price of this moment ({ market, currency }) and `gridW` the grid power (negative: export);
+// `peak` is the monthly peak summary (peak.js), warned about when a capacity tariff is set.
+function buildAlerts({ monitor, found, baseload, baseloadLog, hours = 4, lang = 'nl', price = null, gridW = null, peak = null, now = Date.now() }) {
   const t = TEXTS[lang] || TEXTS.nl;
   const alerts = [];
   if (found.p1 && found.p1.available === false) alerts.push({ id: 'p1', level: 'warning', text: t.offline(found.p1.name) });
@@ -116,8 +155,16 @@ function buildAlerts({ monitor, found, baseload, baseloadLog, hours = 4, lang = 
   for (const d of monitor ? monitor.longOn(hours) : []) {
     alerts.push({ id: `on-${d.id}`, level: 'info', text: t.longOn(d.name, d.hours, Math.round(d.watts)) });
   }
-  if (found.batteries.length > 1) {
-    alerts.push({ id: 'batteries', level: 'info', text: t.batteries(found.batteries.length, found.batteries.map(b => b.name).join(', ')) });
+  const twins = sameBattery(found.batteries);
+  if (twins) alerts.push({ id: 'batteries', level: 'info', text: t.batteries(twins.length, twins.map(b => b.name).join(', ')) });
+  if (typeof price?.market === 'number' && price.market < 0 && typeof gridW === 'number' && -gridW >= EXPORT_WATTS) {
+    alerts.push({ id: 'negative-price', level: 'warning', text: t.negativePrice(money(price.market, price.currency, lang), decimal(-gridW / 1000, 1, lang)) });
+  }
+  if (peak?.tariff && typeof peak.quarterW === 'number' && now - Date.parse(peak.quarterStart) >= PEAK_AFTER) {
+    const floor = Math.max(peak.peakW || 0, (peak.minKw || 0) * 1000);
+    if (peak.quarterW > floor) {
+      alerts.push({ id: 'peak', level: 'warning', text: t.peak(decimal(peak.quarterW / 1000, 1, lang), decimal(floor / 1000, 1, lang)) });
+    }
   }
   return alerts;
 }

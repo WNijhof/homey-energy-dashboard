@@ -45,7 +45,7 @@
 
   <!-- Edit mode: drag blocks by their handle, drag the right edge to change the width -->
   <div class="edit-bar" id="edit-bar" hidden>
-    <p class="edit-hint">Sleep <b>⠿</b> om een blok te verplaatsen. Sleep de rand rechts voor de breedte en de rand onder voor de hoogte.</p>
+    <p class="edit-hint">Sleep <b>⠿</b> om een blok te verplaatsen. Sleep de rand rechts voor de breedte en de rand onder voor de hoogte. <a class="edit-help" href="https://github.com/WNijhof/homey-energy-dashboard/blob/main/homey-app/README.md" target="_blank" rel="noopener">Handleiding: wat elk blok toont ↗</a></p>
     <div class="edit-hidden" id="edit-hidden"></div>
     <div class="edit-actions">
       <input id="edit-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="Pincode" hidden>
@@ -146,6 +146,21 @@
         <ul class="facts" id="battery-facts"></ul>
       </div>
       <div class="chart fill" id="battery-chart" data-height="90" data-battery></div>
+    </section>
+  </template>
+
+  <template id="block-batteryhistory">
+    <section class="card">
+      <div class="card-head">
+        <h2>Batterijgebruik</h2>
+        <span class="muted" id="batteryhistory-period"></span>
+      </div>
+      <p class="block-empty" id="batteryhistory-empty" hidden>Geen thuisbatterij gevonden. Kies er een bij de instellingen.</p>
+      <ul class="facts" id="batteryhistory-facts" data-batteryhistory></ul>
+      <div class="legend" id="batteryhistory-legend" data-batteryhistory></div>
+      <div class="chart fill" id="batteryhistory-chart" data-height="140" data-batteryhistory></div>
+      <ul class="facts sessions scroll" id="batteryhistory-sessions" data-batteryhistory></ul>
+      <p class="footnote" id="batteryhistory-note" data-batteryhistory></p>
     </section>
   </template>
 
@@ -334,6 +349,25 @@
       </div>
       <p class="block-empty" id="phases-empty" hidden>Je slimme meter geeft geen waarden per fase door.</p>
       <ul class="phases" id="phases" data-phases></ul>
+      <div class="chart fill" id="phases-chart" data-height="110" data-phases></div>
+    </section>
+  </template>
+
+  <template id="block-peak">
+    <section class="card">
+      <div class="card-head">
+        <h2>Maandpiek</h2>
+        <span class="muted" id="peak-source"></span>
+      </div>
+      <p class="block-empty" id="peak-empty" hidden></p>
+      <div data-peak>
+        <div class="big-fact">
+          <span class="big-number" id="peak-kw">–</span>
+          <span class="big-unit" id="peak-at">hoogste kwartier deze maand</span>
+        </div>
+        <ul class="facts" id="peak-facts"></ul>
+      </div>
+      <div class="chart fill" id="peak-chart" data-height="110" data-peak></div>
     </section>
   </template>
 

@@ -123,6 +123,18 @@ button.secondary {
   cursor: pointer;
 }
 
+/* Roof planes of the solar forecast */
+.plane p { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+button.link {
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
 .form-actions { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
 .form-actions button {
   font: inherit;

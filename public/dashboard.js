@@ -995,7 +995,7 @@
     }
     if (!compact) {
       if (typeof t.cost === 'number') {
-        tiles.push({ iconName: 'euro', color: 'var(--accent)', label: 'Kosten', value: `€ ${nf(2).format(t.cost)}`, unit: '', delta: deltaBadge(t.cost, p.cost, true) });
+        tiles.push({ iconName: 'euro', color: 'var(--accent)', label: 'Kosten', value: euro(t.cost), unit: '', delta: deltaBadge(t.cost, p.cost, true) });
       }
     }
     el.innerHTML = tiles.map(tile).join('');
@@ -1655,18 +1655,28 @@
     if (powerPointer) el.onpointermove(powerPointer);
   }
 
-  // With week or month chosen, the chart still shows today, which then needs its own history
+  // With week or month chosen, the chart (and the phases) still show today, which then needs its own history
   async function loadPowerToday() {
-    if (!$('power-chart') || POWER_DAYS[state.period]) return;
+    if ((!$('power-chart') && !$('phases-chart')) || POWER_DAYS[state.period]) return;
     try {
       state.powerToday = await state.options.get('/history?period=today');
     } catch { /* keep what was shown */ }
     renderPower();
+    renderPhaseChart();
   }
 
   // ---------- Prices ----------
 
-  const euro = (value, digits = 2) => `${value < 0 ? '−' : ''}€ ${nf(digits).format(Math.abs(value))}`;
+  // Amounts in euro, or in the currency Homey Energy uses (kroner, pounds, francs)
+  const euro = (value, digits = 2) => {
+    const currency = state.live?.currency || 'EUR';
+    if (currency === 'EUR') return `${value < 0 ? '−' : ''}€ ${nf(digits).format(Math.abs(value))}`;
+    try {
+      return new Intl.NumberFormat(LOCALE, { style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+    } catch {
+      return `${currency} ${nf(digits).format(value)}`;
+    }
+  };
   const hm = iso => new Date(iso).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 
   function priceColor(price, min, max) {
@@ -1684,7 +1694,11 @@
       setText('prices-empty', prices?.error ? `Geen prijzen: ${prices.error}` : 'Geen prijzen beschikbaar.');
       return;
     }
-    setText('prices-source', prices.allIn ? 'all-in: markt + belasting + opslag' : 'marktprijs incl. btw');
+    // Where the price comes from: Homey Energy (with the costs entered in Homey) or EnergyZero
+    const fromHomey = prices.source === 'Homey';
+    setText('prices-source', prices.homeyCosts ? 'all-in volgens Homey'
+      : prices.allIn ? 'all-in: markt + belasting + opslag'
+        : fromHomey ? 'marktprijs van Homey' : 'marktprijs incl. btw');
     setText('price-now', typeof prices.current === 'number' ? euro(prices.current, 3) : '–');
 
     const facts = [
@@ -1790,6 +1804,9 @@
 
   // ---------- Energy per device ----------
 
+  // A device without a meter of its own, whose use Homey estimates
+  const estimateTag = d => (d.estimated ? ' <small class="muted estimate">geschat</small>' : '');
+
   function renderDeviceEnergy(history) {
     const el = $('device-energy');
     if (!el) return;
@@ -1800,7 +1817,7 @@
     el.innerHTML = list.length
       ? list.map(d => `
           <li>
-            <div class="consumer-row"><span>${escapeHtml(d.name)}</span><strong>${formatEnergy(d.kWh)}${total > 0 ? ` <small class="muted">${nf(0).format(d.kWh / total * 100)}%</small>` : ''}</strong></div>
+            <div class="consumer-row"><span>${escapeHtml(d.name)}${estimateTag(d)}</span><strong>${formatEnergy(d.kWh)}${total > 0 ? ` <small class="muted">${nf(0).format(d.kWh / total * 100)}%</small>` : ''}</strong></div>
             <div class="bar"><i style="width:${Math.max(2, d.kWh / max * 100)}%;background:var(--ev)"></i></div>
           </li>`).join('')
       : '<li class="muted">Geen apparaten met een kWh-meter gevonden</li>';
@@ -1874,10 +1891,198 @@
       const volts = typeof p.volts === 'number' ? ` <small class="muted">${nf(0).format(p.volts)} V</small>` : '';
       return `
         <li>
-          <div class="consumer-row"><span>L${p.phase}</span><strong>${main}${volts}</strong></div>
+          <div class="consumer-row"><span${$('phases-chart') ? ` style="color:${PHASE_COLORS[(p.phase - 1) % 3]}"` : ''}>L${p.phase}</span><strong>${main}${volts}</strong></div>
           <div class="bar"><i style="width:${Math.min(100, Math.max(2, load * 100))}%;background:${color}"></i></div>
         </li>`;
     }).join('');
+    renderPhaseChart();
+  }
+
+  // The phases through the day, one line each; with currents the main fuse as a dashed line.
+  // With week or month chosen it shows today, like the power chart.
+  const PHASE_COLORS = ['#5e8cff', '#ff9f0a', '#a55eea'];
+
+  function renderPhaseChart() {
+    const el = $('phases-chart');
+    if (!el) return;
+    charts.set('phases-chart', renderPhaseChart);
+    const history = POWER_DAYS[state.period] ? state.history : state.powerToday;
+    const data = history?.phaseHistory;
+    const fuse = state.live?.phases?.fuseAmps;
+    if (!data?.phases?.length) {
+      el.innerHTML = '';
+      return;
+    }
+    const width = el.clientWidth || 300;
+    const height = chartHeight(el, Number(el.dataset.height) || 110);
+    const pad = { left: 4, right: 34, top: 8, bottom: 16 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const start = Date.parse(data.start);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const amps = data.unit === 'A';
+    const values = data.phases.flatMap(p => p.values.filter(v => typeof v === 'number'));
+    const max = Math.max(amps && fuse ? fuse : 0, ...values.map(Math.abs), amps ? 1 : 100);
+    const min = Math.min(0, ...values);
+    const step = niceStep(max - min, 3);
+    const top = Math.ceil(max / step) * step;
+    const bottom = Math.floor(min / step) * step;
+    const X = t => pad.left + (t - start) / (end - start) * plotW;
+    const Y = v => pad.top + (top - v) / (top - bottom) * plotH;
+    // Amperes, or watts (kW above 1000) for meters that only report power per phase
+    const kw = !amps && top >= 1000;
+    const tick = v => nf(kw && step % 1000 ? 1 : 0).format(kw ? v / 1000 : v);
+    const unit = amps ? ' A' : kw ? ' kW' : ' W';
+    let axis = '';
+    for (let v = bottom; v <= top + 1e-9; v += step) {
+      axis += `<line x1="${pad.left}" x2="${pad.left + plotW}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="${Math.abs(v) < 1e-9 ? 'zero' : ''}"/>`;
+      axis += `<text x="${width - pad.right + 4}" y="${(Y(v) + 4).toFixed(1)}">${tick(v)}${v === top ? unit : ''}</text>`;
+    }
+    for (const h of [6, 12, 18]) axis += `<text x="${X(new Date(start).setHours(h)).toFixed(1)}" y="${height - 3}" text-anchor="middle">${String(h).padStart(2, '0')}</text>`;
+    const fuseLine = amps && fuse
+      ? `<line x1="${pad.left}" x2="${pad.left + plotW}" y1="${Y(fuse).toFixed(1)}" y2="${Y(fuse).toFixed(1)}" stroke="${css('--hot')}" stroke-dasharray="4 4" stroke-opacity="0.7"/>`
+      : '';
+    const lines = data.phases.map(p => {
+      // Runs without gaps, each its own line
+      const runs = [];
+      let run = [];
+      p.values.forEach((v, k) => {
+        if (typeof v === 'number') run.push([X(start + (k + 0.5) * data.step * 1000), Y(v)]);
+        else if (run.length) { runs.push(run); run = []; }
+      });
+      if (run.length) runs.push(run);
+      return runs.map(points => `<path d="${smoothPath(points)}" fill="none" stroke="${PHASE_COLORS[(p.phase - 1) % 3]}" stroke-width="1.6" stroke-linejoin="round"/>`).join('');
+    }).join('');
+    const legend = data.phases.map((p, i) => `<text x="${pad.left + 4 + i * 30}" y="${pad.top + 9}" style="fill:${PHASE_COLORS[(p.phase - 1) % 3]};font-size:11px;font-weight:600">L${p.phase}</text>`).join('');
+    el.innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Fasebelasting vandaag"><g class="axis">${axis}</g>${fuseLine}${lines}${legend}</svg>`;
+  }
+
+  // ---------- Monthly peak (Belgian capacity tariff) ----------
+
+  function renderPeak(peak) {
+    if (!$('peak-kw')) return;
+    const ok = Boolean(peak && typeof peak.peakW === 'number');
+    toggleEmpty('peak', ok);
+    if (!ok) {
+      setText('peak-empty', peak === undefined ? 'Verschijnt na het opslaan van de indeling'
+        : 'Nog geen piek gemeten. Het dashboard meet elk kwartier je gemiddelde afname.');
+      return;
+    }
+    const kw = w => `${nf(w >= 10000 ? 1 : 2).format(w / 1000)} kW`;
+    setText('peak-kw', kw(peak.peakW));
+    setText('peak-source', peak.source === 'meter' ? 'volgens je meter'
+      : peak.since ? `gemeten sinds ${new Date(peak.since).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' })}` : 'gemeten');
+    setText('peak-at', peak.at
+      ? new Date(peak.at).toLocaleString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : 'hoogste kwartier deze maand');
+
+    const facts = [];
+    if (typeof peak.quarterW === 'number') {
+      const limit = Math.max(peak.peakW, (peak.minKw || 0) * 1000);
+      facts.push(`<li class="${peak.quarterW > limit ? 'over' : ''}"><span>Dit kwartier tot nu</span><strong>${kw(peak.quarterW)}</strong></li>`);
+    }
+    if (peak.peakW < (peak.minKw || 0) * 1000) {
+      facts.push(`<li><span>Telt mee als het minimum</span><strong>${nf(1).format(peak.minKw)} kW</strong></li>`);
+    }
+    if (typeof peak.monthCost === 'number') facts.push(`<li><span>Kost deze maand</span><strong>${euro(peak.monthCost)}</strong></li>`);
+    if (typeof peak.yearKw === 'number' && peak.months.length > 1) {
+      facts.push(`<li><span>Gemiddelde 12 maanden</span><strong>${nf(2).format(peak.yearKw)} kW</strong></li>`);
+    }
+    if (typeof peak.yearCost === 'number') facts.push(`<li><span>Per jaar</span><strong>${euro(peak.yearCost, 0)}</strong></li>`);
+    $('peak-facts').innerHTML = facts.join('');
+    renderPeakChart(peak);
+  }
+
+  // The peak of each of the last 12 months, the minimum that counts as a dashed line
+  function renderPeakChart(peak) {
+    const el = $('peak-chart');
+    if (!el) return;
+    charts.set('peak-chart', () => renderPeakChart(peak));
+    const months = peak.months || [];
+    if (months.length < 2) {
+      el.innerHTML = '';
+      return;
+    }
+    const width = el.clientWidth || 300;
+    const height = chartHeight(el, Number(el.dataset.height) || 110);
+    const pad = { left: 26, right: 4, top: 6, bottom: 16 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const max = Math.max(...months.map(m => m.w / 1000), peak.minKw || 0, 1);
+    const step = niceStep(max, 3);
+    const top = Math.ceil(max / step) * step;
+    const y = v => pad.top + plotH - v / top * plotH;
+    const band = plotW / months.length;
+    const barW = Math.max(2, Math.min(22, band * 0.64));
+    let axis = '';
+    for (let v = 0; v <= top + 1e-9; v += step) {
+      axis += `<line x1="${pad.left}" x2="${width - pad.right}" y1="${y(v)}" y2="${y(v)}" class="${v === 0 ? 'zero' : ''}"/>`;
+      axis += `<text x="${pad.left - 5}" y="${y(v) + 4}" text-anchor="end">${nf(step < 1 ? 1 : 0).format(v)}</text>`;
+    }
+    const color = css('--grid');
+    let bars = '';
+    months.forEach((m, i) => {
+      const x = pad.left + band * i + (band - barW) / 2;
+      const v = m.w / 1000;
+      const current = i === months.length - 1;
+      const date = new Date(`${m.month}-01T00:00:00`);
+      bars += `<rect x="${x}" y="${y(v)}" width="${barW}" height="${Math.max(1, y(0) - y(v))}" rx="${Math.min(3, barW / 3)}" fill="${color}" fill-opacity="${current ? 1 : 0.55}"><title>${date.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })}: ${nf(2).format(v)} kW</title></rect>`;
+      if (i % Math.ceil(months.length * 22 / plotW) === 0) axis += `<text x="${pad.left + band * i + band / 2}" y="${height - 3}" text-anchor="middle">${date.toLocaleDateString(LOCALE, { month: 'narrow' })}</text>`;
+    });
+    const floor = peak.minKw ? `<line x1="${pad.left}" x2="${width - pad.right}" y1="${y(peak.minKw)}" y2="${y(peak.minKw)}" stroke="${css('--muted')}" stroke-dasharray="3 4"/>` : '';
+    el.innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Maandpiek"><g class="axis">${axis}</g>${floor}${bars}</svg>`;
+  }
+
+  // ---------- Battery use over time ----------
+
+  // What the battery stored and delivered per hour, day or month, what that was worth on
+  // average, and for a day the sessions: when it charged or delivered, from where, and at what price
+  function renderBatteryHistory(history) {
+    if (!$('batteryhistory-chart')) return;
+    const ok = Boolean(history?.hasBattery);
+    toggleEmpty('batteryhistory', ok);
+    if (!ok) return;
+    setText('batteryhistory-period', PERIOD_LABELS[state.period] || '');
+    const t = history.totals;
+    const info = history.batteryHistory || {};
+    const period = (PERIOD_LABELS[state.period] || '').toLowerCase();
+    const facts = [
+      `<li><span>Geladen ${period}</span><strong>${formatEnergy(t.charge)} kWh</strong></li>`,
+      `<li><span>Ontladen ${period}</span><strong>${formatEnergy(t.discharge)} kWh</strong></li>`,
+    ];
+    if (typeof info.chargePrice === 'number') facts.push(`<li><span>Laden kostte gemiddeld</span><strong>${euro(info.chargePrice, 3)} per kWh</strong></li>`);
+    if (typeof info.dischargePrice === 'number') facts.push(`<li><span>Ontladen bespaarde gemiddeld</span><strong>${euro(info.dischargePrice, 3)} per kWh</strong></li>`);
+    if (typeof info.chargePrice === 'number' && typeof info.dischargePrice === 'number') {
+      facts.push(`<li><span>Verschil per kWh</span><strong>${euro(info.dischargePrice - info.chargePrice, 3)}</strong></li>`);
+    }
+    if (history.batteryEarnings) facts.push(`<li><span>Opbrengst ${period}</span><strong>${euro(history.batteryEarnings.withNetting)}</strong></li>`);
+    $('batteryhistory-facts').innerHTML = facts.join('');
+
+    const positive = [
+      { key: 'batteryToHome', label: 'Naar huis', color: css('--battery') },
+      { key: 'batteryToGrid', label: 'Naar het net', color: css('--export') },
+    ];
+    const negative = [
+      { key: 'solarToBattery', label: 'Van de zon', color: css('--solar') },
+      { key: 'gridToBattery', label: 'Van het net', color: css('--grid') },
+    ];
+    const legend = $('batteryhistory-legend');
+    if (legend) legend.innerHTML = [...positive, ...negative].map(x => `<span><i style="background:${x.color}"></i>${x.label}</span>`).join('');
+    renderBars('batteryhistory-chart', history.rows, { positive, negative, unit: 'kWh', bucket: history.bucket });
+
+    // The sessions of a day, the latest first
+    const list = $('batteryhistory-sessions');
+    const sessions = info.sessions || [];
+    list.hidden = !sessions.length;
+    list.innerHTML = sessions.slice().reverse().slice(0, fixedHeight(list) ? 30 : 8).map(s => {
+      const what = s.kind === 'charge'
+        ? (s.share >= 0.5 ? 'Geladen van de zon' : 'Geladen van het net')
+        : (s.share >= 0.5 ? 'Ontladen naar het net' : 'Ontladen naar huis');
+      const price = typeof s.price === 'number' ? ` · ${euro(s.price, 3)}` : '';
+      return `<li><span><b>${hm(s.start)}–${hm(s.end)}</b> <em>${what}</em></span><strong>${formatEnergy(s.kWh)} kWh${price}</strong></li>`;
+    }).join('');
+    setText('batteryhistory-note', 'Laden van de zon kost de teruglevering die je daardoor misloopt; ontladen bespaart de prijs van stroom van het net.');
   }
 
   // ---------- Edit mode ----------
@@ -1922,6 +2127,7 @@
       renderPrices(state.live.prices);
       renderBaseload(state.live.baseload);
       renderPhases(state.live.phases);
+      renderPeak(state.live.peak);
       renderWater(state.live, state.history);
       renderSankeyBlock();
     }
@@ -2250,7 +2456,7 @@
     el.innerHTML = list.length
       ? list.map(d => `
           <li>
-            <div class="consumer-row"><span>${escapeHtml(d.name)}</span><strong>${formatPower(d.watts)}</strong></div>
+            <div class="consumer-row"><span>${escapeHtml(d.name)}${estimateTag(d)}</span><strong>${formatPower(d.watts)}</strong></div>
             <div class="bar"><i style="width:${Math.max(2, d.watts / max * 100)}%;background:var(--home)"></i></div>
           </li>`).join('')
       : '<li class="muted">Geen apparaten met stroommeting actief</li>';
@@ -2291,6 +2497,7 @@
       renderPrices(live.prices);
       renderBaseload(live.baseload);
       renderPhases(live.phases);
+      renderPeak(live.peak);
       renderWater(live, state.history);
       if (state.sankeyMode === 'live') renderSankeyBlock();
       addLivePower(live);
@@ -2350,6 +2557,8 @@
     renderGauges(history);
     renderDeviceEnergy(history);
     renderCosts(history);
+    renderBatteryHistory(history);
+    renderPhaseChart();
     renderWater(state.live, history);
     if (state.live) {
       renderBoiler(state.live.boiler);

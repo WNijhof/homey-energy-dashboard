@@ -3,9 +3,13 @@
 const https = require('https');
 
 // Expected solar power for today and tomorrow from Forecast.Solar's free API (no account).
-// The free API allows 12 requests an hour, so every roof plane is asked at most once an hour.
+// The free API allows 12 requests an hour and asks one roof plane per request, so the forecast
+// is fetched once an hour, and less often with many planes: at most 10 requests an hour.
 
-const CACHE_TTL = 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+const REQUESTS_PER_HOUR = 10;
+// How long a forecast is kept: an hour, or longer when there are more than 10 planes
+const cacheTtl = planes => Math.max(HOUR, Math.ceil(planes / REQUESTS_PER_HOUR * HOUR));
 const RETRY_AFTER = 15 * 60 * 1000;
 const REQUEST_TIMEOUT = 15 * 1000;
 const STEP = 15 * 60 * 1000;
@@ -69,8 +73,10 @@ class ForecastService {
     const valid = validPlanes(planes);
     if (!valid.length || typeof lat !== 'number' || typeof lon !== 'number') return null;
     const key = JSON.stringify([lat.toFixed(3), lon.toFixed(3), valid]);
-    if (this.cache && this.cache.key === key && Date.now() - this.cache.at < CACHE_TTL) return this.cache.data;
-    if (this.failure && this.failure.key === key && Date.now() - this.failure.at < RETRY_AFTER) {
+    if (this.cache && this.cache.key === key && Date.now() - this.cache.at < cacheTtl(valid.length)) return this.cache.data;
+    // After a failure the planes are asked again later; with many planes only after a full wait
+    const retry = valid.length > 5 ? cacheTtl(valid.length) : RETRY_AFTER;
+    if (this.failure && this.failure.key === key && Date.now() - this.failure.at < retry) {
       if (this.cache?.key === key) return this.cache.data;
       throw this.failure.error;
     }
@@ -127,4 +133,4 @@ function recordForecast(log = {}, forecast) {
 // Total kWp of the configured roof planes
 const totalKwp = planes => validPlanes(planes).reduce((sum, p) => sum + p.kwp, 0);
 
-module.exports = { ForecastService, validPlanes, recordForecast, totalKwp };
+module.exports = { ForecastService, validPlanes, recordForecast, totalKwp, cacheTtl };

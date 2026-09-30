@@ -25,10 +25,12 @@
     "invertPower": false
   },
   "grid": {
-    "fuseAmps": 25
+    "fuseAmps": 25,
+    "capacityTariff": null,
+    "capacityMin": 2.5
   },
   "prices": {
-    "source": "energyzero"
+    "source": "auto"
   },
   "contract": {
     "electricity": {

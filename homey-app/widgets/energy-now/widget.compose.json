@@ -7,6 +7,38 @@
   "transparent": false,
   "settings": [
     {
+      "id": "show",
+      "type": "dropdown",
+      "title": {
+        "en": "Show",
+        "nl": "Tonen"
+      },
+      "value": "now",
+      "values": [
+        {
+          "id": "now",
+          "title": {
+            "en": "Power now (W)",
+            "nl": "Vermogen nu (W)"
+          }
+        },
+        {
+          "id": "both",
+          "title": {
+            "en": "Power now and kWh today",
+            "nl": "Vermogen nu en kWh vandaag"
+          }
+        },
+        {
+          "id": "today",
+          "title": {
+            "en": "kWh today",
+            "nl": "kWh vandaag"
+          }
+        }
+      ]
+    },
+    {
       "id": "animate",
       "type": "checkbox",
       "title": {

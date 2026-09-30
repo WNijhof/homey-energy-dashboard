@@ -532,9 +532,34 @@ h2 { font-size: 17px; font-weight: 600; }
 .phases li { padding: 8px 0; border-top: 1px solid var(--line); }
 .phases li:first-child { border-top: 0; }
 
+/* Phases through the day, monthly peak and battery use */
+#phases-chart, #peak-chart { margin-top: 10px; }
+#batteryhistory-legend { margin: 10px 0 4px; }
+.facts li.over strong { color: var(--hot); }
+.sessions { margin-top: 10px; }
+.sessions li span b { color: var(--text); font-weight: 600; margin-right: 6px; }
+.sessions li span em { font-style: normal; }
+.sessions[hidden], .sessions:empty { display: none; }
+.estimate { font-size: 11px; margin-left: 4px; }
+
 /* Header buttons */
 .header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-.lang-switch button { padding-inline: 8px; }
+/* Language choice (i18n.js): a pill like the period buttons, with a small arrow */
+.lang-switch {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 28px 8px 12px;
+  background:
+    linear-gradient(45deg, transparent 50%, currentColor 50%) right 14px center / 5px 5px no-repeat,
+    linear-gradient(135deg, currentColor 50%, transparent 50%) right 9px center / 5px 5px no-repeat,
+    rgba(118, 118, 128, 0.12);
+  cursor: pointer;
+}
 /* On a phone: the periods on one row, language and buttons together below them */
 @media (max-width: 640px) {
   #periods { order: -1; flex: 1 1 100%; justify-content: space-between; }
@@ -729,6 +754,8 @@ body.editing #blocks { padding-bottom: 160px; }
   gap: 8px;
 }
 .edit-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.edit-help { color: var(--accent); text-decoration: none; white-space: nowrap; margin-left: 4px; }
+.edit-help:hover { text-decoration: underline; }
 .edit-hidden { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
 .edit-hidden:empty { display: none; }
 .chip-button {
@@ -786,6 +813,7 @@ body.editing #blocks { padding-bottom: 160px; }
   .icon-button { width: 44px; height: 44px; border-radius: 12px; }
   .segmented button { min-height: 40px; padding-inline: 14px; }
   .segmented.small button { min-height: 34px; }
+  .lang-switch { min-height: 40px; }
   .screen-panel { width: 290px; }
   .screen-row { min-height: 44px; }
   .screen-row select, .screen-row input[type="time"] { min-height: 34px; }

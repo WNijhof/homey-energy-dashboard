@@ -42,15 +42,21 @@
         return abs >= 1000 ? `${nf(abs >= 10000 ? 1 : 2).format(abs / 1000)} kW` : `${nf(0).format(abs)} W`;
       };
       const text = key => Homey.__(`widgetNow.${key}`) || key;
+      const energy = kWh => nf(kWh >= 100 ? 0 : kWh >= 10 ? 1 : 2).format(kWh || 0);
+      // What the circles show: the power now, the kWh of today, or both (the kWh below the label)
+      const show = ['now', 'today', 'both'].includes(settings.show) ? settings.show : 'now';
       let busy = false;
 
-      // A circle with an icon, the power and a label below it, or beside it (`side`)
-      const node = (x, y, color, icon, value, label, side = false) => `
+      // A circle with an icon, the value and a label below it, or beside it (\`side\`); \`extra\` is a
+      // second line under the label, for today's kWh
+      const node = (x, y, color, icon, value, label, side = false, extra = '') => `
         <g transform="translate(${x} ${y})">
           <circle r="29" class="ring" stroke="${color}"/>
           <g transform="translate(-8 -22)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[icon]}</svg></g>
           <text class="value" y="10">${value}</text>
-          ${side ? `<text class="label" x="36" y="4" style="text-anchor:start">${label}</text>` : `<text class="label" y="44">${label}</text>`}
+          ${side
+            ? `<text class="label" x="36" y="${extra ? -2 : 4}" style="text-anchor:start">${label}</text>${extra ? `<text class="label" x="36" y="11" style="text-anchor:start">${extra}</text>` : ''}`
+            : `<text class="label" y="44">${label}</text>${extra ? `<text class="label" y="56">${extra}</text>` : ''}`}
         </g>`;
 
       // A line between two circles; with power flowing it gets the color and moving dashes
@@ -74,10 +80,23 @@
         const f = now.flows || {};
         const hasSolar = typeof now.solarW === 'number';
         const hasBattery = typeof now.batteryW === 'number';
+        // Today's totals: in the circles (today) or on a line below the label (both)
+        const t = show !== 'now' ? now.today : null;
+        const kwh = t ? {
+          solar: energy(t.solar),
+          grid: energy(t.import),
+          export: energy(t.export),
+          home: energy(t.consumption),
+          charge: energy(t.charge),
+          discharge: energy(t.discharge),
+        } : null;
+        const inCircle = show === 'today' && kwh;
+        const below = show === 'both' && kwh;
+        const extraLine = below ? 12 : 0;
         const top = hasSolar ? 36 : -50;
         const y = top + 86;
-        const by = y + 88;
-        const height = (hasBattery ? by + 34 : y + 52) - (hasSolar ? 0 : top + 36);
+        const by = y + 88 + extraLine;
+        const height = (hasBattery ? by + 34 : y + 52 + extraLine) - (hasSolar ? 0 : top + 36);
         svg.setAttribute('viewBox', `0 ${hasSolar ? 0 : top + 36} 300 ${height}`);
         const exporting = now.gridW < -5;
         let out = '';
@@ -90,11 +109,24 @@
           out += line(`M 172 ${by - 22} Q 205 ${by - 45} 228 ${y + 20}`, f.batteryToHome, COLORS.battery);
           out += line(`M 72 ${y + 20} Q 95 ${by - 45} 128 ${by - 22}`, (f.gridToBattery || 0) + (f.batteryToGrid || 0), f.gridToBattery > 5 ? COLORS.grid : COLORS.export, f.batteryToGrid > 5);
           if (hasSolar) out += line(`M 150 ${top + 29} L 150 ${by - 29}`, f.solarToBattery, COLORS.solar);
-          out += node(150, by, COLORS.battery, 'battery', power(now.batteryW), `${text('battery')}${typeof now.soc === 'number' ? ` ${nf(0).format(now.soc)}%` : ''}`, true);
+          const soc = typeof now.soc === 'number' ? ` ${nf(0).format(now.soc)}%` : '';
+          const batteryKwh = kwh ? `↓ ${kwh.charge} · ↑ ${kwh.discharge} kWh` : '';
+          out += inCircle
+            ? node(150, by, COLORS.battery, 'battery', kwh.discharge, `${text('battery')}${soc}`, true, `↓ ${kwh.charge} kWh`)
+            : node(150, by, COLORS.battery, 'battery', power(now.batteryW), `${text('battery')}${soc}`, true, below ? batteryKwh : '');
         }
-        if (hasSolar) out += node(150, top, COLORS.solar, 'solar', power(now.solarW), text('solar'), true);
-        out += node(45, y, exporting ? COLORS.export : COLORS.grid, 'grid', power(now.gridW), exporting ? text('export') : text('grid'));
-        out += node(255, y, COLORS.home, 'home', power(now.homeW), text('home'));
+        if (hasSolar) {
+          out += inCircle
+            ? node(150, top, COLORS.solar, 'solar', kwh.solar, `${text('solar')} · ${text('kwhToday')}`, true)
+            : node(150, top, COLORS.solar, 'solar', power(now.solarW), text('solar'), true, below ? `${kwh.solar} ${text('kwhToday')}` : '');
+        }
+        const gridLabel = exporting ? text('export') : text('grid');
+        out += inCircle
+          ? node(45, y, COLORS.grid, 'grid', kwh.grid, text('grid'), false, t.export > 0.005 ? `${text('export')} ${kwh.export}` : '')
+          : node(45, y, exporting ? COLORS.export : COLORS.grid, 'grid', power(now.gridW), gridLabel, false, below ? `↓ ${kwh.grid} · ↑ ${kwh.export}` : '');
+        out += inCircle
+          ? node(255, y, COLORS.home, 'home', kwh.home, `${text('home')} · kWh`)
+          : node(255, y, COLORS.home, 'home', power(now.homeW), text('home'), false, below ? `${kwh.home} kWh` : '');
         svg.setAttribute('aria-label', text('name'));
         svg.innerHTML = out;
       }

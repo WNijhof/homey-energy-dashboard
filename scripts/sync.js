@@ -15,6 +15,7 @@ const copies = [
   ['lib/forecast.js', ['homey-app/lib/forecast.js']],
   ['lib/weather.js', ['homey-app/lib/weather.js']],
   ['lib/alerts.js', ['homey-app/lib/alerts.js']],
+  ['lib/peak.js', ['homey-app/lib/peak.js']],
   ['shared/dashboard.js', ['public/dashboard.js', 'homey-app/web/dashboard.js']],
   ['shared/i18n.js', ['public/i18n.js', 'homey-app/web/i18n.js']],
   ['shared/screen.js', ['public/screen.js', 'homey-app/web/screen.js']],

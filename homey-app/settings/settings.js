@@ -40,9 +40,11 @@ function onHomeyReady(Homey) {
       fillSelect(form.thermostat, list.devices, devices.thermostat, autoLabel(list.found.thermostat));
       fillSelect(form.water, list.devices, devices.water, autoLabel(list.found.water));
       form.fuseAmps.value = config.grid?.fuseAmps ?? 25;
+      form.capacityTariff.value = config.grid?.capacityTariff ?? '';
+      form.capacityMin.value = config.grid?.capacityMin ?? 2.5;
       form.editPin.value = config.editPin || '';
       form.accessCode.value = config.accessCode || '';
-      form.pricesOn.checked = config.prices?.source !== 'off';
+      fillPriceSource(config.prices || {}, list.prices);
       fillContract(list.contract, list.suppliers);
       fillForecast(config.forecast || {});
       form.alertHours.value = config.alerts?.hours ?? 4;
@@ -86,10 +88,10 @@ function onHomeyReady(Homey) {
           evChargers: checkedValues('evChargers'),
           water: form.water.value,
         },
-        grid: { fuseAmps: number('fuseAmps') ?? 25 },
-        prices: { source: form.pricesOn.checked ? 'energyzero' : 'off' },
+        grid: { fuseAmps: number('fuseAmps') ?? 25, capacityTariff: number('capacityTariff') ?? null, capacityMin: number('capacityMin') ?? 2.5 },
+        prices: { source: form.priceSource.value, chosen: true },
         contract: contractToSave(number),
-        forecast: forecastToSave(number),
+        forecast: forecastToSave(),
         alerts: { hours: number('alertHours') ?? 4, notify: form.alertNotify.checked },
         layout: layoutToSave(),
         battery: { invertPower: form.invertPower.checked },
@@ -108,7 +110,9 @@ function onHomeyReady(Homey) {
         return;
       }
       try {
-        await setSetting('config', config);
+        // Keeps what this page does not edit, such as the named layouts saved on the dashboard
+        const saved = await getSetting('config').then(c => c || {});
+        await setSetting('config', { ...saved, ...config });
         status.textContent = __('saved');
         // The app restarts the web server on a new port, give it a moment
         setTimeout(() => call('GET', '/settings-info').then(showDashboard).catch(() => {}), 1500);
@@ -118,27 +122,86 @@ function onHomeyReady(Homey) {
     });
   }
 
+  // ---------- Prices ----------
+
+  // Before this list existed, "energyzero" was saved for every price block that was on; only a
+  // source chosen here counts as a choice. The note says what is in use and what Homey has.
+  function fillPriceSource(prices, info) {
+    form.priceSource.value = prices.source === 'energyzero' && !prices.chosen ? 'auto' : prices.source || 'auto';
+    const note = document.getElementById('price-source-note');
+    const homey = info?.homey;
+    const parts = [info?.source === 'homey' ? __('sourceInUseHomey') : info?.source === 'off' ? __('sourceInUseOff') : __('sourceInUseEnergyZero')];
+    if (homey?.type === 'dynamic') {
+      parts.push(homey.usable ? __('homeyFormula', { formula: homey.formula }) : __('homeyNoFormula'));
+    } else if (homey?.type === 'fixed' && homey.fixed) {
+      parts.push(__('homeyFixed', { price: homey.fixed }));
+    } else if (homey) {
+      parts.push(__('homeyNoPrices'));
+    }
+    note.textContent = parts.join(' ');
+  }
+
   // ---------- Solar forecast ----------
+
+  // Roof planes: two to start with, up to 10 (Forecast.Solar asks one plane per request)
+  const MAX_PLANES = 10;
+  const DIRECTIONS = [['-90', 'east'], ['-45', 'southEast'], ['0', 'south'], ['45', 'southWest'], ['90', 'west'], ['180', 'north']];
+  let planes = [];
+
+  function renderPlanes() {
+    const box = document.getElementById('planes');
+    box.innerHTML = planes.map((p, i) => `
+      <div class="plane" data-plane="${i}">
+        <p class="muted">${escapeText(__(i === 0 ? 'planeFirst' : 'planeOptional', { n: i + 1 }))}
+          ${i >= 2 ? `<button type="button" class="link" data-remove="${i}">${escapeText(__('removePlane'))}</button>` : ''}</p>
+        <label><span>${escapeText(__('kwp'))}</span> <input data-field="kwp" type="number" min="0" max="100" step="0.01" value="${p.kwp ?? ''}"></label>
+        <label><span>${escapeText(__('tilt'))}</span> <input data-field="tilt" type="number" min="0" max="90" step="1" value="${p.tilt ?? 35}"></label>
+        <label><span>${escapeText(__('azimuth'))}</span>
+          <select data-field="azimuth">${DIRECTIONS.map(([value, key]) => `<option value="${value}" ${String(p.azimuth) === value ? 'selected' : ''}>${escapeText(__(key))}</option>`).join('')}</select>
+        </label>
+      </div>`).join('');
+    document.getElementById('plane-add').hidden = planes.length >= MAX_PLANES;
+  }
+
+  // Keeps what was typed, so adding or removing a plane does not lose it
+  function readPlanes() {
+    document.querySelectorAll('#planes .plane').forEach(el => {
+      const p = planes[Number(el.dataset.plane)];
+      el.querySelectorAll('[data-field]').forEach(input => {
+        p[input.dataset.field] = input.value === '' ? undefined : Number(input.value);
+      });
+    });
+  }
 
   function fillForecast(forecast) {
     form.forecastOn.checked = Boolean(forecast.enabled);
-    [1, 2].forEach(n => {
-      const p = (forecast.planes || [])[n - 1] || {};
-      form[`kwp${n}`].value = p.kwp ?? '';
-      form[`tilt${n}`].value = p.tilt ?? 35;
-      form[`azimuth${n}`].value = String(p.azimuth ?? (n === 1 ? 0 : 90));
-    });
+    planes = (forecast.planes || []).map(p => ({ kwp: p.kwp, tilt: p.tilt ?? 35, azimuth: p.azimuth ?? 0 }));
+    while (planes.length < 2) planes.push({ tilt: 35, azimuth: planes.length === 0 ? 0 : 90 });
+    renderPlanes();
+    document.getElementById('plane-add').onclick = () => {
+      readPlanes();
+      if (planes.length < MAX_PLANES) planes.push({ tilt: 35, azimuth: 0 });
+      renderPlanes();
+    };
+    document.getElementById('planes').onclick = event => {
+      const remove = event.target.closest('[data-remove]');
+      if (!remove) return;
+      readPlanes();
+      planes.splice(Number(remove.dataset.remove), 1);
+      renderPlanes();
+    };
     const show = () => { document.querySelector('[data-forecast]').hidden = !form.forecastOn.checked; };
     form.forecastOn.onchange = show;
     show();
   }
 
   // Planes without a size are left out
-  function forecastToSave(number) {
-    const planes = [1, 2]
-      .map(n => ({ kwp: number(`kwp${n}`), tilt: number(`tilt${n}`) ?? 35, azimuth: Number(form[`azimuth${n}`].value) }))
+  function forecastToSave() {
+    readPlanes();
+    const kept = planes
+      .map(p => ({ kwp: p.kwp, tilt: p.tilt ?? 35, azimuth: p.azimuth ?? 0 }))
       .filter(p => p.kwp > 0);
-    return { enabled: form.forecastOn.checked && planes.length > 0, planes };
+    return { enabled: form.forecastOn.checked && kept.length > 0, planes: kept };
   }
 
   // ---------- Contract ----------
