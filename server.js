@@ -12,7 +12,7 @@ const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
 const { WeatherService } = require('./lib/weather');
 const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
-const { contractFrom, allInFunction } = require('./lib/tariffs');
+const { contractFrom, allInFunction, describeTariff } = require('./lib/tariffs');
 const { PeakTracker, peakSummary } = require('./lib/peak');
 const demo = require('./lib/demo');
 
@@ -159,6 +159,8 @@ async function getLive(name = '') {
     }
   }
   live.version = VERSION;
+  // The contract, for the explanation of the amounts in the cost blocks
+  live.tariff = describeTariff(contractFrom(cfg), cfg.demo ? null : await prices.homeyTariff().catch(() => null));
   // Roughly where the house is, for a screen that turns dark from sunset to sunrise
   const place = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null)
     || (cfg.demo ? { lat: 52.1, lon: 5.1 } : null);

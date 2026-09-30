@@ -11,7 +11,7 @@ const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
 const { WeatherService } = require('./lib/weather');
 const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
-const { contractFrom, allInFunction, SUPPLIERS } = require('./lib/tariffs');
+const { contractFrom, allInFunction, describeTariff, SUPPLIERS } = require('./lib/tariffs');
 const { PeakTracker, peakSummary } = require('./lib/peak');
 const { WebServer } = require('./lib/webserver');
 
@@ -346,6 +346,8 @@ class EnergyDashboardApp extends Homey.App {
     if (shown.has('baseload')) live.baseload = await this.getBaseload(found, cfg).catch(() => null);
     if (shown.has('netting')) live.netting = await this.getNetting().catch(() => null);
     if (shown.has('peak')) live.peak = this.getPeak(found, cfg);
+    // The contract, for the explanation of the amounts in the cost blocks
+    live.tariff = describeTariff(contractFrom(cfg), await this.prices.homeyTariff().catch(() => null));
     if (shown.has('alerts')) live.alerts = await this.getAlerts(found, cfg, 'nl').catch(() => []);
     if (shown.has('prices')) {
       const allIn = allInFunction(contractFrom(cfg), await this.prices.homeyTariff().catch(() => null));

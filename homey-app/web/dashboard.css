@@ -542,6 +542,48 @@ h2 { font-size: 17px; font-weight: 600; }
 .sessions[hidden], .sessions:empty { display: none; }
 .estimate { font-size: 11px; margin-left: 4px; }
 
+/* The "i" of every block and its explanation */
+.info-button {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font: italic 700 11px/1 Georgia, 'Times New Roman', serif;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.info-button:hover, .info-button[aria-expanded="true"] { opacity: 1; color: var(--accent); }
+/* In the head the title and the "i" stay together on the left */
+.card-head .info-button { margin-right: auto; margin-left: -4px; }
+.info-button.corner { position: absolute; top: 8px; right: 8px; z-index: 3; }
+body.editing .info-button { display: none; }
+.info-pop {
+  position: absolute;
+  top: 48px;
+  left: 12px;
+  right: 12px;
+  z-index: 6;
+  max-height: min(70vh, 460px);
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.info-pop p { margin: 0 0 8px; }
+.info-pop .facts { margin: 4px 0 10px; }
+.info-pop .facts li { font-size: 13px; gap: 12px; }
+.info-pop .facts strong { text-align: right; font-weight: 600; }
+.info-pop code { font-size: 12px; overflow-wrap: anywhere; }
+
 /* Help menu: the report that is shared, shown before it is sent */
 .help-report {
   width: 100%;

@@ -116,6 +116,7 @@
     // Charts keep their usual height when the block takes the height of its content
     element.querySelectorAll('[data-height]').forEach(chart => chart.style.setProperty('--basis', `${chart.dataset.height}px`));
     initSankeyMode(element);
+    addInfo(element, id);
     return element;
   }
 
@@ -2447,6 +2448,201 @@
       redrawSoon();
     });
   }
+
+  // ---------- Block info ----------
+
+  // A small round "i" in the head of every block: what it shows, where the numbers come from and
+  // how they are calculated. The blocks with amounts also show the calculation with their own
+  // numbers and the contract (or the formula in Homey), so each amount can be followed.
+  const INFO = {
+    flow: 'Het vermogen van dit moment tussen zon, net, huis en batterij, elke 10 seconden gelezen. Huis = net + zon − batterij. Onder de cirkels staan de kWh van vandaag.',
+    waterheater: 'De temperatuur van je boiler. De doucheminuten zijn een schatting uit de inhoud, de temperatuur van het koude water, je douchetemperatuur en je douchekop (bij de instellingen).',
+    heating: 'Kamertemperatuur van je thermostaat, en wat je warmtepomp of cv-ketel doet. Stroom komt van de meting van het toestel, gas van je slimme meter (het hele huis). Gas per graaddag corrigeert voor het weer.',
+    ev: 'Vermogen en status van je laadpaal, en de geladen kWh in de gekozen periode uit Homey Insights.',
+    battery: 'Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. De opbrengst is wat ontladen bespaarde min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep.',
+    batteryhistory: 'Wat de batterij laadde (van zon of net) en leverde (aan huis of net). Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.',
+    tiles: 'De totalen van de gekozen periode uit de meterstanden in Homey Insights, vergeleken met de vorige periode tot hetzelfde moment. Zelfvoorzienend is het deel van je verbruik uit zon en batterij.',
+    prices: 'De dynamische stroomprijzen van vandaag en morgen, per kwartier of uur, van Homey Energie of EnergyZero. Het goedkoopste blok is het goedkoopste aaneengesloten blok van 3 uur.',
+    gauges: 'Zelfvoorzienend: deel van je verbruik uit zon en batterij. Eigen zon gebruikt: deel van je zonnestroom dat je zelf gebruikte. Netto: afname min teruglevering.',
+    consumers: 'Apparaten die nu stroom gebruiken, volgens hun eigen vermogensmeting. "geschat" betekent dat Homey het verbruik schat.',
+    electricity: 'Boven de nul waar je stroom vandaan kwam (net, zon, batterij), eronder waar overschot heen ging (teruglevering, batterij). Uit de meterstanden van je P1-meter, zonnepanelen en batterij.',
+    power: 'Het vermogen door de dag in stappen van 5 minuten uit Homey Insights; het laatste stuk loopt live mee. De stippellijn is de verwachting van Forecast.Solar.',
+    sankey: 'Waar je energie vandaan kwam, via je huis naar elk apparaat met een meting; de dikte is de hoeveelheid. "Niet gemeten" is wat de apparaten samen niet verklaren.',
+    devices: 'kWh per apparaat in de gekozen periode, uit hun energiemeters in Homey Insights en het rapport van Homey Energie. Het percentage is het deel van je totale verbruik.',
+    costs: 'Elke meterstand is gerekend met de prijs van dat moment. Per regel: de hoeveelheid × de gemiddelde prijs in deze periode.',
+    netting: 'Wat het einde van salderen op 1 januari 2027 kost, over vorig jaar (of dit jaar tot nu): per gesaldeerde kWh het verschil tussen de prijs die je nu vermijdt en wat teruglevering zonder salderen oplevert. Teruglevering boven je afname werd nooit gesaldeerd.',
+    solar: 'Opbrengst van je zonnepanelen met een streepje voor de verwachting van Forecast.Solar. Prestatie = opbrengst ÷ verwachting; per kWp gebruikt het vermogen van je dakvlakken.',
+    gas: 'Gasverbruik van het hele huis uit je slimme meter. Per graaddag deelt het verbruik door de graaddagen (buitentemperatuur van Open-Meteo), zodat perioden met ander weer te vergelijken zijn.',
+    water: 'Waterverbruik in liters uit je watermeter, en het huidige verbruik per minuut.',
+    baseload: 'Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.',
+    alerts: 'Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.',
+    phases: 'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.',
+    peak: 'Voor het Belgische capaciteitstarief: je hoogste gemiddelde afname over een kwartier deze maand, van je meter of elke minuut gemeten door de app.',
+  };
+
+  const fact = (label, value) => `<li><span>${label}</span><strong>${value}</strong></li>`;
+  const money = (value, digits = 2) => (typeof value === 'number' ? euro(value, digits) : '–');
+  const times = (amount, unit, price, result) => `${amount} ${unit} × ${money(price, 3)} = ${money(result)}`;
+
+  // How the price of electricity, export and gas is made up, from the contract or Homey
+  function tariffFacts() {
+    const tf = state.live?.tariff;
+    if (!tf) return [];
+    const e = tf.electricity;
+    const out = [];
+    if (e.type === 'dynamic' && e.source === 'homey') {
+      out.push('<p>De all-in prijs komt uit de formule die je in Homey invulde.</p>');
+      if (e.formula) out.push(`<ul class="facts">${fact('Formule in Homey', `<code>${escapeHtml(e.formula)}</code>`)}</ul>`);
+    } else if (e.type === 'dynamic') {
+      out.push('<p>Prijs per kwartier = marktprijs + energiebelasting + opslag leverancier.</p>');
+      out.push(`<ul class="facts">${fact('Energiebelasting', `${money(e.energyTax, 5)} per kWh`)}${fact('Opslag leverancier', `${money(e.markup, 4)} per kWh`)}</ul>`);
+    } else if (typeof e.normal === 'number') {
+      const low = typeof e.low === 'number'
+        ? fact('Daltarief', `${money(e.low, 4)} per kWh · ${e.lowFrom}:00–${e.lowTo}:00${e.lowWeekend ? ' + weekend' : ''}`) : '';
+      out.push(`<ul class="facts">${fact('Normaaltarief', `${money(e.normal, 4)} per kWh`)}${low}</ul>`);
+    }
+    if (e.netting) {
+      out.push(typeof e.export === 'number' && e.type === 'fixed'
+        ? `<ul class="facts">${fact('Terugleververgoeding', `${money(e.export, 4)} per kWh`)}</ul>`
+        : '<p>Met salderen levert teruglevering de prijs van dat moment op.</p>');
+    } else {
+      out.push(e.type === 'dynamic'
+        ? '<p>Zonder salderen levert teruglevering de marktprijs op, min de terugleverkosten.</p>'
+        : '<p>Zonder salderen levert teruglevering de terugleververgoeding op, min de terugleverkosten.</p>');
+      if (e.exportFee) out.push(`<ul class="facts">${fact('Terugleverkosten', `${money(e.exportFee, 4)} per kWh`)}</ul>`);
+    }
+    return out;
+  }
+
+  // The calculation behind the amounts of a block, with its own numbers
+  function infoDetails(id) {
+    const t = state.history?.totals;
+    const tf = state.live?.tariff;
+    if (id === 'costs' && t?.costs) {
+      const rows = [];
+      const line = (label, qty, unit, cost, digits = 2) => {
+        if (typeof cost !== 'number') return;
+        rows.push(fact(label, qty > 0 ? times(nf(digits).format(qty), unit, Math.abs(cost) / qty, cost) : money(cost)));
+      };
+      line('Stroom afname', t.import, 'kWh', t.costs.import);
+      line('Teruglevering', t.export, 'kWh', t.costs.export);
+      line('Gas', t.gas, 'm³', t.costs.gas, 3);
+      line('Water', t.water / 1000, 'm³', t.costs.water, 3);
+      if (typeof t.costs.fixed === 'number' && tf && typeof tf.monthly === 'number') {
+        const perDay = (tf.monthly * 12 - (tf.taxReduction || 0)) / 365;
+        rows.push(fact('Vaste kosten per dag', `(${money(tf.monthly)} × 12 − ${money(tf.taxReduction || 0)}) ÷ 365 = ${money(perDay)}`));
+        if (perDay) rows.push(fact('Vaste kosten', `${nf(1).format(t.costs.fixed / perDay)} d × ${money(perDay)} = ${money(t.costs.fixed)}`));
+      }
+      rows.push(fact('Totaal', money(t.cost)));
+      return [`<ul class="facts">${rows.join('')}</ul>`, ...tariffFacts()].join('');
+    }
+    if (id === 'prices') {
+      const p = state.live?.prices;
+      if (!p || p.error) return '';
+      const rows = [];
+      if (typeof p.market === 'number') rows.push(fact('Marktprijs nu', `${money(p.market, 3)} per kWh`));
+      if (p.allIn && typeof p.current === 'number') rows.push(fact('All-in nu', `${money(p.current, 3)} per kWh`));
+      return [rows.length ? `<ul class="facts">${rows.join('')}</ul>` : '', ...(p.allIn ? tariffFacts().slice(0, 2) : [])].join('');
+    }
+    if (id === 'netting') {
+      const n = state.live?.netting;
+      if (!n || typeof n.perKWh !== 'number') return '';
+      return `<ul class="facts">${fact('Teruggeleverd', `${nf(0).format(n.export)} kWh`)}${fact('Daarvan gesaldeerd', `${nf(0).format(n.netted)} kWh`)}`
+        + `${fact('Besparing per kWh', money(n.perKWh, 3))}${fact('Extra per jaar', times(nf(0).format(n.netted), 'kWh', n.perKWh, n.extra))}</ul>${tariffFacts().join('')}`;
+    }
+    if (id === 'battery') {
+      const b = state.history?.batteryEarnings;
+      if (!b) return '';
+      return `<ul class="facts">${fact('Ontladen', `${formatEnergy(b.discharged)} kWh`)}${fact('Geladen', `${formatEnergy(b.charged)} kWh`)}${fact('Opbrengst', money(b.withNetting))}</ul>`;
+    }
+    if (id === 'batteryhistory') {
+      const h = state.history?.batteryHistory;
+      if (!h || !t) return '';
+      const rows = [];
+      const out = typeof h.dischargePrice === 'number' ? t.discharge * h.dischargePrice : null;
+      const inn = typeof h.chargePrice === 'number' ? t.charge * h.chargePrice : null;
+      if (out !== null) rows.push(fact('Ontladen', times(formatEnergy(t.discharge), 'kWh', h.dischargePrice, out)));
+      if (inn !== null) rows.push(fact('Geladen', times(formatEnergy(t.charge), 'kWh', h.chargePrice, inn)));
+      if (out !== null && inn !== null) rows.push(fact('Opbrengst', `${money(out)} − ${money(inn)} ≈ ${money(out - inn)}`));
+      return rows.length ? `<ul class="facts">${rows.join('')}</ul>` : '';
+    }
+    if (id === 'baseload') {
+      const b = state.live?.baseload;
+      if (!b) return '';
+      const rows = [fact('Per jaar', `${formatPower(b.watts)} × 8.760 h = ${nf(0).format(b.yearKWh)} kWh`)];
+      if (typeof b.yearCost === 'number' && b.yearKWh > 0) rows.push(fact('Kost per jaar', times(nf(0).format(b.yearKWh), 'kWh', b.yearCost / b.yearKWh, b.yearCost)));
+      return `<ul class="facts">${rows.join('')}</ul>`;
+    }
+    if (id === 'peak') {
+      const p = state.live?.peak;
+      if (!p || typeof p.peakW !== 'number') return '';
+      const counted = Math.max(p.peakW / 1000, p.minKw || 0);
+      const rows = [fact('Telt deze maand', `max(${nf(2).format(p.peakW / 1000)}; ${nf(1).format(p.minKw || 0)}) = ${nf(2).format(counted)} kW`)];
+      if (p.tariff) {
+        rows.push(fact('Kost deze maand', `${nf(2).format(counted)} kW × ${money(p.tariff)} ÷ 12 = ${money(p.monthCost)}`));
+        if (typeof p.yearKw === 'number') rows.push(fact('Per jaar', `${nf(2).format(p.yearKw)} kW × ${money(p.tariff)} = ${money(p.yearCost, 0)}`));
+      }
+      return `<ul class="facts">${rows.join('')}</ul>`;
+    }
+    return '';
+  }
+
+  function infoHtml(id) {
+    return `<p>${escapeHtml(INFO[id] || '')}</p>${infoDetails(id)}`;
+  }
+
+  // Adds the "i" to the head of a block (or its corner when it has no head) and a hidden popover
+  function addInfo(element, id) {
+    if (!INFO[id]) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'info-button';
+    button.title = 'Uitleg';
+    button.setAttribute('aria-label', 'Uitleg');
+    button.setAttribute('aria-expanded', 'false');
+    button.textContent = 'i';
+    // Next to the title, not in it: some titles are replaced by the name of a device
+    const title = element.querySelector('.card-head h2');
+    if (title) title.after(button);
+    else {
+      button.classList.add('corner');
+      element.appendChild(button);
+    }
+    const pop = document.createElement('div');
+    pop.className = 'info-pop';
+    pop.hidden = true;
+    element.appendChild(pop);
+  }
+
+  function closeInfo(except = null) {
+    document.querySelectorAll('.info-pop').forEach(pop => {
+      if (pop === except) return;
+      pop.hidden = true;
+      pop.parentElement.querySelector('.info-button')?.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest('.info-button');
+    if (!button) {
+      if (!event.target.closest('.info-pop')) closeInfo();
+      return;
+    }
+    event.stopPropagation();
+    const block = button.closest('.block');
+    const pop = block?.querySelector('.info-pop');
+    if (!pop) return;
+    closeInfo(pop);
+    if (!pop.hidden) {
+      pop.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    pop.innerHTML = infoHtml(block.dataset.block);
+    pop.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+  });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeInfo(); });
 
   // ---------- Help and diagnosis ----------
 

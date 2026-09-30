@@ -1,7 +1,7 @@
 {
   "0.2.3": {
-    "en": "Two buttons next to the pencil on the dashboard: ! to share a diagnosis by e-mail or on GitHub (optionally with your dashboard), and ? for the manual. The Energy flows widget no longer lets room and device labels run into each other on a narrow screen.",
-    "nl": "Twee knoppen naast het potlood op het dashboard: ! om een diagnose te delen per mail of op GitHub (desgewenst met je dashboard), en ? voor de handleiding. In de widget Energiestromen lopen de namen van ruimtes en apparaten niet meer door elkaar op een smal scherm."
+    "en": "Two buttons next to the pencil on the dashboard: ! to share a diagnosis by e-mail or on GitHub (optionally with your dashboard), and ? for the manual. The Energy flows widget no longer lets room and device labels run into each other on a narrow screen. Every block has a small (i): what it shows, where the numbers come from and how they are calculated; for costs, prices, net metering, battery, standby use and monthly peak with your own numbers and contract.",
+    "nl": "Twee knoppen naast het potlood op het dashboard: ! om een diagnose te delen per mail of op GitHub (desgewenst met je dashboard), en ? voor de handleiding. In de widget Energiestromen lopen de namen van ruimtes en apparaten niet meer door elkaar op een smal scherm. Elk blok heeft een kleine (i): wat het laat zien, waar de getallen vandaan komen en hoe ze berekend zijn; bij kosten, prijzen, salderen, batterij, sluipverbruik en maandpiek met je eigen getallen en contract."
   },
   "0.2.2": {
     "en": "All-electric houses: gas disappears from the dashboard when the meter has no gas reading, or choose \"No gas\" in the settings. Phase load shows the load correctly while a phase sends power back. Share diagnosis can include your dashboard, so the maker sees exactly what you see.",

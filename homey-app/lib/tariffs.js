@@ -172,6 +172,36 @@ async function tariffFor(contract, priceService, from, till) {
   return { importPrice, exportPrice, exportNoNetting, gasPrice, water: contract.water, fixedPerDay };
 }
 
+// The contract as the dashboard explains it in the info of the cost blocks: how the price of
+// import, export, gas and the fixed costs are made up. Plain numbers only, no functions.
+function describeTariff(contract, homey = null) {
+  const e = electricityFor(contract, homey);
+  const fromHomey = Boolean(e.type === 'dynamic' && homey?.allIn && e.allIn === homey.allIn);
+  return {
+    electricity: {
+      type: e.type,
+      // "homey": the formula entered in Homey makes the all-in price
+      source: fromHomey ? 'homey' : 'contract',
+      formula: fromHomey ? homey.formula || null : null,
+      markup: e.markup,
+      energyTax: e.energyTax,
+      normal: e.normal,
+      low: e.low,
+      lowFrom: e.lowFrom,
+      lowTo: e.lowTo,
+      lowWeekend: e.lowWeekend,
+      export: e.export,
+      exportAfter: e.exportAfter,
+      exportFee: e.exportFee,
+      netting: e.netting,
+    },
+    gas: { ...contract.gas },
+    water: contract.water,
+    monthly: contract.monthly,
+    taxReduction: contract.taxReduction,
+  };
+}
+
 // Whether the contract has anything to calculate costs with; `homeyPrices` says Homey has prices
 // that fill in an empty electricity contract
 function hasPrices(contract, homeyPrices = false) {
@@ -190,5 +220,5 @@ function typicalImportPrice(contract, marketAverage, homey = null) {
 
 module.exports = {
   ENERGY_TAX, TAX_REDUCTION, SUPPLIERS, contractFrom, isLow, tariffFor, hasPrices,
-  allInElectricity, allInFunction, electricityFor, typicalImportPrice,
+  allInElectricity, allInFunction, electricityFor, typicalImportPrice, describeTariff,
 };

@@ -12,6 +12,10 @@ Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgord
 
 Rechtsboven op het dashboard kies je **NL** of **EN**. Elk scherm onthoudt zijn eigen keuze; de eerste keer volgt het de taal van de browser. De instellingen in de Homey-app volgen de taal van je Homey.
 
+## Uitleg bij elk blok
+
+Naast de titel van elk blok staat een kleine **(i)**. Een tik toont wat het blok laat zien, waar de getallen vandaan komen en hoe ze berekend zijn. Bij de blokken met bedragen (Kosten, Stroomprijs, Einde salderen, Thuisbatterij, Batterijgebruik, Sluipverbruik en Maandpiek) staat de berekening erbij met je eigen getallen, bijvoorbeeld *9,88 kWh × € 0,256 = € 2,53*, en hoe de prijs is opgebouwd uit je contract of je formule in Homey.
+
 ## De indeling aanpassen
 
 Tik op het **potlood** rechtsboven op het dashboard:
