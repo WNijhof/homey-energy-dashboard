@@ -135,13 +135,15 @@
     "planesHelp": "Bijvoorbeeld oost en west, of ook het dak van de garage. Tot 10 dakvlakken; Forecast.Solar rekent elk dakvlak apart.",
     "manual": "Handleiding: wat elk blok toont en alle instellingen ↗",
     "shareTitle": "Diagnose delen",
-    "shareHelp": "Werkt iets niet goed met jouw apparaten, zoals een batterij of omvormer die niet gevonden wordt? Maak een rapport en deel het op GitHub. Het rapport bevat welke apps en metingen je apparaten hebben en hun huidige waarden, zonder namen, ruimtes, locatie of adres. Je ziet eerst precies wat er gedeeld wordt.",
+    "shareHelp": "Werkt iets niet goed met jouw apparaten, zoals een batterij of omvormer die niet gevonden wordt? Maak een rapport en stuur het naar de maker van de app. Het rapport bevat welke apps en metingen je apparaten hebben en hun huidige waarden, zonder namen, ruimtes, locatie of adres. Je ziet eerst precies wat er gedeeld wordt.",
     "shareMake": "Rapport maken",
-    "shareSend": "Kopiëren en op GitHub delen",
-    "shareCopied": "Gekopieerd. Plak het rapport in het issue dat nu opent, als het er nog niet in staat.",
+    "shareCopied": "Het rapport staat op je klembord. Staat het nog niet in de mail of het issue dat nu opent, plak het er dan in.",
     "shareFailed": "Rapport maken mislukt: __error__",
     "shareIssueTitle": "Diagnose: __apps__",
-    "shareIssueIntro": "Wat werkt er niet goed? (bijvoorbeeld: mijn batterij wordt niet gevonden)"
+    "shareIssueIntro": "Wat werkt er niet goed? (bijvoorbeeld: mijn batterij wordt niet gevonden)",
+    "shareMail": "Kopiëren en mailen",
+    "shareGithub": "Delen op GitHub",
+    "sharePaste": "(Plak hier het rapport; het staat op je klembord.)"
   },
   "blocks": {
     "alerts": "Meldingen",

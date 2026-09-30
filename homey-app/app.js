@@ -492,9 +492,13 @@ class EnergyDashboardApp extends Homey.App {
     };
   }
 
-  // The report for "Share diagnosis" in the settings: anonymous, with the date it was made
+  // The report for "Share diagnosis" in the settings: anonymous, with the date it was made, and
+  // the address to mail it to: the contact address of the app in the App Store
   async getDiagnosisReport() {
-    return { made: new Date().toISOString().slice(0, 10), ...(await this.getDiagnosis({ anonymous: true })) };
+    return {
+      email: this.homey.manifest.author?.email || null,
+      report: { made: new Date().toISOString().slice(0, 10), ...(await this.getDiagnosis({ anonymous: true })) },
+    };
   }
 
   async getHistory(period = 'today', { light = false } = {}) {

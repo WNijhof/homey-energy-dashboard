@@ -135,13 +135,15 @@
     "planesHelp": "For example east and west, or the garage roof as well. Up to 10 roof planes; Forecast.Solar calculates each one separately.",
     "manual": "Manual (in Dutch): what each block shows and every setting ↗",
     "shareTitle": "Share diagnosis",
-    "shareHelp": "Something not working well with your devices, such as a battery or inverter that is not found? Make a report and share it on GitHub. It holds which apps and readings your devices have and their current values, without names, rooms, location or address. You see exactly what is shared first.",
+    "shareHelp": "Something not working well with your devices, such as a battery or inverter that is not found? Make a report and send it to the maker of the app. It holds which apps and readings your devices have and their current values, without names, rooms, location or address. You see exactly what is shared first.",
     "shareMake": "Make report",
-    "shareSend": "Copy and share on GitHub",
-    "shareCopied": "Copied. Paste the report into the issue that opens now, if it is not in there yet.",
+    "shareCopied": "The report is on your clipboard. If it is not in the e-mail or issue that opens now, paste it in.",
     "shareFailed": "Making the report failed: __error__",
     "shareIssueTitle": "Diagnosis: __apps__",
-    "shareIssueIntro": "What does not work well? (for example: my battery is not found)"
+    "shareIssueIntro": "What does not work well? (for example: my battery is not found)",
+    "shareMail": "Copy and e-mail",
+    "shareGithub": "Share on GitHub",
+    "sharePaste": "(Paste the report here; it is on your clipboard.)"
   },
   "blocks": {
     "alerts": "Warnings",

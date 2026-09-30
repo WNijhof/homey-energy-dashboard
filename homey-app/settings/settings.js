@@ -400,44 +400,68 @@ function onHomeyReady(Homey) {
 
   // ---------- Share diagnosis ----------
 
-  // The report is shown first; sharing copies it and opens a GitHub issue with it filled in
-  // (when it fits in the address; otherwise the user pastes it)
+  // The report is shown first. Sharing copies it and opens an e-mail to the developer (the
+  // default, no account needed) or a GitHub issue, with the report filled in when it fits in the
+  // address; otherwise the user pastes it from the clipboard.
   const ISSUES = 'https://github.com/WNijhof/homey-energy-dashboard/issues/new';
+  // Mail programs cut off long mailto addresses, GitHub allows more
+  const MAIL_LIMIT = 1800;
+  const GITHUB_LIMIT = 7000;
   const shareStatus = document.getElementById('share-status');
   const reportBox = document.getElementById('share-report');
-  let report = null;
+  let shared = null;
 
   document.getElementById('share-make').onclick = async () => {
     shareStatus.textContent = '…';
     try {
-      report = await call('GET', '/diagnosis-report');
-      reportBox.value = JSON.stringify(report, null, 2);
+      shared = await call('GET', '/diagnosis-report');
+      reportBox.value = JSON.stringify(shared.report, null, 2);
       reportBox.hidden = false;
       document.getElementById('share-actions').hidden = false;
+      document.getElementById('share-mail').hidden = !shared.email;
       shareStatus.textContent = '';
     } catch (err) {
       shareStatus.textContent = __('shareFailed', { error: err.message || err });
     }
   };
 
-  document.getElementById('share-send').onclick = async () => {
-    const text = reportBox.value;
+  async function copyReport() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(reportBox.value);
     } catch {
       reportBox.select();
       try { document.execCommand('copy'); } catch { /* the user can still select it */ }
     }
-    // The apps of the devices, e.g. com.tweakers.zendure, as the title of the issue
-    const apps = [...new Set([...(report.found?.batteries || []), ...(report.found?.solar || []), ...(report.batteryLike || []), report.found?.p1]
+  }
+
+  // The apps of the devices, e.g. com.tweakers.zendure, as the subject or title
+  function subject() {
+    const r = shared.report;
+    const apps = [...new Set([...(r.found?.batteries || []), ...(r.found?.solar || []), ...(r.batteryLike || []), r.found?.p1]
       .map(d => /^homey:app:([^:]+)/.exec(d?.app || '')?.[1]).filter(Boolean))];
-    const title = __('shareIssueTitle', { apps: apps.join(', ') || report.version });
-    const full = `${__('shareIssueIntro')}\n\n\n\`\`\`json\n${text}\n\`\`\`\n`;
-    const body = encodeURIComponent(full).length < 7000 ? full : `${__('shareIssueIntro')}\n\n\n`;
-    const url = `${ISSUES}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+    return __('shareIssueTitle', { apps: apps.join(', ') || r.version });
+  }
+
+  function open(url) {
     shareStatus.textContent = __('shareCopied');
     if (Homey.openURL) Homey.openURL(url);
     else window.open(url, '_blank');
+  }
+
+  document.getElementById('share-mail').onclick = async () => {
+    await copyReport();
+    // Without spaces the report takes less room, so more often fits in the mail itself
+    const compact = JSON.stringify(shared.report);
+    const full = `${__('shareIssueIntro')}\n\n\n${compact}\n`;
+    const body = encodeURIComponent(full).length < MAIL_LIMIT ? full : `${__('shareIssueIntro')}\n\n\n${__('sharePaste')}\n`;
+    open(`mailto:${shared.email}?subject=${encodeURIComponent(subject())}&body=${encodeURIComponent(body)}`);
+  };
+
+  document.getElementById('share-github').onclick = async () => {
+    await copyReport();
+    const full = `${__('shareIssueIntro')}\n\n\n\`\`\`json\n${reportBox.value}\n\`\`\`\n`;
+    const body = encodeURIComponent(full).length < GITHUB_LIMIT ? full : `${__('shareIssueIntro')}\n\n\n${__('sharePaste')}\n`;
+    open(`${ISSUES}?title=${encodeURIComponent(subject())}&body=${encodeURIComponent(body)}`);
   };
 
   function escapeText(text) {
