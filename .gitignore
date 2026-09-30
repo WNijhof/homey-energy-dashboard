@@ -3,3 +3,5 @@ node_modules/
 env.json
 # Holds the Homey address and API key
 config.json
+# Drafts of forum and Reddit posts stay local
+docs/*post*.md
