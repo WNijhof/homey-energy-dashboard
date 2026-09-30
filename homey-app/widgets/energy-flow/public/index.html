@@ -37,7 +37,6 @@
       const power = w => (w >= 1000 ? `${nf(w >= 10000 ? 1 : 2).format(w / 1000)} kW` : `${nf(0).format(w)} W`);
       const text = key => Homey.__(`widget.${key}`) || key;
       const escape = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-      const shorten = (s, max) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
       let shownHeight = 0;
       let busy = false;
 
@@ -73,21 +72,25 @@
         const rows = Math.max(...columns.map(col => col.length));
         const gap = 6;
         const minH = 3;
-        const height = Math.max(150, Math.min(520, rows * 34));
+        // Every node gets at least the height of its label, so small ones do not overlap
+        const slot = 14;
+        const base = Math.max(150, Math.min(520, rows * 34));
         const scale = Math.min(...columns.filter(c => c.length).map(col => {
           const total = col.reduce((sum, n) => sum + n.value, 0) || 1;
-          return (height - gap * (col.length - 1) - minH * col.length) / total;
+          return Math.max(0.001, (base - gap * (col.length - 1) - slot * col.length) / total);
         }));
         const barW = 6;
         const x = [0, Math.round(width * 0.42), width - barW];
+        columns.forEach(col => col.forEach(n => { n.h = n.value * scale + minH; }));
+        const usedOf = col => col.reduce((sum, n) => sum + Math.max(n.h, slot), 0) + gap * Math.max(0, col.length - 1);
+        const height = Math.ceil(Math.max(base, ...columns.map(usedOf)));
         columns.forEach((col, c) => {
-          const used = col.reduce((sum, n) => sum + n.value * scale + minH, 0) + gap * (col.length - 1);
-          let y = (height - used) / 2;
+          let y = (height - usedOf(col)) / 2;
           col.forEach(n => {
+            const room = Math.max(n.h, slot);
             n.x = x[c];
-            n.y = y;
-            n.h = n.value * scale + minH;
-            y += n.h + gap;
+            n.y = y + (room - n.h) / 2;
+            y += room + gap;
           });
         });
 
@@ -115,22 +118,44 @@
           if (settings.animate !== false && thickness >= 2) runs += `<path class="run" d="${d}" stroke-width="${Math.min(3, thickness / 2).toFixed(1)}"/>`;
         }
 
+        // The room labels (middle) and device labels (right) share the space between the middle and
+        // the right column, half each; the sources use the space up to the middle column
         let boxes = '';
-        const maxChars = Math.max(8, Math.round(width / 26));
+        const middleRoom = (x[2] - x[1] - barW) / 2 - 8;
+        const room = { 0: x[1] - barW - 10, 1: middleRoom, 2: middleRoom };
         for (const n of nodes) {
           const color = COLORS[n.kind] || COLORS.zone;
           const right = n.column === 2;
           const tx = right ? n.x - 4 : n.x + barW + 4;
           const ty = n.y + n.h / 2 + 4;
           boxes += `<rect x="${n.x}" y="${n.y.toFixed(1)}" width="${barW}" height="${n.h.toFixed(1)}" rx="2" fill="${color}"/>`
-            + `<text class="label" x="${tx}" y="${ty.toFixed(1)}" text-anchor="${right ? 'end' : 'start'}">${escape(shorten(labelOf(n), maxChars))} <tspan class="value">${power(n.value)}</tspan></text>`;
+            + `<text class="label" x="${tx}" y="${ty.toFixed(1)}" text-anchor="${right ? 'end' : 'start'}" data-room="${Math.round(room[n.column])}" data-name="${escape(labelOf(n))}">`
+            + `<tspan class="name">${escape(labelOf(n))}</tspan> <tspan class="value">${power(n.value)}</tspan></text>`;
         }
 
         svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
         svg.setAttribute('height', height);
         svg.setAttribute('aria-label', text('name'));
         svg.innerHTML = paths + runs + boxes;
+        fitLabels();
         resize(height + 16);
+      }
+
+      // Shortens each name until its label fits the room it has, measured in the widget itself
+      // (emoji and wide letters differ too much to count characters). Without room for even a
+      // few letters, the value goes as well.
+      function fitLabels() {
+        for (const label of svg.querySelectorAll('text.label')) {
+          const max = Number(label.dataset.room);
+          const name = label.querySelector('.name');
+          const full = [...label.dataset.name];
+          let length = full.length;
+          while (length > 1 && label.getComputedTextLength() > max) {
+            length--;
+            name.textContent = `${full.slice(0, length).join('')}…`;
+          }
+          if (label.getComputedTextLength() > max) label.querySelector('.value')?.remove();
+        }
       }
 
       function resize(height) {
