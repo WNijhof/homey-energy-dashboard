@@ -115,11 +115,16 @@ async function getDevices() {
   return devicesCache.devices;
 }
 
-// Homey Energy's live report, for devices with an estimated use
+// Homey Energy's live report, for devices with an estimated use. The page waits for it at most
+// 2 seconds and otherwise uses the last one, so a slow Homey does not hold the dashboard up.
+let energyLivePending = null;
 async function getEstimated(devices, found) {
-  if (Date.now() - energyLiveCache.at > 5000) {
-    energyLiveCache = { at: Date.now(), report: await client.energy('/live').catch(() => null) };
+  if (Date.now() - energyLiveCache.at > 5000 && !energyLivePending) {
+    energyLivePending = client.energy('/live').catch(() => null).then(report => {
+      energyLiveCache = { at: Date.now(), report };
+    }).finally(() => { energyLivePending = null; });
   }
+  if (energyLivePending) await Promise.race([energyLivePending, new Promise(r => setTimeout(r, 2000))]);
   return estimatedDevices(energyLiveCache.report, devices, found);
 }
 

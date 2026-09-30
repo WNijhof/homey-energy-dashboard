@@ -2510,7 +2510,8 @@
       if (e.formula) out.push(`<ul class="facts">${fact('Formule in Homey', `<code>${escapeHtml(e.formula)}</code>`)}</ul>`);
     } else if (e.type === 'dynamic') {
       out.push('<p>Prijs per kwartier = marktprijs + energiebelasting + opslag leverancier.</p>');
-      out.push(`<ul class="facts">${fact('Energiebelasting', `${money(e.energyTax, 5)} per kWh`)}${fact('Opslag leverancier', `${money(e.markup, 4)} per kWh`)}</ul>`);
+      const vat = e.marketVat ? fact('Btw over de marktprijs van Homey', `${nf(0).format(e.marketVat * 100)}%`) : '';
+      out.push(`<ul class="facts">${vat}${fact('Energiebelasting', `${money(e.energyTax, 5)} per kWh`)}${fact('Opslag leverancier', `${money(e.markup, 4)} per kWh`)}</ul>`);
     } else if (typeof e.normal === 'number') {
       const low = typeof e.low === 'number'
         ? fact('Daltarief', `${money(e.low, 4)} per kWh · ${e.lowFrom}:00–${e.lowTo}:00${e.lowWeekend ? ' + weekend' : ''}`) : '';

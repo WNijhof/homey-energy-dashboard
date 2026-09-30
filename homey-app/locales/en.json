@@ -122,7 +122,7 @@
     "sourceInUseEnergyZero": "In use now: EnergyZero, the Dutch market price including VAT.",
     "sourceInUseOff": "No prices are fetched.",
     "homeyFormula": "Homey calculates with your costs: __formula__. That formula makes the all-in price; the markup and energy tax below then do not count.",
-    "homeyNoFormula": "Homey has no costs set for its dynamic prices yet, so the dashboard uses the contract below.",
+    "homeyNoFormula": "Homey has no costs set for its dynamic prices yet, so the dashboard uses the contract below. Homey gives the market price without VAT; the dashboard adds 21% VAT to it.",
     "homeyFixed": "Homey has a fixed price of __price__ per kWh; it counts when you leave the rate below empty.",
     "homeyNoPrices": "Homey Energy has no prices. Set them up under Energy → Settings in the Homey app.",
     "capacityTariff": "Capacity tariff (€/kW per year)",

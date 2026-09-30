@@ -94,13 +94,21 @@ const allInGas = (contract, market) => market + contract.gas.markup + contract.g
 // fill in where it is left open. With Homey's prices the costs entered in Homey (its formula)
 // make the all-in price, also for a dynamic contract in the app. `homey` is what
 // PriceService.homeyTariff() returns, or null.
+// Homey gives the market price without VAT, EnergyZero with it, and the markup and energy tax in
+// the app are Dutch amounts with VAT. Without a formula in Homey (which adds its own VAT), the app
+// adds the Dutch VAT to Homey's market price before the contract is applied to it.
+const MARKET_VAT = 0.21;
+
 function electricityFor(contract, homey) {
   const e = contract.electricity;
-  const own = market => allInElectricity(contract, market);
-  if (e.type === 'dynamic') return { ...e, type: 'dynamic', allIn: homey?.allIn || own };
-  if (e.normal === null && homey?.allIn) return { ...e, type: 'dynamic', allIn: homey.allIn };
-  if (e.normal === null && homey?.fixed) return { ...e, normal: homey.fixed, allIn: null };
-  return { ...e, allIn: null };
+  const vat = homey?.exVat ? MARKET_VAT : 0;
+  // The market price as the contract uses it: with VAT
+  const market = price => price * (1 + vat);
+  const own = price => allInElectricity(contract, market(price));
+  if (e.type === 'dynamic') return { ...e, type: 'dynamic', allIn: homey?.allIn || own, market, marketVat: homey?.allIn ? 0 : vat };
+  if (e.normal === null && homey?.allIn) return { ...e, type: 'dynamic', allIn: homey.allIn, market: price => price, marketVat: 0 };
+  if (e.normal === null && homey?.fixed) return { ...e, normal: homey.fixed, allIn: null, market, marketVat: 0 };
+  return { ...e, allIn: null, market, marketVat: 0 };
 }
 
 // The function that turns a market price into the all-in price, or null for a fixed contract
@@ -141,7 +149,7 @@ async function tariffFor(contract, priceService, from, till) {
   const exportNoNetting = (t0, t1) => {
     if (e.type === 'dynamic') {
       const market = power?.between(t0, t1);
-      return typeof market === 'number' ? market - e.exportFee : null;
+      return typeof market === 'number' ? e.market(market) - e.exportFee : null;
     }
     if (e.exportAfter !== null) return e.exportAfter - e.exportFee;
     if (e.normal === null) return null;
@@ -183,6 +191,8 @@ function describeTariff(contract, homey = null) {
       // "homey": the formula entered in Homey makes the all-in price
       source: fromHomey ? 'homey' : 'contract',
       formula: fromHomey ? homey.formula || null : null,
+      // VAT the app adds to Homey's market price (without a formula in Homey), as a fraction
+      marketVat: e.marketVat || 0,
       markup: e.markup,
       energyTax: e.energyTax,
       normal: e.normal,

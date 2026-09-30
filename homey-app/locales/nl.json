@@ -122,7 +122,7 @@
     "sourceInUseEnergyZero": "Nu in gebruik: EnergyZero, de Nederlandse marktprijs inclusief btw.",
     "sourceInUseOff": "Er worden geen prijzen opgehaald.",
     "homeyFormula": "Homey rekent met jouw kosten: __formula__. Die formule maakt de all-in prijs; de opslag en energiebelasting hieronder tellen dan niet mee.",
-    "homeyNoFormula": "In Homey staan nog geen kosten bij de dynamische prijzen, dus het dashboard rekent met het contract hieronder.",
+    "homeyNoFormula": "In Homey staan nog geen kosten bij de dynamische prijzen, dus het dashboard rekent met het contract hieronder. Homey geeft de marktprijs zonder btw; het dashboard telt daar 21% btw bij op.",
     "homeyFixed": "Homey heeft een vaste prijs van __price__ per kWh; die telt als je hieronder geen tarief invult.",
     "homeyNoPrices": "In Homey Energie staan geen prijzen. Stel ze in bij Energie → Instellingen in de Homey-app.",
     "capacityTariff": "Capaciteitstarief (€/kW per jaar)",

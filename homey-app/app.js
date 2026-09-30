@@ -22,6 +22,7 @@ const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
 const ZONES_CACHE_TTL = 10 * 60 * 1000;
 const NETTING_CACHE_TTL = 60 * 60 * 1000;
 const ENERGY_LIVE_TTL = 5 * 1000;
+const ENERGY_LIVE_WAIT = 2 * 1000;
 
 const DEFAULTS = {
   port: 8080,
@@ -215,7 +216,9 @@ class EnergyDashboardApp extends Homey.App {
     return energy.getReportYear({ year: request.year });
   }
 
-  // Homey Energy's live report, for devices with an estimated use; shared by screens asking at once
+  // Homey Energy's live report, for devices with an estimated use; shared by screens asking at once.
+  // The page waits for it at most 2 seconds and otherwise uses the last one: a slow Energy
+  // manager should not hold up the whole dashboard (homey-api itself only gives up after 10 s).
   async getEnergyLive() {
     if (Date.now() - this.energyLiveCache.at <= ENERGY_LIVE_TTL) return this.energyLiveCache.report;
     if (!this.energyLivePending) {
@@ -225,7 +228,7 @@ class EnergyDashboardApp extends Homey.App {
         return report;
       })().finally(() => { this.energyLivePending = null; });
     }
-    return this.energyLivePending;
+    return Promise.race([this.energyLivePending, new Promise(r => setTimeout(() => r(this.energyLiveCache.report), ENERGY_LIVE_WAIT))]);
   }
 
   async getEstimated(devices, found) {
