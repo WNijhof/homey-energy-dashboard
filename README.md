@@ -40,6 +40,8 @@ Er hoeft niets geïnstalleerd te worden met `npm install`: er zijn geen extra pa
 
 Zonder `config.json` (of met de voorbeeld-key) draait het dashboard in **demo-modus** met voorbeelddata.
 
+Kreeg je een diagnose van een gebruiker met **Mijn dashboard meesturen**, bewaar die dan als bestand en start `node server.js --snapshot=rapport.json`. Het dashboard toont dan precies wat die gebruiker zag, als **momentopname** (alleen de periode Vandaag).
+
 ## Instellingen in `config.json`
 
 | Instelling | Uitleg |

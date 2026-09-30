@@ -133,6 +133,7 @@
       <select name="gasType">
         <option value="fixed" data-i18n="settings.fixed"></option>
         <option value="dynamic" data-i18n="settings.dynamic"></option>
+        <option value="none" data-i18n="settings.noGas"></option>
       </select>
     </label>
     <div data-contract="gas-fixed">
@@ -156,10 +157,11 @@
     </div>
   </form>
 
-  <!-- Share an anonymous diagnosis on GitHub: shown first, then copied and an issue opened -->
+  <!-- Share a diagnosis by e-mail or on GitHub; optionally with a snapshot of the dashboard -->
   <section class="card">
     <h2 data-i18n="settings.shareTitle"></h2>
     <p class="muted" data-i18n="settings.shareHelp"></p>
+    <label class="check-row"><span><span data-i18n="settings.shareSnapshot"></span><br><small class="muted" data-i18n="settings.shareSnapshotHelp"></small></span> <input id="share-snapshot" type="checkbox"></label>
     <div class="form-actions">
       <button type="button" id="share-mail" data-i18n="settings.shareMail"></button>
       <button type="button" class="secondary" id="share-github" data-i18n="settings.shareGithub"></button>

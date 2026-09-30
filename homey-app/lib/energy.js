@@ -127,7 +127,7 @@ const BLOCKS = [
   { id: 'costs', title: 'Kosten', size: 'half', available: (f, cfg) => hasPrices(contractFrom(cfg), cfg.homeyPrices) },
   { id: 'netting', title: 'Einde salderen', size: 'half', available: f => f.solar.length > 0 },
   { id: 'solar', title: 'Zonne-energie', size: 'half', available: f => f.solar.length > 0 },
-  { id: 'gas', title: 'Gas', size: 'half', available: f => Boolean(f.p1 && has(f.p1, 'meter_gas')) },
+  { id: 'gas', title: 'Gas', size: 'half', available: (f, cfg) => usesGas(f.p1, cfg) },
   { id: 'water', title: 'Water', size: 'half', available: f => Boolean(f.water) },
   { id: 'baseload', title: 'Sluipverbruik', size: 'small', available: f => Boolean(f.p1) },
   { id: 'alerts', title: 'Meldingen', size: 'small', available: () => true },
@@ -495,6 +495,16 @@ function buildEv(found) {
     chargers,
     car: found.car ? { name: found.car.name, soc: value(found.car, 'measure_battery') } : null,
   };
+}
+
+// Whether the house uses gas: the P1 meter has a gas counter with a reading, and the contract
+// does not say "no gas" (all-electric). Some meters pass on a gas counter that stays empty or at
+// 0 in a house without gas; that does not count.
+function usesGas(p1, cfg = {}) {
+  if (!p1 || !has(p1, 'meter_gas')) return false;
+  if (cfg.contract?.gas?.type === 'none') return false;
+  const reading = value(p1, 'meter_gas');
+  return typeof reading === 'number' && reading > 0;
 }
 
 // Per-phase readings of the P1 meter, e.g. measure_current.l1 or measure_power.phase2
@@ -1242,7 +1252,8 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
   const contract = contractFrom(cfg);
   const tariff = await tariffFor(contract, prices, start.getTime(), periodEnd(period, start).getTime());
   // Degree days, to compare gas use between periods regardless of the weather
-  if (weather && location && found.p1 && has(found.p1, 'meter_gas')) {
+  const gas = usesGas(found.p1, cfg);
+  if (weather && location && gas) {
     const temps = await weather.temperatures(location, start, periodEnd(period, start)).catch(() => ({}));
     series.degreeDays = degreeDayBuckets(period, buckets, temps);
   }
@@ -1276,7 +1287,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
       if (addMeterCost(costs.netting, buckets, e, nettingValue)) costs.known.netting = true;
     }));
   }
-  if (found.p1 && has(found.p1, 'meter_gas')) {
+  if (gas) {
     jobs.push(entries(found.p1, 'meter_gas').then(e => {
       addMeterDeltas(series.gas, buckets, e);
       if (addMeterCost(costs.gas, buckets, e, tariff.gasPrice)) costs.known.gas = true;
@@ -1406,7 +1417,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
     hasBattery: found.batteries.length > 0,
     available: {
       solar: found.solar.length > 0,
-      gas: Boolean(found.p1 && has(found.p1, 'meter_gas')),
+      gas,
       heating: found.heating.length > 0,
       ev: found.evChargers.length > 0,
       water: Boolean(found.water),

@@ -494,11 +494,17 @@ class EnergyDashboardApp extends Homey.App {
 
   // The report for "Share diagnosis" in the settings: anonymous, with the date it was made, and
   // the address to mail it to: the contact address of the app in the App Store
-  async getDiagnosisReport() {
-    return {
-      email: this.homey.manifest.author?.email || null,
-      report: { made: new Date().toISOString().slice(0, 10), ...(await this.getDiagnosis({ anonymous: true })) },
-    };
+  // With `snapshot` the report also holds the dashboard itself: what the page shows now and
+  // today's history, with device names, so the developer can open it in the pc version
+  // (node server.js --snapshot=<file>) and see exactly this dashboard. Only when the user chose it.
+  async getDiagnosisReport({ snapshot = false } = {}) {
+    const report = { made: new Date().toISOString().slice(0, 10), ...(await this.getDiagnosis({ anonymous: true })) };
+    if (snapshot) {
+      const [live, today] = await Promise.all([this.getLive(''), this.getHistory('today').catch(err => ({ error: err.message }))]);
+      delete live.place;
+      report.snapshot = { made: new Date().toISOString(), live, history: { today } };
+    }
+    return { email: this.homey.manifest.author?.email || null, report };
   }
 
   async getHistory(period = 'today', { light = false } = {}) {

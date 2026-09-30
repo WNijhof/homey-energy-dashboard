@@ -66,7 +66,22 @@ function loadConfig() {
   return cfg;
 }
 
+// A snapshot from "Share diagnosis" with "Include my dashboard", played back instead of a Homey:
+// node server.js --snapshot=report.json. The file may hold the report as copied, or the full answer.
+function loadSnapshot() {
+  const arg = process.argv.find(a => a.startsWith('--snapshot='));
+  if (!arg) return null;
+  const file = arg.slice('--snapshot='.length);
+  const data = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
+  const snapshot = data.snapshot || data.report?.snapshot;
+  if (!snapshot?.live) throw new Error(`Geen momentopname in ${file}: deel de diagnose met "Mijn dashboard meesturen" aan`);
+  return snapshot;
+}
+
+const snapshot = loadSnapshot();
 const cfg = loadConfig();
+// Playing a snapshot back needs no Homey, like the demo
+if (snapshot) cfg.demo = true;
 const client = cfg.demo ? null : new HomeyClient(cfg.homey);
 
 let devicesCache = { at: 0, devices: null };
@@ -109,6 +124,7 @@ async function getEstimated(devices, found) {
 }
 
 async function getLive(name = '') {
+  if (snapshot) return { ...snapshot.live, demo: false, snapshot: snapshot.made, version: VERSION };
   const view = { ...cfg, layout: savedLayout(cfg, layoutName(name)) };
   let live;
   if (cfg.demo) {
@@ -179,6 +195,11 @@ async function getBaseload(found) {
 }
 
 async function getHistory(period, { light = false } = {}) {
+  if (snapshot) {
+    const history = snapshot.history?.[period];
+    if (!history) throw Object.assign(new Error('Deze periode zit niet in de momentopname'), { status: 404 });
+    return history;
+  }
   const key = `${period}${light ? ':light' : ''}`;
   const cached = historyCache.get(key);
   if (cached && Date.now() - cached.at < HISTORY_CACHE_TTL) return cached.data;
@@ -222,6 +243,7 @@ async function getHistory(period, { light = false } = {}) {
 async function getLayoutInfo(name = '') {
   const layout = layoutName(name);
   const common = { blocks: blockCatalog(), name: layout, names: Object.keys(cfg.layouts || {}), customLayout: Boolean(savedLayout(cfg, layout)) };
+  if (snapshot) return { ...common, layout: snapshot.live.layout, defaultLayout: snapshot.live.layout, pinRequired: false };
   if (cfg.demo) {
     return {
       ...common,
@@ -460,7 +482,9 @@ if (!cfg.demo) {
 
 server.listen(cfg.port, () => {
   console.log(`Energie dashboard draait op http://localhost:${cfg.port}`);
-  if (cfg.demo) {
+  if (snapshot) {
+    console.log(`Momentopname van ${snapshot.made}: het dashboard van een gebruiker, zoals het toen was.`);
+  } else if (cfg.demo) {
     console.log('Demo-modus: vul config.json in om je eigen Homey te koppelen.');
   } else {
     console.log(`Gekoppeld met Homey op ${client.base}`);

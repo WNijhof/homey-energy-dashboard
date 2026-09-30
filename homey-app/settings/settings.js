@@ -416,7 +416,8 @@ function onHomeyReady(Homey) {
   async function makeReport() {
     shareStatus.textContent = '…';
     try {
-      shared = await call('GET', '/diagnosis-report');
+      const snapshot = document.getElementById('share-snapshot').checked;
+      shared = await call('GET', `/diagnosis-report${snapshot ? '?snapshot=1' : ''}`);
       reportBox.value = JSON.stringify(shared.report, null, 2);
       reportBox.hidden = false;
       shareStatus.textContent = '';

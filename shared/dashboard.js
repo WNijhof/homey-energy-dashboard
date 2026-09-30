@@ -1884,9 +1884,12 @@
     if (!data?.phases?.length) return;
     setText('phases-fuse', `hoofdzekering ${data.fuseAmps} A`);
     el.innerHTML = data.phases.map(p => {
-      const amps = typeof p.amps === 'number' ? p.amps : (typeof p.watts === 'number' ? Math.abs(p.watts) / (p.volts || 230) : null);
+      // Meters report the current negative while the phase sends power back; the load on the
+      // fuse is the same either way, and the bar turns the color of export
+      const amps = typeof p.amps === 'number' ? Math.abs(p.amps) : (typeof p.watts === 'number' ? Math.abs(p.watts) / (p.volts || 230) : null);
+      const exporting = (typeof p.amps === 'number' ? p.amps : p.watts) < 0;
       const load = amps === null ? 0 : amps / data.fuseAmps;
-      const color = load > 0.9 ? 'var(--hot)' : load > 0.7 ? 'var(--warm)' : 'var(--home)';
+      const color = load > 0.9 ? 'var(--hot)' : load > 0.7 ? 'var(--warm)' : exporting ? 'var(--export)' : 'var(--home)';
       const main = typeof p.amps === 'number' ? `${nf(1).format(p.amps)} A` : formatPower(p.watts);
       const volts = typeof p.volts === 'number' ? ` <small class="muted">${nf(0).format(p.volts)} V</small>` : '';
       return `
@@ -2506,7 +2509,11 @@
       if (rebuilt && !state.history) loadHistory();
       relayout();
 
-      if (live.demo) {
+      if (live.snapshot) {
+        // A snapshot from a user's diagnosis, played back in the pc version
+        setStatus('demo', 'Momentopname');
+        setBanner('', `<strong>Momentopname van ${escapeHtml(new Date(live.snapshot).toLocaleString(LOCALE))}.</strong>`);
+      } else if (live.demo) {
         setStatus('demo', 'Demo');
         setBanner('', state.options.demoMessage || '');
       } else {

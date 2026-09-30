@@ -1,4 +1,8 @@
 {
+  "0.2.2": {
+    "en": "All-electric houses: gas disappears from the dashboard when the meter has no gas reading, or choose \"No gas\" in the settings. Phase load shows the load correctly while a phase sends power back. Share diagnosis can include your dashboard, so the maker sees exactly what you see.",
+    "nl": "All-electric: gas verdwijnt van het dashboard als de meter geen gasstand doorgeeft, of kies \"Geen gas\" in de instellingen. Fasebelasting toont de belasting goed als een fase teruglevert. Diagnose delen kan je dashboard meesturen, zodat de maker precies ziet wat jij ziet."
+  },
   "0.2.1": {
     "en": "The Monthly peak block no longer appears by itself for Dutch P1 meters: only when the meter reports a monthly peak (Belgium) or a capacity tariff is set.",
     "nl": "Het blok Maandpiek verschijnt niet meer vanzelf bij Nederlandse P1-meters: alleen als de meter een maandpiek doorgeeft (België) of er een capaciteitstarief is ingevuld."

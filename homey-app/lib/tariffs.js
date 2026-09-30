@@ -65,8 +65,9 @@ function contractFrom(cfg = {}) {
       lowWeekend: e.lowWeekend ?? true,
     },
     gas: {
-      type: g.type === 'dynamic' ? 'dynamic' : 'fixed',
-      price: num(g.price) ?? num(old.gas),
+      // "none": a house without gas (all-electric)
+      type: g.type === 'dynamic' || g.type === 'none' ? g.type : 'fixed',
+      price: g.type === 'none' ? null : num(g.price) ?? num(old.gas),
       markup: num(g.markup) ?? 0,
       energyTax: num(g.energyTax) ?? ENERGY_TAX.gas,
     },
@@ -156,6 +157,7 @@ async function tariffFor(contract, priceService, from, till) {
   };
 
   const gasPrice = (t0, t1) => {
+    if (g.type === 'none') return null;
     if (g.type === 'dynamic') {
       const market = gas?.between(t0, t1);
       return typeof market === 'number' ? allInGas(contract, market) : null;

@@ -7,7 +7,7 @@ module.exports = {
     return homey.app.getSettingsInfo();
   },
   // The anonymous diagnosis a user can share from the settings
-  async getDiagnosisReport({ homey }) {
-    return homey.app.getDiagnosisReport();
+  async getDiagnosisReport({ homey, query }) {
+    return homey.app.getDiagnosisReport({ snapshot: query?.snapshot === '1' });
   },
 };

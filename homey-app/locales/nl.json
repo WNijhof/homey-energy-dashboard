@@ -142,7 +142,10 @@
     "shareIssueIntro": "Wat werkt er niet goed? (bijvoorbeeld: mijn batterij wordt niet gevonden)",
     "shareMail": "Kopiëren en mailen",
     "shareGithub": "Delen op GitHub",
-    "sharePaste": "(Plak hier het rapport; het staat op je klembord.)"
+    "sharePaste": "(Plak hier het rapport; het staat op je klembord.)",
+    "noGas": "Geen gas (all-electric)",
+    "shareSnapshot": "Mijn dashboard meesturen",
+    "shareSnapshotHelp": "Zo kan de maker precies zien wat jij ziet, om een fout in de weergave op te lossen. Dan gaan ook de apparaatnamen en het verbruik van vandaag mee. Het rapport is dan te groot voor de mail zelf: plak het uit je klembord."
   },
   "blocks": {
     "alerts": "Meldingen",
