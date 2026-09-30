@@ -2450,9 +2450,9 @@
 
   // ---------- Help and diagnosis ----------
 
-  // A help button next to the pencil: the manual, and "Share diagnosis" like in the app settings.
-  // Sharing makes the report, copies it, and opens an e-mail to the maker or a GitHub issue with
-  // the report in it when it fits; nothing is sent until the user sends it there.
+  // Two buttons next to the pencil: "!" for "Share diagnosis" like in the app settings, and "?"
+  // for the manual. Sharing makes the report, copies it, and opens an e-mail to the maker or a
+  // GitHub issue with the report in it when it fits; nothing is sent until the user sends it there.
   const MANUAL = 'https://github.com/WNijhof/homey-energy-dashboard/blob/main/homey-app/README.md';
   const ISSUES = 'https://github.com/WNijhof/homey-energy-dashboard/issues/new';
   const MAIL_LIMIT = 1800;
@@ -2488,11 +2488,10 @@
     const wrap = document.createElement('div');
     wrap.className = 'screen-menu help-menu';
     wrap.innerHTML = `
-      <button class="icon-button" type="button" title="Hulp" aria-label="Hulp" aria-expanded="false">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.1-2.4 3.8"/><path d="M12 17h.01"/></svg>
+      <button class="icon-button" type="button" title="Probleem melden" aria-label="Probleem melden" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></svg>
       </button>
       <div class="screen-panel" hidden>
-        <a class="screen-row" href="${MANUAL}" target="_blank" rel="noopener"><span>Handleiding</span><b>↗</b></a>
         <p class="screen-note">Wordt een apparaat niet gevonden of klopt er iets niet? Stuur de maker een rapport: welke apps en metingen je apparaten hebben, zonder namen, ruimtes of locatie.</p>
         <label class="screen-row"><span>Mijn dashboard meesturen</span><input type="checkbox" data-help="snapshot"></label>
         <button type="button" class="screen-row" data-help="mail"><span>Diagnose mailen</span><b>✉</b></button>
@@ -2551,7 +2550,18 @@
       }
       status.textContent = 'Het rapport staat op je klembord. Staat het nog niet in de mail of het issue, plak het er dan in.';
     });
-    actions.insertBefore(wrap, actions.querySelector('#edit-toggle'));
+    // "?" opens the manual
+    const manual = document.createElement('a');
+    manual.className = 'icon-button';
+    manual.href = MANUAL;
+    manual.target = '_blank';
+    manual.rel = 'noopener';
+    manual.title = 'Handleiding';
+    manual.setAttribute('aria-label', 'Handleiding');
+    manual.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.1-2.4 3.8"/><path d="M12 17h.01"/></svg>';
+    const pencil = actions.querySelector('#edit-toggle');
+    actions.insertBefore(wrap, pencil);
+    actions.insertBefore(manual, pencil);
   }
 
   // ---------- Consumers ----------

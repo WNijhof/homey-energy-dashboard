@@ -66,7 +66,7 @@
     'Periode': ['Period', 'Zeitraum', 'Periode', 'Period', 'Periode', 'Periodo', 'Période', 'Período', 'Periodo'],
     'Taal': ['Language', 'Sprache', 'Språk', 'Språk', 'Sprog', 'Lingua', 'Langue', 'Idioma', 'Idioma'],
     // Help menu and diagnosis
-    'Hulp': ['Help', 'Hilfe', 'Hjelp', 'Hjälp', 'Hjælp', 'Aiuto', 'Aide', 'Ajuda', 'Ayuda'],
+    'Probleem melden': ['Report a problem', 'Problem melden', 'Meld et problem', 'Rapportera ett problem', 'Rapportér et problem', 'Segnala un problema', 'Signaler un problème', 'Comunicar um problema', 'Informar de un problema'],
     'Handleiding': ['Manual', 'Anleitung', 'Veiledning', 'Handbok', 'Vejledning', 'Guida', 'Guide', 'Manual', 'Manual'],
     'Wordt een apparaat niet gevonden of klopt er iets niet? Stuur de maker een rapport: welke apps en metingen je apparaten hebben, zonder namen, ruimtes of locatie.': [
       'Is a device not found, or does something look wrong? Send the maker a report: which apps and readings your devices have, without names, rooms or location.',
