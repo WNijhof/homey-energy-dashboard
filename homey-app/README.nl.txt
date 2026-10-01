@@ -13,7 +13,7 @@ Het dashboard bestaat uit blokken die je zelf indeelt:
 - Maandpiek voor het Belgische capaciteitstarief, met een melding als een kwartier erboven uitkomt
 - Zonneverwachting voor al je dakvlakken, verwarming, laadpaal, sluipverbruik en fasebelasting door de dag heen
 
-Nieuw: wat het einde van salderen in 2027 jou kost, berekend met je eigen metingen; wat je thuisbatterij oplevert; zonprestatie tegenover de verwachting; gas per graaddag; meldingen bij apparaten die blijven aanstaan en stijgend sluipverbruik; prijzen per kwartier; een indeling per scherm; CSV-export; op je beginscherm te zetten.
+Nieuw: terugkijken naar elk moment van vandaag of gisteren, om te zien welk apparaat wat gebruikte; wat het einde van salderen in 2027 jou kost, berekend met je eigen metingen; wat je thuisbatterij oplevert; zonprestatie tegenover de verwachting; gas per graaddag; meldingen bij apparaten die blijven aanstaan en stijgend sluipverbruik; prijzen per kwartier; een indeling per scherm; CSV-export; op je beginscherm te zetten.
 
 Twee widgets voor Homey Dashboards: "Energie nu" met de live stroom tussen zon, net, huis en batterij, en "Energiestromen" van je bronnen via je ruimtes naar de apparaten die het meeste gebruiken.
 

@@ -13,7 +13,7 @@ The dashboard is built from blocks you arrange yourself:
 - Monthly peak for the Belgian capacity tariff, with a warning when a quarter hour goes above it
 - Solar forecast for as many roof planes as you have, heating, EV charger, standby use, and phase load through the day
 
-New: what the end of net metering (salderen) in 2027 costs you, based on your own data; what your home battery earns; solar performance against the forecast; gas per degree day; warnings for devices left on and rising standby use; prices per quarter hour; a layout per screen; CSV export; install on your home screen.
+New: look back at any moment of today or yesterday to see which device used what; what the end of net metering (salderen) in 2027 costs you, based on your own data; what your home battery earns; solar performance against the forecast; gas per degree day; warnings for devices left on and rising standby use; prices per quarter hour; a layout per screen; CSV export; install on your home screen.
 
 Two widgets for Homey Dashboards: "Energy now" with the live flow between solar, grid, home and battery, and "Energy flows" from your sources through your rooms to the devices using the most power.
 
