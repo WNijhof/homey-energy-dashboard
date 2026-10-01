@@ -5,3 +5,6 @@ env.json
 config.json
 # Drafts of forum and Reddit posts stay local
 docs/*post*.md
+
+# Feedback mails and diagnoses from users (personal data)
+user reports/

@@ -52,6 +52,11 @@ function slimDevice(d) {
     capabilities: d.capabilities || [],
     capabilitiesObj,
     energyObj: d.energyObj || null,
+    // What the user set for Energy in Homey (such as excluding the device), for the diagnosis:
+    // it is not in energyObj
+    energy: d.energy || null,
+    energySettings: Object.fromEntries(Object.entries(d.settings || {}).filter(([key]) => /energy/i.test(key))),
+    flags: d.flags || [],
   };
 }
 
@@ -497,6 +502,9 @@ class EnergyDashboardApp extends Homey.App {
       // The values of now, to see which capability holds what (for a hybrid inverter: PV, battery)
       values: Object.fromEntries(Object.entries(d.capabilitiesObj || {}).map(([id, cap]) => [id, cap.value])),
       energy: d.energyObj,
+      energyUser: d.energy,
+      energySettings: d.energySettings,
+      flags: d.flags,
       insights: d.capabilities.filter(c => logs.has(`homey:device:${d.id}:${c}`)),
     } : null);
     const today = await this.getHistory('today').catch(err => ({ error: err.message }));

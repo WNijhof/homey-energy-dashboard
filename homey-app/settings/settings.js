@@ -23,7 +23,19 @@ function onHomeyReady(Homey) {
     Homey.set(key, value, err => (err ? reject(err) : resolve()));
   });
 
-  loadSettings().finally(() => Homey.ready());
+  // Every change is saved by itself: the check mark at the top of Homey only closes the page,
+  // so a choice made without pressing Save was lost
+  let loaded = false;
+  let saveTimer = null;
+  const autosave = () => {
+    if (!loaded) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => form.requestSubmit(), 400);
+  };
+  form.addEventListener('change', autosave);
+  window.addEventListener('pagehide', () => { if (saveTimer) form.requestSubmit(); });
+
+  loadSettings().finally(() => { loaded = true; Homey.ready(); });
 
   async function loadSettings() {
     const status = document.getElementById('save-status');
@@ -73,6 +85,8 @@ function onHomeyReady(Homey) {
 
     form.addEventListener('submit', async event => {
       event.preventDefault();
+      clearTimeout(saveTimer);
+      saveTimer = null;
       const number = key => (form[key].value === '' ? undefined : Number(form[key].value));
       const config = {
         port: number('port') ?? 8080,
@@ -332,6 +346,7 @@ function onHomeyReady(Homey) {
       layoutCustom = false;
       layoutItems = layoutFrom(info.defaultLayout, info.blocks);
       renderLayout();
+      autosave();
     };
   }
 
@@ -373,6 +388,7 @@ function onHomeyReady(Homey) {
     if (action === 'down' && i < layoutItems.length - 1) [layoutItems[i + 1], layoutItems[i]] = [layoutItems[i], layoutItems[i + 1]];
     layoutCustom = true;
     renderLayout();
+    if (event.type === 'click') autosave();
   }
 
   // null keeps the automatic layout, which adapts when new devices are added
