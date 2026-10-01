@@ -209,7 +209,8 @@ class WebServer {
         res.writeHead(405).end();
         return;
       }
-      if (url.pathname === '/api/live') return sendJson(res, 200, await this.app.getLive(url.searchParams.get('layout') || ''));
+      // With `at` (milliseconds) the dashboard of an earlier moment of today or yesterday
+      if (url.pathname === '/api/live') return sendJson(res, 200, await this.app.getLive(url.searchParams.get('layout') || '', url.searchParams.get('at')));
       if (url.pathname === '/api/diagnose') return sendJson(res, 200, await this.app.getDiagnosis());
       // The report of "Share diagnosis", from the help menu of the dashboard
       if (url.pathname === '/api/diagnosis-report') {

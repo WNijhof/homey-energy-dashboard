@@ -7,6 +7,7 @@ const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower,
+  timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -21,6 +22,8 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const DEVICES_CACHE_TTL = 5 * 1000;
 const HISTORY_CACHE_TTL = 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
+// A day of Insights for looking back: today gets a new step every 5 minutes, yesterday is done
+const TIMELINE_TTL = { today: 2 * 60 * 1000, yesterday: 30 * 60 * 1000 };
 // Open pages load again when this changes, e.g. after an update and a restart of the server
 const VERSION = `${require('./package.json').version}-${Date.now()}`;
 
@@ -128,11 +131,48 @@ async function getEstimated(devices, found) {
   return estimatedDevices(energyLiveCache.report, devices, found);
 }
 
-async function getLive(name = '') {
+// A day of Insights of every device, for looking back (see recordTimeline in lib/energy.js)
+const timelineCache = new Map();
+function getTimeline(day, devices, found, { fresh = false } = {}) {
+  const key = `${day}:${new Date().toDateString()}`;
+  const cached = timelineCache.get(key);
+  if (!fresh && cached && Date.now() - cached.at < TIMELINE_TTL[day]) return cached.data;
+  for (const k of timelineCache.keys()) if (!k.endsWith(new Date().toDateString())) timelineCache.delete(k);
+  const read = (device, capability) => client.getEntries(device.id, capability, day).catch(() => []);
+  const data = recordTimeline(read, devices, found, cfg, day);
+  timelineCache.set(key, { at: Date.now(), data });
+  data.catch(() => {
+    if (timelineCache.get(key)?.data === data) timelineCache.delete(key);
+  });
+  return data;
+}
+
+// The live dashboard at an earlier moment `at` (milliseconds) of today or yesterday
+async function getLiveAt(view, at) {
+  const day = timelineDay(at);
+  if (!day) throw Object.assign(new Error('Alleen vandaag en gisteren kun je terugkijken'), { status: 400 });
+  const power = (await getHistory(day).catch(() => null))?.power;
+  if (cfg.demo) {
+    const step = Math.floor((at - Date.parse(power?.start || 0)) / POWER_STEP);
+    const moment = Date.parse(power?.start || 0) + step * POWER_STEP;
+    return { ...demo.live(view, moment), at: new Date(moment).toISOString(), today: power ? totalsUntil(power, step) : null };
+  }
+  const devices = await getDevices();
+  const found = discover(devices, cfg.devices);
+  let live = buildLiveAt(await getTimeline(day, devices, found), devices, found, view, at, power);
+  // A moment after the last reading of today: read again
+  if (!live && day === 'today') live = buildLiveAt(await getTimeline(day, devices, found, { fresh: true }), devices, found, view, at, power);
+  if (!live) throw Object.assign(new Error('Geen gegevens van dat moment'), { status: 404 });
+  return live;
+}
+
+async function getLive(name = '', at = null) {
   if (snapshot) return { ...snapshot.live, demo: false, snapshot: snapshot.made, version: VERSION };
   const view = { ...cfg, layout: savedLayout(cfg, layoutName(name)) };
   let live;
-  if (cfg.demo) {
+  if (at) {
+    live = await getLiveAt(view, at);
+  } else if (cfg.demo) {
     live = demo.live(view);
   } else {
     const devices = await getDevices();
@@ -145,7 +185,8 @@ async function getLive(name = '') {
     }
   }
   if (live.layout.some(b => b.id === 'netting')) live.netting = await getNetting().catch(() => null);
-  if (live.layout.some(b => b.id === 'alerts')) {
+  // Warnings are about now; looking back leaves them out
+  if (live.layout.some(b => b.id === 'alerts') && !at) {
     if (cfg.demo) {
       live.alerts = [
         { id: 'on-demo', level: 'info', text: 'Wasmachine staat al 5 uur aan (12 W)' },
@@ -170,8 +211,9 @@ async function getLive(name = '') {
   const place = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null)
     || (cfg.demo ? { lat: 52.1, lon: 5.1 } : null);
   if (typeof place?.lat === 'number' && typeof place?.lon === 'number') live.place = { lat: Math.round(place.lat * 10) / 10, lon: Math.round(place.lon * 10) / 10 };
-  // Today's totals for the live diagram; the history is cached, so this is cheap
-  live.today = todayTotals((await getHistory('today').catch(() => null))?.totals);
+  // Today's totals for the live diagram; the history is cached, so this is cheap. Looking back,
+  // getLiveAt() gave the totals up to that moment.
+  if (!at) live.today = todayTotals((await getHistory('today').catch(() => null))?.totals);
   if (live.layout.some(b => b.id === 'prices')) {
     const allIn = allInFunction(contractFrom(cfg), await prices.homeyTariff().catch(() => null));
     live.prices = await prices.get(cfg.prices, { allIn }).catch(err => ({ error: err.message }));
@@ -457,7 +499,11 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') return sendJson(res, 200, await saveLayout(await readJson(req)));
       return sendJson(res, 200, await getLayoutInfo(url.searchParams.get('layout') || ''));
     }
-    if (url.pathname === '/api/live') return sendJson(res, 200, await getLive(url.searchParams.get('layout') || ''));
+    // With `at` (milliseconds) the dashboard of an earlier moment of today or yesterday
+    if (url.pathname === '/api/live') {
+      const at = url.searchParams.get('at');
+      return sendJson(res, 200, await getLive(url.searchParams.get('layout') || '', at ? Number(at) : null));
+    }
     if (url.pathname === '/api/export') {
       const period = url.searchParams.get('period') || 'today';
       if (!PERIODS[period]) return sendJson(res, 400, { error: `Onbekende periode: ${period}` });
@@ -479,7 +525,7 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(res, decodeURIComponent(url.pathname));
   } catch (err) {
     console.error(`[${new Date().toLocaleTimeString('nl-NL')}] ${url.pathname}: ${err.message}`);
-    if ((url.pathname === '/api/layout' || err.status === 413) && err.status) return sendJson(res, err.status, { error: err.message });
+    if ((url.pathname === '/api/layout' || err.status === 413 || err.status === 400 || err.status === 404) && err.status) return sendJson(res, err.status, { error: err.message });
     const hint = err.status === 401 || err.status === 403
       ? 'Homey weigert de API-key. Controleer de key en of die "Apparaten bekijken" en "Insights bekijken" mag.'
       : err.name === 'TimeoutError' || err.cause

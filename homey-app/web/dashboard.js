@@ -21,6 +21,8 @@
     layoutKey: null,
     editing: false,
     sankeyMode: 'live',
+    // An earlier moment of the chosen day (ms) that the blocks of now show, or null for now
+    at: null,
   };
 
   // Numbers and dates follow the language chosen on the page (see i18n.js)
@@ -476,7 +478,11 @@
     tweenValues(el);
 
     const updated = $('live-updated');
-    if (updated) {
+    if (updated && live.at) {
+      // Looking back: the power of that step of 5 minutes, and the kWh of the day up to then
+      const day = new Date(live.at).toDateString() === new Date().toDateString() ? 'vandaag' : 'gisteren';
+      updated.textContent = today ? `kWh = ${day} tot ${hhmm(Date.parse(live.at) + TIMELINE_STEP)}` : hhmm(live.at);
+    } else if (updated) {
       const time = new Date(live.updated).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       updated.textContent = today ? `kWh = vandaag · ${time}` : `bijgewerkt ${time}`;
     }
@@ -1614,6 +1620,15 @@
         <circle cx="${x}" cy="${y}" r="3.5" fill="${colors.solar}" stroke="${colors.card}" stroke-width="1.5"/>`;
     })() : '';
 
+    // The moment looked back at (see the slider in the header): the middle of its step
+    const atMark = state.at !== null && day === state.period && state.at >= start && state.at < end ? (() => {
+      const x = X(state.at + TIMELINE_STEP / 2);
+      const anchor = x > pad.left + plotW - 40 ? 'end' : 'start';
+      return `
+        <line class="power-at-line" x1="${f(x)}" x2="${f(x)}" y1="${pad.top}" y2="${pad.top + plotH}"/>
+        <text class="power-at-label" x="${f(x + (anchor === 'end' ? -4 : 4))}" y="${pad.top + 10}" text-anchor="${anchor}">${hhmm(state.at)}</text>`;
+    })() : '';
+
     // The chart draws itself from left to right when another day is shown
     const shape = `${day}|${power.start}`;
     const reveal = shape !== powerShape && !reducedMotion.matches;
@@ -1625,6 +1640,7 @@
         <g class="axis">${axis}</g>
         <g clip-path="url(#power-clip)">${shapes}</g>
         ${nowDot}
+        ${atMark}
         <g class="power-hover" visibility="hidden">
           <line class="power-cursor" y1="${pad.top}" y2="${pad.top + plotH}"/>
           ${stacks.map((_, i) => `<circle class="power-dot" data-stack="${i}" r="3.5" stroke="${colors.card}" stroke-width="1.5"/>`).join('')}
@@ -1669,6 +1685,15 @@
         layers.map(layer => ({ layer, text: formatPower(layer.value(p)) })));
     };
     if (powerPointer) el.onpointermove(powerPointer);
+    // A click looks back at that moment, with the whole dashboard
+    el.onclick = event => {
+      if (!timelineShown() || day !== state.period) return;
+      const box = el.querySelector('svg').getBoundingClientRect();
+      const x = (event.clientX - box.left) * width / box.width;
+      if (x < pad.left || x > pad.left + plotW) return;
+      setMoment(start + (x - pad.left) / plotW * dayMs);
+    };
+    el.classList.toggle('pickable', timelineShown() && day === state.period);
   }
 
   // With week or month chosen, the chart (and the phases) still show today, which then needs its own history
@@ -1754,7 +1779,8 @@
     const y = v => pad.top + (top - v) / (top - bottom) * plotH;
     const band = plotW / list.length;
     const barW = Math.max(1, band * (list.length > 48 ? 0.8 : 0.7));
-    const now = Date.now();
+    // Looking back, the price of that moment is outlined
+    const now = state.at ?? Date.now();
     const lo = Math.min(...values);
     const hi = Math.max(...values);
 
@@ -2793,13 +2819,148 @@
       : '<li class="muted">Geen apparaten met stroommeting actief</li>';
   }
 
+  // ---------- Looking back ----------
+
+  // With Today or Yesterday chosen, a slider in the header picks an earlier moment of that day in
+  // steps of 5 minutes. The blocks of "now" then show that moment (the server rebuilds it from
+  // Insights); the blocks of the period stay as they are. A screen left looking back returns to
+  // now after a while, so a wall tablet does not stay in the past.
+  const TIMELINE_STEP = 5 * 60 * 1000;
+  const LOOK_BACK_IDLE = 10 * 60 * 1000;
+  let lookBackTimer = null;
+  let timelineTimer = null;
+
+  const hhmm = ms => new Date(ms).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+
+  // Start and number of steps of the chosen day; today ends with the step of now
+  function timelineDay() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    if (state.period === 'yesterday') start.setDate(start.getDate() - 1);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const until = state.period === 'today' ? Date.now() : end.getTime();
+    return { start: start.getTime(), steps: Math.max(1, Math.ceil((until - start) / TIMELINE_STEP)), today: state.period === 'today' };
+  }
+
+  function timelineShown() {
+    return Boolean($('timeline') && $('blocks') && POWER_DAYS[state.period] && !state.live?.snapshot);
+  }
+
+  // The moment to look back at, or null for now
+  function setMoment(at) {
+    const day = timelineDay();
+    if (at !== null) {
+      at = day.start + Math.max(0, Math.floor((at - day.start) / TIMELINE_STEP)) * TIMELINE_STEP;
+      // Today's last step is now
+      if (day.today && at >= day.start + (day.steps - 1) * TIMELINE_STEP) at = null;
+      else at = Math.min(at, day.start + (day.steps - 1) * TIMELINE_STEP);
+    }
+    if (at === state.at) return;
+    state.at = at;
+    clearTimeout(lookBackTimer);
+    if (at !== null) lookBackTimer = setTimeout(() => setMoment(null), LOOK_BACK_IDLE);
+    renderTimeline();
+    renderPower();
+    // While sliding, the page asks for the moment the slider rests on
+    clearTimeout(timelineTimer);
+    timelineTimer = setTimeout(loadLive, at === null ? 0 : 150);
+  }
+
+  function renderTimeline() {
+    const bar = $('timeline');
+    if (!bar) return;
+    const shown = timelineShown();
+    bar.hidden = !shown;
+    if (!shown) return;
+    const { start, steps, today } = timelineDay();
+    const range = $('timeline-range');
+    // Today the last position is now; yesterday has no now, and no handle until a moment is chosen
+    range.max = String(steps - 1);
+    const step = state.at === null ? steps - 1 : Math.round((state.at - start) / TIMELINE_STEP);
+    if (document.activeElement !== range || state.at === null) range.value = String(step);
+    const past = state.at !== null;
+    bar.classList.toggle('past', past);
+    bar.classList.toggle('idle', !past && !today);
+    bar.querySelector('.timeline-track').style.setProperty('--pos', `${(step + 0.5) / steps * 100}%`);
+    range.setAttribute('aria-valuetext', past ? hhmm(state.at) : 'Nu');
+    const time = $('timeline-time');
+    time.textContent = past ? hhmm(state.at) : 'Nu';
+    time.classList.toggle('loading', past && state.live?.at !== new Date(state.at).toISOString());
+    $('timeline-now').hidden = !past;
+    renderTimelineSpark(start, today);
+  }
+
+  // The house use of the day behind the slider, so peaks are easy to find; with the hours
+  function renderTimelineSpark(start, today) {
+    const el = $('timeline-spark');
+    const power = state.history?.power;
+    const key = `${power?.start}|${power?.points?.length}|${css('--muted')}`;
+    if (!el || el.dataset.key === key) return;
+    el.dataset.key = key;
+    const points = Date.parse(power?.start) === start ? power.points : [];
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    // Today the slider ends now, so the hours are spread over the part that has passed
+    const span = (today ? Date.now() : end.getTime()) - start;
+    const W = 1000;
+    const H = 100;
+    const x = t => ((t - start) / span) * W;
+    const max = Math.max(500, ...points.map(p => p?.home || 0));
+    const y = w => H - 4 - (w / max) * (H - 22);
+    let area = '';
+    let line = '';
+    let run = [];
+    const flush = () => {
+      if (run.length > 1) {
+        const d = run.map(([px, py], i) => `${i ? 'L' : 'M'}${px.toFixed(1)} ${py.toFixed(1)}`).join(' ');
+        line += `<path class="spark-line" d="${d}"/>`;
+        area += `<path class="spark-area" d="${d} L${run[run.length - 1][0].toFixed(1)} ${H} L${run[0][0].toFixed(1)} ${H} Z"/>`;
+      }
+      run = [];
+    };
+    points.forEach((p, i) => {
+      if (p) run.push([x(start + (i + 0.5) * power.step * 1000), y(p.home)]);
+      else flush();
+    });
+    flush();
+    // The hours in a second drawing on top, so the stretched one does not stretch the text
+    const hours = [];
+    for (let h = 0; h < 24; h += 3) {
+      const t = new Date(start).setHours(h, 0, 0, 0);
+      if (t - start > span) break;
+      hours.push(`<text x="${(x(t) / W * 100 + 0.6).toFixed(2)}%" y="11">${String(h).padStart(2, '0')}</text>`);
+    }
+    el.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="position:absolute;inset:0">${area}${line}</svg>
+      <svg style="position:absolute;inset:0">${hours.join('')}</svg>`;
+  }
+
+  function initTimeline() {
+    const range = $('timeline-range');
+    if (!range) return;
+    const day = () => timelineDay();
+    range.addEventListener('input', () => {
+      const { start } = day();
+      setMoment(start + Number(range.value) * TIMELINE_STEP);
+    });
+    range.addEventListener('keydown', event => {
+      if (event.key === 'Escape') setMoment(null);
+    });
+    $('timeline-now').addEventListener('click', () => setMoment(null));
+  }
+
   // ---------- Data loading ----------
 
   async function loadLive() {
     if (state.liveBusy) return;
     state.liveBusy = true;
+    const at = state.at;
     try {
-      const live = await state.options.get(`/live${layoutQuery()}`);
+      const query = [layoutQuery().slice(1), at !== null ? `at=${at}` : ''].filter(Boolean).join('&');
+      const live = await state.options.get(`/live${query ? `?${query}` : ''}`);
+      // The slider moved on while this was underway: the newer moment follows below
+      if (at !== state.at) return;
       // A new version of the app loads the new page, but not while the layout is being edited:
       // that would throw the changes away. It follows once editing stops.
       if (live.version && state.version && live.version !== state.version) {
@@ -2831,8 +2992,9 @@
       renderPeak(live.peak);
       renderWater(live, state.history);
       if (state.sankeyMode === 'live') renderSankeyBlock();
-      addLivePower(live);
+      if (!live.at) addLivePower(live);
       renderPower();
+      renderTimeline();
       if (rebuilt && state.history) renderHistory(state.history);
       if (rebuilt && !state.history) loadHistory();
       relayout();
@@ -2850,6 +3012,7 @@
           ? `<span>Niet gevonden: P1-meter.</span> ${state.options.missingHint}`
           : '');
       }
+      if (live.at) setStatus('past', `Terugkijken · ${hhmm(live.at)}`);
     } catch (err) {
       setStatus('error', 'Geen verbinding');
       setMood(null);
@@ -2857,6 +3020,7 @@
     } finally {
       state.liveBusy = false;
     }
+    if (at !== state.at) loadLive();
     changed();
   }
 
@@ -2894,6 +3058,7 @@
     renderCosts(history);
     renderBatteryHistory(history);
     renderPhaseChart();
+    renderTimeline();
     renderWater(state.live, history);
     if (state.live) {
       renderBoiler(state.live.boiler);
@@ -2906,6 +3071,9 @@
 
   function selectPeriod(period) {
     state.period = period;
+    // Another day starts at now again
+    if (state.at !== null) setMoment(null);
+    renderTimeline();
     if ($('periods')) {
       try { localStorage.setItem(PERIOD_KEY, period); } catch { /* storage unavailable */ }
       document.querySelectorAll('#periods button').forEach(b => b.classList.toggle('active', b.dataset.period === period));
@@ -2961,6 +3129,7 @@
     window.addEventListener('energy-theme', redraw);
 
     initEditMode();
+    initTimeline();
     // While the night screen is black the page rests; it catches up when woken
     const resting = () => document.hidden || window.EnergyScreen?.sleeping();
     window.EnergyScreen?.start({

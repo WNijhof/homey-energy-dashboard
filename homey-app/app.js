@@ -5,7 +5,7 @@ const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
-  expectedSolar, estimatedDevices, gridPower,
+  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -23,6 +23,8 @@ const ZONES_CACHE_TTL = 10 * 60 * 1000;
 const NETTING_CACHE_TTL = 60 * 60 * 1000;
 const ENERGY_LIVE_TTL = 5 * 1000;
 const ENERGY_LIVE_WAIT = 2 * 1000;
+// A day of Insights for looking back: today gets a new step every 5 minutes, yesterday is done
+const TIMELINE_TTL = { today: 2 * 60 * 1000, yesterday: 30 * 60 * 1000 };
 
 const DEFAULTS = {
   port: 8080,
@@ -66,6 +68,7 @@ class EnergyDashboardApp extends Homey.App {
     this.logsCache = { at: 0, ids: null };
     this.baseloadCache = { at: 0, data: null };
     this.historyCache = new Map();
+    this.timelineCache = new Map();
     this.zonesCache = { at: 0, names: null };
     this.energyLiveCache = { at: 0, report: null };
     // Prices from Homey Energy, or EnergyZero; see lib/prices.js
@@ -100,6 +103,7 @@ class EnergyDashboardApp extends Homey.App {
     this.homey.settings.on('set', key => {
       if (key !== 'config') return;
       this.historyCache.clear();
+      this.timelineCache.clear();
       this.prices.homeyInfo = null;
       this.baseloadCache = { at: 0, data: null };
       this.nettingCache = null;
@@ -262,14 +266,15 @@ class EnergyDashboardApp extends Homey.App {
     if (changed) this.homey.settings.set('peakLog', this.peakTracker.log);
   }
 
-  // Insights entries of a device capability as [{ t: Date, v: number }], or [] without a log
+  // Insights entries of a device capability as [{ t: Date, v: number }] (true or false for
+  // on/off), or [] without a log
   async getEntries(deviceId, capability, resolution) {
     const id = `homey:device:${deviceId}:${capability}`;
     if (!(await this.getLogIds()).has(id)) return [];
     const api = await this.getApi();
     const result = await api.insights.getLogEntries({ id, resolution });
     return (result?.values || [])
-      .filter(entry => typeof entry.v === 'number')
+      .filter(entry => typeof entry.v === 'number' || typeof entry.v === 'boolean')
       .map(entry => ({ t: new Date(entry.t), v: entry.v }));
   }
 
@@ -327,13 +332,42 @@ class EnergyDashboardApp extends Homey.App {
     return { ...flow, solarW: live.solarW, gridW: live.gridW, updated: live.updated };
   }
 
-  async getLive(name = '') {
+  // A day of Insights of every device, for looking back (see recordTimeline). Several screens
+  // share one reading; at midnight today's becomes yesterday's, so the date is part of the key.
+  getTimeline(day, devices, found, cfg, { fresh = false } = {}) {
+    const key = `${day}:${new Date().toDateString()}`;
+    const cached = this.timelineCache.get(key);
+    if (!fresh && cached && Date.now() - cached.at < TIMELINE_TTL[day]) return cached.data;
+    for (const k of this.timelineCache.keys()) if (!k.endsWith(new Date().toDateString())) this.timelineCache.delete(k);
+    const read = (device, capability) => this.getEntries(device.id, capability, day).catch(() => []);
+    const data = recordTimeline(read, devices, found, cfg, day);
+    this.timelineCache.set(key, { at: Date.now(), data });
+    data.catch(() => {
+      if (this.timelineCache.get(key)?.data === data) this.timelineCache.delete(key);
+    });
+    return data;
+  }
+
+  // The live dashboard at an earlier moment `at` (milliseconds) of today or yesterday
+  async getLiveAt(devices, found, cfg, at) {
+    const day = timelineDay(Number(at));
+    if (!day) throw Object.assign(new Error('Alleen vandaag en gisteren kun je terugkijken'), { status: 400 });
+    const power = (await this.getHistory(day).catch(() => null))?.power;
+    let live = buildLiveAt(await this.getTimeline(day, devices, found, cfg), devices, found, cfg, Number(at), power);
+    // A moment after the last reading of today: read again
+    if (!live && day === 'today') live = buildLiveAt(await this.getTimeline(day, devices, found, cfg, { fresh: true }), devices, found, cfg, Number(at), power);
+    if (!live) throw Object.assign(new Error('Geen gegevens van dat moment'), { status: 404 });
+    return live;
+  }
+
+  async getLive(name = '', at = null) {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
     const view = { ...cfg, layout: savedLayout(cfg, layoutName(name)) };
-    const estimated = await this.getEstimated(devices, found).catch(() => []);
-    const live = buildLive(devices, found, view, { estimated });
+    const live = at
+      ? await this.getLiveAt(devices, found, view, at)
+      : buildLive(devices, found, view, { estimated: await this.getEstimated(devices, found).catch(() => []) });
     live.version = this.homey.manifest.version;
     live.currency = await this.prices.currency().catch(() => null);
     // Roughly where the Homey is, for a screen that turns dark from sunset to sunrise
@@ -343,15 +377,19 @@ class EnergyDashboardApp extends Homey.App {
     const shown = new Set(live.layout.map(b => b.id));
 
     // Today's totals for the live diagram. The history is cached; while it is being built
-    // (the first time, which can take a while) the diagram shows without them.
-    const today = await Promise.race([this.getHistory('today').catch(() => null), new Promise(r => setTimeout(r, 1500))]);
-    live.today = todayTotals(today?.totals);
+    // (the first time, which can take a while) the diagram shows without them. Looking back,
+    // buildLiveAt() gave the totals up to that moment.
+    if (!at) {
+      const today = await Promise.race([this.getHistory('today').catch(() => null), new Promise(r => setTimeout(r, 1500))]);
+      live.today = todayTotals(today?.totals);
+    }
     if (shown.has('baseload')) live.baseload = await this.getBaseload(found, cfg).catch(() => null);
     if (shown.has('netting')) live.netting = await this.getNetting().catch(() => null);
     if (shown.has('peak')) live.peak = this.getPeak(found, cfg);
     // The contract, for the explanation of the amounts in the cost blocks
     live.tariff = describeTariff(contractFrom(cfg), await this.prices.homeyTariff().catch(() => null));
-    if (shown.has('alerts')) live.alerts = await this.getAlerts(found, cfg, 'nl').catch(() => []);
+    // Warnings are about now; looking back leaves them out
+    if (shown.has('alerts') && !at) live.alerts = await this.getAlerts(found, cfg, 'nl').catch(() => []);
     if (shown.has('prices')) {
       const allIn = allInFunction(contractFrom(cfg), await this.prices.homeyTariff().catch(() => null));
       live.prices = await this.prices.get(cfg.prices, { allIn }).catch(err => ({ error: err.message }));

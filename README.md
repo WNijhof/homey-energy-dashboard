@@ -14,6 +14,7 @@ Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht
 - **Energiestromen**: een Sankey-grafiek zoals in Home Assistant, van de bronnen (zon, net, batterij) via het huis naar de individuele verbruikers, live of voor de gekozen periode
 - **Thuisbatterij**: laden, ontladen en laadniveau, zodra je er een hebt (zie hieronder)
 - **Apparaten nu**: wat er op dit moment het meeste stroom gebruikt
+- **Terugkijken**: sleep bij Vandaag of Gisteren naar een eerder tijdstip en zie het dashboard van dat moment (zie *Terugkijken* in `homey-app/README.md`)
 
 Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je de taal: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees of Spaans.
 

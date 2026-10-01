@@ -16,6 +16,14 @@ Rechtsboven op het dashboard kies je **NL** of **EN**. Elk scherm onthoudt zijn 
 
 Naast de titel van elk blok staat een kleine **(i)**. Een tik toont wat het blok laat zien, waar de getallen vandaan komen en hoe ze berekend zijn. Bij de blokken met bedragen (Kosten, Stroomprijs, Einde salderen, Thuisbatterij, Batterijgebruik, Sluipverbruik en Maandpiek) staat de berekening erbij met je eigen getallen, bijvoorbeeld *9,88 kWh × € 0,256 = € 2,53*, en hoe de prijs is opgebouwd uit je contract of je formule in Homey.
 
+## Terugkijken
+
+Met **Vandaag** of **Gisteren** gekozen staat onder de kop een schuifbalk met het verbruik van het huis over de dag. Sleep naar een tijdstip, of klik in de grafiek *Vermogen*, en de blokken van "nu" laten dat moment zien: de energiestroom, Apparaten nu, de live Energiestromen, de batterij, de boiler, verwarming, laadpaal, fasen en water. Zo zie je bijvoorbeeld welk apparaat die piek om 18:15 veroorzaakte. Onder de cirkels van *Nu* staan dan de kWh van de dag tot dat moment. De blokken van de periode (totalen en grafieken) blijven zoals ze zijn.
+
+- Het werkt in stappen van 5 minuten: het vermogen is het gemiddelde over die 5 minuten, uit Homey Insights. Een apparaat zonder Insights voor zijn vermogen, of met alleen een schatting in Homey Energie, staat er dan niet bij. Een modus (zoals *Eco*) bewaart Insights niet; die blijft leeg.
+- De eerste keer leest Homey de hele dag van alle apparaten met een stroommeting. Bij veel apparaten duurt dat even; daarna gaat schuiven snel.
+- **Nu** rechts van de balk brengt je terug. Na 10 minuten zonder schuiven gaat het dashboard zelf terug naar nu, zodat een tablet aan de muur niet in het verleden blijft staan.
+
 ## De indeling aanpassen
 
 Tik op het **potlood** rechtsboven op het dashboard:

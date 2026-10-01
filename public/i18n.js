@@ -420,6 +420,8 @@
 
     // Block titles (also sent by the server)
     'Nu': ['Now', 'Jetzt', 'Nå', 'Nu', 'Nu', 'Ora', 'Maintenant', 'Agora', 'Ahora'],
+    'Terug naar nu': ['Back to now', 'Zurück zu jetzt', 'Tilbake til nå', 'Tillbaka till nu', 'Tilbage til nu', 'Torna a ora', 'Revenir à maintenant', 'Voltar a agora', 'Volver a ahora'],
+    'Tijdstip om terug te kijken': ['Moment to look back at', 'Zeitpunkt zum Zurückblicken', 'Tidspunkt å se tilbake på', 'Tidpunkt att titta tillbaka på', 'Tidspunkt at se tilbage på', 'Momento da rivedere', 'Moment à revoir', 'Momento para rever', 'Momento para revisar'],
     'Energie nu': ['Energy now', 'Energie jetzt', 'Energi nå', 'Energi nu', 'Energi nu', 'Energia ora', 'Énergie maintenant', 'Energia agora', 'Energía ahora'],
     'Warm water': ['Hot water', 'Warmwasser', 'Varmtvann', 'Varmvatten', 'Varmt vand', 'Acqua calda', 'Eau chaude', 'Água quente', 'Agua caliente'],
     'Verwarming': ['Heating', 'Heizung', 'Oppvarming', 'Uppvärmning', 'Opvarmning', 'Riscaldamento', 'Chauffage', 'Aquecimento', 'Calefacción'],
@@ -721,6 +723,9 @@
     [/^in (.+) · uit (.+) kWh$/, ['in $1 · out $2 kWh', 'rein $1 · raus $2 kWh', 'inn $1 · ut $2 kWh', 'in $1 · ut $2 kWh', 'ind $1 · ud $2 kWh', 'entrata $1 · uscita $2 kWh', 'entrée $1 · sortie $2 kWh', 'entrada $1 · saída $2 kWh', 'entrada $1 · salida $2 kWh']],
     [/^Batterij (\d+%)$/, ['Battery $1', 'Batterie $1', 'Batteri $1', 'Batteri $1', 'Batteri $1', 'Batteria $1', 'Batterie $1', 'Bateria $1', 'Batería $1']],
     [/^(\d+) meldingen$/, ['$1 warnings', '$1 Meldungen', '$1 varsler', '$1 aviseringar', '$1 advarsler', '$1 avvisi', '$1 alertes', '$1 alertas', '$1 avisos']],
+    [/^kWh = vandaag tot (.+)$/, ['kWh = today until $1', 'kWh = heute bis $1', 'kWh = i dag til $1', 'kWh = idag till $1', 'kWh = i dag til $1', 'kWh = oggi fino alle $1', 'kWh = aujourd\'hui jusqu\'à $1', 'kWh = hoje até às $1', 'kWh = hoy hasta las $1']],
+    [/^kWh = gisteren tot (.+)$/, ['kWh = yesterday until $1', 'kWh = gestern bis $1', 'kWh = i går til $1', 'kWh = igår till $1', 'kWh = i går til $1', 'kWh = ieri fino alle $1', 'kWh = hier jusqu\'à $1', 'kWh = ontem até às $1', 'kWh = ayer hasta las $1']],
+    [/^Terugkijken · (.+)$/, ['Looking back · $1', 'Rückblick · $1', 'Ser tilbake · $1', 'Tittar tillbaka · $1', 'Ser tilbage · $1', 'Indietro nel tempo · $1', 'Retour en arrière · $1', 'A rever · $1', 'Revisando · $1']],
     [/^kWh = vandaag · (.+)$/, ['kWh = today · $1', 'kWh = heute · $1', 'kWh = i dag · $1', 'kWh = idag · $1', 'kWh = i dag · $1', 'kWh = oggi · $1', 'kWh = aujourd\'hui · $1', 'kWh = hoje · $1', 'kWh = hoy · $1']],
     [/^bijgewerkt (.+)$/, ['updated $1', 'aktualisiert $1', 'oppdatert $1', 'uppdaterad $1', 'opdateret $1', 'aggiornato $1', 'mis à jour $1', 'atualizado $1', 'actualizado $1']],
     [/^Doucheminuten zijn een schatting: (.+) L boiler, douchen op (.+) °C met (.+) L\/min\.$/, [

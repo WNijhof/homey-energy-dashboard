@@ -141,6 +141,110 @@ h2 { font-size: 17px; font-weight: 600; }
 .status.live i { background: var(--ok); box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.6); animation: pulse 2s infinite; }
 .status.error i { background: var(--hot); }
 .status.demo i { background: var(--warm); }
+.status.past i { background: var(--accent); }
+
+/* Looking back: a slider over the house use of the chosen day, on its own row of the header */
+.timeline {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.timeline[hidden] { display: none; }
+.timeline-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(118, 118, 128, 0.12);
+  overflow: hidden;
+  --pos: 100%;
+}
+.top.scrolled .timeline-track { height: 26px; }
+.top.scrolled .timeline input[type="range"]::-webkit-slider-thumb { height: 26px; }
+.top.scrolled .timeline input[type="range"]::-moz-range-thumb { height: 26px; }
+.timeline-spark { position: absolute; inset: 0; pointer-events: none; }
+.timeline-spark svg { display: block; width: 100%; height: 100%; }
+.timeline-spark .spark-area { fill: color-mix(in srgb, var(--home) 30%, transparent); }
+.timeline-spark .spark-line { fill: none; stroke: var(--home); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.timeline-spark text { fill: var(--muted); font-size: 10px; }
+/* While looking back, what came after the chosen moment fades */
+.timeline.past .timeline-track::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--pos);
+  right: 0;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  pointer-events: none;
+}
+.timeline input[type="range"] {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.timeline input[type="range"]::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+.timeline input[type="range"]::-moz-range-track { height: 100%; background: transparent; }
+.timeline input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 4px;
+  height: 34px;
+  border-radius: 2px;
+  background: var(--muted);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--card) 80%, transparent);
+}
+.timeline input[type="range"]::-moz-range-thumb {
+  width: 4px;
+  height: 34px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--muted);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--card) 80%, transparent);
+}
+.timeline.past input[type="range"]::-webkit-slider-thumb { background: var(--accent); }
+.timeline.past input[type="range"]::-moz-range-thumb { background: var(--accent); }
+/* Yesterday without a chosen moment: no handle yet, a tap on the day picks one */
+.timeline.idle input[type="range"]::-webkit-slider-thumb { opacity: 0; }
+.timeline.idle input[type="range"]::-moz-range-thumb { opacity: 0; }
+.timeline input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
+.timeline-time {
+  flex: none;
+  min-width: 3.2em;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: center;
+}
+.timeline.past .timeline-time { color: var(--accent); }
+.timeline-time.loading { opacity: 0.55; }
+.timeline-now {
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+}
+/* The power chart marks the chosen moment */
+.power-at-line { stroke: var(--accent); stroke-width: 1.5; }
+.power-at-label { fill: var(--accent); font-size: 11px; font-weight: 600; }
+.pickable { cursor: pointer; }
 
 /* Warnings in the header: only there while something needs attention, and gone once it is solved */
 .alert-pill {
