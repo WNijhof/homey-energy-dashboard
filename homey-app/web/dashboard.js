@@ -2959,8 +2959,9 @@
     try {
       const query = [layoutQuery().slice(1), at !== null ? `at=${at}` : ''].filter(Boolean).join('&');
       const live = await state.options.get(`/live${query ? `?${query}` : ''}`);
-      // The slider moved on while this was underway: the newer moment follows below
-      if (at !== state.at) return;
+      // The slider moved on while this was underway: the newer moment follows (see finally).
+      // The very first answer is still shown, so the page is not empty meanwhile.
+      if (at !== state.at && state.live) return;
       // A new version of the app loads the new page, but not while the layout is being edited:
       // that would throw the changes away. It follows once editing stops.
       if (live.version && state.version && live.version !== state.version) {
@@ -3019,8 +3020,8 @@
       setBanner('error', `<strong>Kan geen gegevens ophalen.</strong> ${escapeHtml(err.message || err)}`);
     } finally {
       state.liveBusy = false;
+      if (at !== state.at) loadLive();
     }
-    if (at !== state.at) loadLive();
     changed();
   }
 

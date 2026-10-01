@@ -25,6 +25,7 @@ const ENERGY_LIVE_TTL = 5 * 1000;
 const ENERGY_LIVE_WAIT = 2 * 1000;
 // A day of Insights for looking back: today gets a new step every 5 minutes, yesterday is done
 const TIMELINE_TTL = { today: 2 * 60 * 1000, yesterday: 30 * 60 * 1000 };
+const TIMELINE_FRESH = 30 * 1000;
 
 const DEFAULTS = {
   port: 8080,
@@ -337,7 +338,8 @@ class EnergyDashboardApp extends Homey.App {
   getTimeline(day, devices, found, cfg, { fresh = false } = {}) {
     const key = `${day}:${new Date().toDateString()}`;
     const cached = this.timelineCache.get(key);
-    if (!fresh && cached && Date.now() - cached.at < TIMELINE_TTL[day]) return cached.data;
+    // A fresh reading (for a moment after the last one) is shared too, and made at most every 30 s
+    if (cached && Date.now() - cached.at < (fresh ? TIMELINE_FRESH : TIMELINE_TTL[day])) return cached.data;
     for (const k of this.timelineCache.keys()) if (!k.endsWith(new Date().toDateString())) this.timelineCache.delete(k);
     const read = (device, capability) => this.getEntries(device.id, capability, day).catch(() => []);
     const data = recordTimeline(read, devices, found, cfg, day);
@@ -352,8 +354,9 @@ class EnergyDashboardApp extends Homey.App {
   async getLiveAt(devices, found, cfg, at) {
     const day = timelineDay(Number(at));
     if (!day) throw Object.assign(new Error('Alleen vandaag en gisteren kun je terugkijken'), { status: 400 });
-    const power = (await this.getHistory(day).catch(() => null))?.power;
-    let live = buildLiveAt(await this.getTimeline(day, devices, found, cfg), devices, found, cfg, Number(at), power);
+    const [history, recording] = await Promise.all([this.getHistory(day).catch(() => null), this.getTimeline(day, devices, found, cfg)]);
+    const power = history?.power;
+    let live = buildLiveAt(recording, devices, found, cfg, Number(at), power);
     // A moment after the last reading of today: read again
     if (!live && day === 'today') live = buildLiveAt(await this.getTimeline(day, devices, found, cfg, { fresh: true }), devices, found, cfg, Number(at), power);
     if (!live) throw Object.assign(new Error('Geen gegevens van dat moment'), { status: 404 });

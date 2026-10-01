@@ -568,7 +568,7 @@ function estimatedDevices(report, devices, found) {
     .filter(item => {
       const d = byId.get(item.id);
       return d && !skip.has(d.id) && !has(d, 'measure_power') && !isGridMeter(d)
-        && !isClass(d, 'solarpanel') && !isClass(d, 'battery') && !d.energyObj?.homeBattery;
+        && !isSourceOrStore(d);
     })
     .map(item => ({ id: item.id, name: byId.get(item.id).name || item.name || '?', watts: item.values.W, estimated: true }));
 }
@@ -590,7 +590,7 @@ function buildLive(devices, found, cfg, { estimated = [], batteryWatts = null } 
 
   const skip = new Set([found.p1?.id, ...found.solar.map(d => d.id), ...found.batteries.map(d => d.id)]);
   const powered = devices
-    .filter(d => !skip.has(d.id) && !isGridMeter(d) && typeof value(d, 'measure_power') === 'number' && value(d, 'measure_power') > 0)
+    .filter(d => !skip.has(d.id) && !isGridMeter(d) && !isSourceOrStore(d) && typeof value(d, 'measure_power') === 'number' && value(d, 'measure_power') > 0)
     .map(d => ({ id: d.id, name: d.name, watts: value(d, 'measure_power') }))
     .concat(estimated)
     .sort((a, b) => b.watts - a.watts);
@@ -1065,16 +1065,18 @@ function isGridMeter(d) {
     || /\bp1\b|dongle|slimme meter|smart meter/i.test(d.name || '');
 }
 
+// Solar panels and batteries are never a consumer, also when they are not the ones chosen in the
+// settings: a second app for the same inverter (one to control it, one for its readings) would
+// otherwise show its solar power as use
+function isSourceOrStore(d) {
+  return isClass(d, 'solarpanel') || isClass(d, 'battery') || Boolean(d.energyObj?.homeBattery);
+}
+
 // Devices whose energy use is shown in the Sankey chart: everything with a kWh meter
 // (or a power meter for the live view) that is not a meter, panel or battery itself
 function consumptionDevices(devices, found, capability = 'meter_power') {
   const skip = new Set([found.p1?.id, ...found.solar.map(d => d.id), ...found.batteries.map(d => d.id)]);
-  return devices.filter(d => !skip.has(d.id)
-    && has(d, capability)
-    && !isGridMeter(d)
-    && !d.energyObj?.homeBattery
-    && !isClass(d, 'solarpanel')
-    && !isClass(d, 'battery'));
+  return devices.filter(d => !skip.has(d.id) && has(d, capability) && !isGridMeter(d) && !isSourceOrStore(d));
 }
 
 // Runs `fn` over the items with at most `limit` running at a time: a house with hundreds of
@@ -1118,7 +1120,7 @@ function reportDevices(report, devices, found, known) {
   return Object.entries(consumed)
     .map(([id, entry]) => ({ id, entry, device: byId.get(id) }))
     .filter(({ id, entry, device }) => device && !known.has(id) && !skip.has(id) && typeof entry?.period === 'number' && entry.period > 0
-      && !isGridMeter(device) && !isClass(device, 'solarpanel') && !isClass(device, 'battery') && !device.energyObj?.homeBattery)
+      && !isGridMeter(device) && !isSourceOrStore(device))
     .map(({ id, entry, device }) => ({ id, name: device.name || entry.name || '?', kWh: entry.period, estimated: !has(device, 'measure_power') }));
 }
 
@@ -1301,8 +1303,12 @@ async function batteryPowerHistory(device, read, cfg) {
 
 // Reads a day of Insights for every device the live dashboard reads: what the meter, panels,
 // batteries, boiler, heating, charger and water meter logged, and the power of all other devices.
-// `read(device, capability)` gives the entries of the day ([] without a log).
-async function recordTimeline(read, devices, found, cfg, day, now = new Date()) {
+// `readInsights(device, capability)` gives the entries of the day ([] without a log).
+async function recordTimeline(readInsights, devices, found, cfg, day, now = new Date()) {
+  // Readings with a broken time or value are left out, and the rest put in order of time:
+  // an app that logs something odd should not cost the whole day
+  const usable = e => e && Number.isFinite(e.t?.getTime?.()) && (typeof e.v === 'boolean' || Number.isFinite(e.v));
+  const read = async (device, capability) => (await readInsights(device, capability)).filter(usable).sort((a, b) => a.t - b.t);
   const start = periodStart(day, now);
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
@@ -1345,9 +1351,10 @@ async function recordTimeline(read, devices, found, cfg, day, now = new Date()) 
   }
   // The power of all other devices, for Devices now and the Sankey
   const done = new Set([found.p1, ...found.solar, ...found.batteries, ...others].filter(Boolean).map(d => d.id));
-  tasks.push(...devices.filter(d => !done.has(d.id) && has(d, 'measure_power') && !isGridMeter(d)).map(d => record(d, 'measure_power')));
+  tasks.push(...devices.filter(d => !done.has(d.id) && has(d, 'measure_power') && !isGridMeter(d) && !isSourceOrStore(d)).map(d => record(d, 'measure_power')));
 
-  await mapLimited(tasks, INSIGHTS_PARALLEL, task => task());
+  // A device whose Insights fail is left out; the others still show
+  await mapLimited(tasks, INSIGHTS_PARALLEL, task => task().catch(() => {}));
   return { day, start: start.toISOString(), steps, values, batteryWatts };
 }
 

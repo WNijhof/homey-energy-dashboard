@@ -24,6 +24,7 @@ const HISTORY_CACHE_TTL = 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
 // A day of Insights for looking back: today gets a new step every 5 minutes, yesterday is done
 const TIMELINE_TTL = { today: 2 * 60 * 1000, yesterday: 30 * 60 * 1000 };
+const TIMELINE_FRESH = 30 * 1000;
 // Open pages load again when this changes, e.g. after an update and a restart of the server
 const VERSION = `${require('./package.json').version}-${Date.now()}`;
 
@@ -136,7 +137,8 @@ const timelineCache = new Map();
 function getTimeline(day, devices, found, { fresh = false } = {}) {
   const key = `${day}:${new Date().toDateString()}`;
   const cached = timelineCache.get(key);
-  if (!fresh && cached && Date.now() - cached.at < TIMELINE_TTL[day]) return cached.data;
+  // A fresh reading (for a moment after the last one) is shared too, and made at most every 30 s
+  if (cached && Date.now() - cached.at < (fresh ? TIMELINE_FRESH : TIMELINE_TTL[day])) return cached.data;
   for (const k of timelineCache.keys()) if (!k.endsWith(new Date().toDateString())) timelineCache.delete(k);
   const read = (device, capability) => client.getEntries(device.id, capability, day).catch(() => []);
   const data = recordTimeline(read, devices, found, cfg, day);
@@ -151,7 +153,11 @@ function getTimeline(day, devices, found, { fresh = false } = {}) {
 async function getLiveAt(view, at) {
   const day = timelineDay(at);
   if (!day) throw Object.assign(new Error('Alleen vandaag en gisteren kun je terugkijken'), { status: 400 });
-  const power = (await getHistory(day).catch(() => null))?.power;
+  const [history, recording] = await Promise.all([
+    getHistory(day).catch(() => null),
+    cfg.demo ? null : getDevices().then(devices => getTimeline(day, devices, discover(devices, cfg.devices))),
+  ]);
+  const power = history?.power;
   if (cfg.demo) {
     const step = Math.floor((at - Date.parse(power?.start || 0)) / POWER_STEP);
     const moment = Date.parse(power?.start || 0) + step * POWER_STEP;
@@ -159,7 +165,7 @@ async function getLiveAt(view, at) {
   }
   const devices = await getDevices();
   const found = discover(devices, cfg.devices);
-  let live = buildLiveAt(await getTimeline(day, devices, found), devices, found, view, at, power);
+  let live = buildLiveAt(recording, devices, found, view, at, power);
   // A moment after the last reading of today: read again
   if (!live && day === 'today') live = buildLiveAt(await getTimeline(day, devices, found, { fresh: true }), devices, found, view, at, power);
   if (!live) throw Object.assign(new Error('Geen gegevens van dat moment'), { status: 404 });
@@ -170,7 +176,7 @@ async function getLive(name = '', at = null) {
   if (snapshot) return { ...snapshot.live, demo: false, snapshot: snapshot.made, version: VERSION };
   const view = { ...cfg, layout: savedLayout(cfg, layoutName(name)) };
   let live;
-  if (at) {
+  if (at !== null) {
     live = await getLiveAt(view, at);
   } else if (cfg.demo) {
     live = demo.live(view);
@@ -186,7 +192,7 @@ async function getLive(name = '', at = null) {
   }
   if (live.layout.some(b => b.id === 'netting')) live.netting = await getNetting().catch(() => null);
   // Warnings are about now; looking back leaves them out
-  if (live.layout.some(b => b.id === 'alerts') && !at) {
+  if (live.layout.some(b => b.id === 'alerts') && at === null) {
     if (cfg.demo) {
       live.alerts = [
         { id: 'on-demo', level: 'info', text: 'Wasmachine staat al 5 uur aan (12 W)' },
@@ -213,7 +219,7 @@ async function getLive(name = '', at = null) {
   if (typeof place?.lat === 'number' && typeof place?.lon === 'number') live.place = { lat: Math.round(place.lat * 10) / 10, lon: Math.round(place.lon * 10) / 10 };
   // Today's totals for the live diagram; the history is cached, so this is cheap. Looking back,
   // getLiveAt() gave the totals up to that moment.
-  if (!at) live.today = todayTotals((await getHistory('today').catch(() => null))?.totals);
+  if (at === null) live.today = todayTotals((await getHistory('today').catch(() => null))?.totals);
   if (live.layout.some(b => b.id === 'prices')) {
     const allIn = allInFunction(contractFrom(cfg), await prices.homeyTariff().catch(() => null));
     live.prices = await prices.get(cfg.prices, { allIn }).catch(err => ({ error: err.message }));

@@ -228,7 +228,9 @@ h2 { font-size: 17px; font-weight: 600; }
   text-align: center;
 }
 .timeline.past .timeline-time { color: var(--accent); }
-.timeline-time.loading { opacity: 0.55; }
+/* The first look back at a day can take a while on a Homey with many devices */
+.timeline-time.loading { animation: timeline-wait 1.2s ease-in-out infinite; }
+@keyframes timeline-wait { 50% { opacity: 0.35; } }
 .timeline-now {
   flex: none;
   border: 0;
