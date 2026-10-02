@@ -65,34 +65,44 @@ const amount = (device, capability) => {
 };
 const isClass = (d, cls) => d.class === cls || d.virtualClass === cls;
 
+// Apps whose devices copy the readings of other devices, such as the summaries of Power by the
+// Hour (Σ): counting them would count the same use twice
+const COPY_APPS = ['com.gruijter.powerhour'];
+function isCopy(d) {
+  const app = String(d.driverId || d.driverUri || '').match(/^homey:app:([^:]+)/)?.[1];
+  return COPY_APPS.includes(app);
+}
+
 // Finds the P1 meter, solar panels, home batteries and boiler, unless they are pinned in the config
 function discover(devices, pinned = {}) {
   const byId = id => id && devices.find(d => d.id === id);
+  // A copy of another meter is only used when it is chosen in the settings
+  const own = devices.filter(d => !isCopy(d));
 
   const p1 = byId(pinned.p1)
-    || devices.find(d => d.energyObj?.cumulative)
-    || devices.find(d => has(d, 'meter_gas') && has(d, 'measure_power'))
-    || devices.find(d => /p1|dongle|slimme meter|smart meter/i.test(d.name));
+    || own.find(d => d.energyObj?.cumulative)
+    || own.find(d => has(d, 'meter_gas') && has(d, 'measure_power'))
+    || own.find(d => /p1|dongle|slimme meter|smart meter/i.test(d.name));
 
   const solar = pinned.solar?.length
     ? pinned.solar.map(byId).filter(Boolean)
-    : devices.filter(d => isClass(d, 'solarpanel'));
+    : own.filter(d => isClass(d, 'solarpanel'));
 
   const batteries = pinned.batteries?.length
     ? pinned.batteries.map(byId).filter(Boolean)
-    : devices.filter(d => d.energyObj?.homeBattery
+    : own.filter(d => d.energyObj?.homeBattery
       || (isClass(d, 'battery') && (batteryPowerCapabilities(d) || batteryMeterCapability(d, 'charge'))));
 
   const boiler = byId(pinned.boiler)
-    || devices.find(d => has(d, 'lydos_showers'))
-    || devices.find(d => isClass(d, 'waterheater') && has(d, 'measure_temperature'));
+    || own.find(d => has(d, 'lydos_showers'))
+    || own.find(d => isClass(d, 'waterheater') && has(d, 'measure_temperature'));
 
   // Heat pumps and central heating boilers (hybrid or all-electric)
   const heating = pinned.heating?.length
     ? pinned.heating.map(byId).filter(Boolean)
-    : devices.filter(d => isClass(d, 'heatpump') || isClass(d, 'boiler'));
+    : own.filter(d => isClass(d, 'heatpump') || isClass(d, 'boiler'));
 
-  const thermostats = devices.filter(d => isClass(d, 'thermostat') && has(d, 'measure_temperature'));
+  const thermostats = own.filter(d => isClass(d, 'thermostat') && has(d, 'measure_temperature'));
   const thermostat = byId(pinned.thermostat)
     || thermostats.find(d => /thermostaat|thermostat|nest|tado|toon|anna|honeywell|ecobee/i.test(d.name))
     || thermostats[0]
@@ -100,14 +110,14 @@ function discover(devices, pinned = {}) {
 
   const evChargers = pinned.evChargers?.length
     ? pinned.evChargers.map(byId).filter(Boolean)
-    : devices.filter(d => isClass(d, 'evcharger') || d.energyObj?.evCharger);
+    : own.filter(d => isClass(d, 'evcharger') || d.energyObj?.evCharger);
 
   const car = byId(pinned.car)
-    || devices.find(d => (isClass(d, 'car') || isClass(d, 'vehicle')) && has(d, 'measure_battery'))
+    || own.find(d => (isClass(d, 'car') || isClass(d, 'vehicle')) && has(d, 'measure_battery'))
     || null;
 
   const water = byId(pinned.water)
-    || devices.find(d => has(d, 'meter_water') && d.id !== p1?.id)
+    || own.find(d => has(d, 'meter_water') && d.id !== p1?.id)
     || (p1 && has(p1, 'meter_water') ? p1 : null)
     || null;
 
@@ -568,7 +578,7 @@ function estimatedDevices(report, devices, found) {
     .filter(item => {
       const d = byId.get(item.id);
       return d && !skip.has(d.id) && !has(d, 'measure_power') && !isGridMeter(d)
-        && !isSourceOrStore(d);
+        && !isSourceOrStore(d) && !isCopy(d);
     })
     .map(item => ({ id: item.id, name: byId.get(item.id).name || item.name || '?', watts: item.values.W, estimated: true }));
 }
@@ -590,7 +600,7 @@ function buildLive(devices, found, cfg, { estimated = [], batteryWatts = null } 
 
   const skip = new Set([found.p1?.id, ...found.solar.map(d => d.id), ...found.batteries.map(d => d.id)]);
   const powered = devices
-    .filter(d => !skip.has(d.id) && !isGridMeter(d) && !isSourceOrStore(d) && typeof value(d, 'measure_power') === 'number' && value(d, 'measure_power') > 0)
+    .filter(d => !skip.has(d.id) && !isGridMeter(d) && !isSourceOrStore(d) && !isCopy(d) && typeof value(d, 'measure_power') === 'number' && value(d, 'measure_power') > 0)
     .map(d => ({ id: d.id, name: d.name, watts: value(d, 'measure_power') }))
     .concat(estimated)
     .sort((a, b) => b.watts - a.watts);
@@ -1076,7 +1086,7 @@ function isSourceOrStore(d) {
 // (or a power meter for the live view) that is not a meter, panel or battery itself
 function consumptionDevices(devices, found, capability = 'meter_power') {
   const skip = new Set([found.p1?.id, ...found.solar.map(d => d.id), ...found.batteries.map(d => d.id)]);
-  return devices.filter(d => !skip.has(d.id) && has(d, capability) && !isGridMeter(d) && !isSourceOrStore(d));
+  return devices.filter(d => !skip.has(d.id) && has(d, capability) && !isGridMeter(d) && !isSourceOrStore(d) && !isCopy(d));
 }
 
 // Runs `fn` over the items with at most `limit` running at a time: a house with hundreds of
@@ -1120,7 +1130,7 @@ function reportDevices(report, devices, found, known) {
   return Object.entries(consumed)
     .map(([id, entry]) => ({ id, entry, device: byId.get(id) }))
     .filter(({ id, entry, device }) => device && !known.has(id) && !skip.has(id) && typeof entry?.period === 'number' && entry.period > 0
-      && !isGridMeter(device) && !isSourceOrStore(device))
+      && !isGridMeter(device) && !isSourceOrStore(device) && !isCopy(device))
     .map(({ id, entry, device }) => ({ id, name: device.name || entry.name || '?', kWh: entry.period, estimated: !has(device, 'measure_power') }));
 }
 
@@ -1351,7 +1361,7 @@ async function recordTimeline(readInsights, devices, found, cfg, day, now = new 
   }
   // The power of all other devices, for Devices now and the Sankey
   const done = new Set([found.p1, ...found.solar, ...found.batteries, ...others].filter(Boolean).map(d => d.id));
-  tasks.push(...devices.filter(d => !done.has(d.id) && has(d, 'measure_power') && !isGridMeter(d) && !isSourceOrStore(d)).map(d => record(d, 'measure_power')));
+  tasks.push(...devices.filter(d => !done.has(d.id) && has(d, 'measure_power') && !isGridMeter(d) && !isSourceOrStore(d) && !isCopy(d)).map(d => record(d, 'measure_power')));
 
   // A device whose Insights fail is left out; the others still show
   await mapLimited(tasks, INSIGHTS_PARALLEL, task => task().catch(() => {}));
@@ -1747,6 +1757,7 @@ async function buildBaseload(client, found, cfg, marketAverage = null, homey = n
 }
 
 module.exports = {
+  isCopy,
   degreeDayBuckets,
   PERIODS,
   PREVIOUS,
