@@ -6,11 +6,39 @@ Open het dashboard op **http://&lt;ip-van-je-homey&gt;:8686**, bijvoorbeeld op e
 
 ## Wat er op het dashboard staat
 
-Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgorde, hoe breed en hoe hoog.
+Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgorde, hoe breed en hoe hoog (zie *De indeling aanpassen*).
+
+| Blok | Toont |
+|---|---|
+| **Energie nu** | Live energiestroom tussen zon, net, huis en thuisbatterij, met de totalen van vandaag |
+| **Warm water** | Temperatuur van de boiler, of hij warm is, geschatte doucheminuten; bij een Lydos ook douchebeurten |
+| **Verwarming** | Kamertemperatuur van de thermostaat, vermogen van warmtepomp of cv-ketel, stroom- en gasverbruik, grafiek |
+| **Laadpaal** | Laadvermogen, status, geladen kWh, accu van de auto, grafiek |
+| **Thuisbatterij** | Laadniveau, laden of ontladen, geladen en ontladen kWh, deel met zon geladen, laadniveau door de dag en rendement (zie *Thuisbatterij*) |
+| **Totalen** | Verbruik, net, zon, teruglevering, gas, water, batterij, zelfvoorzienend en kosten, met ▲/▼ ten opzichte van de vorige periode |
+| **Stroomprijs** | Dynamische prijzen van vandaag en morgen (van Homey Energie, EnergyZero of Power by the Hour), met het goedkoopste blok van 3 uur |
+| **Kengetallen** | Meters voor zelfvoorzienend, eigen zon gebruikt en netto afgenomen of geleverd |
+| **Elektriciteit** | Waar je stroom vandaan kwam (net, zon, batterij) en waar overschot heen ging, per uur of dag |
+| **Vermogen vandaag** | Het vermogen door de dag heen, zoals in de HomeWizard-app: zelfverbruik van de zon onderaan, daarboven afname van het net en teruglevering, met de dagtotalen erboven. Het laatste stuk loopt live mee. Bij Week of Maand toont het blok vandaag |
+| **Apparaten nu** | Wat er op dit moment het meeste stroom gebruikt, ook apparaten waarvan Homey het verbruik schat ("geschat") |
+| **Energiestromen** | Sankey-grafiek zoals in Home Assistant: bronnen → huis → individuele verbruikers, live of voor de gekozen periode |
+| **Verbruik per apparaat** | Ranglijst van kWh per apparaat in de gekozen periode, ook apparaten die alleen vermogen meten of een schatting in Homey hebben. Apparaten die in Homey op *Uitsluiten van Energie* staan en de kopieën van Power by the Hour (Σ) tellen niet mee |
+| **Kosten** | Kosten per bron: stroom, teruglevering, gas en water |
+| **Einde salderen** | Wat het stoppen van salderen op 1 januari 2027 jou kost, met je eigen metingen (zie *Einde salderen*) |
+| **Zonne-energie** | Opwek per uur of dag |
+| **Gas** | Gasverbruik per uur of dag |
+| **Water** | Waterverbruik per uur of dag in liters, en het huidige verbruik |
+| **Sluipverbruik** | Wat er 's nachts altijd aan staat, en wat dat per jaar kost |
+| **Meldingen** | Apparaten die blijven aanstaan, stijgend sluipverbruik, een meter die niet reageert, een negatieve prijs terwijl je teruglevert (zie *Meldingen*) |
+| **Fasebelasting** | Stroom per fase ten opzichte van je hoofdzekering, en L1, L2 en L3 door de dag heen in één grafiek |
+| **Batterijgebruik** | Wat de thuisbatterij per uur, dag of maand laadde (van de zon of het net) en leverde (aan huis of net), wat laden gemiddeld kostte en ontladen bespaarde, en per dag wanneer hij laadde of leverde en tegen welke prijs |
+| **Maandpiek** | Voor het Belgische capaciteitstarief: je hoogste kwartiervermogen van deze maand, het lopende kwartier, de afgelopen 12 maanden en wat het kost |
+
+Blokken zonder passend apparaat laat de standaardindeling weg. Het dashboard werkt dus ook voor een huis zonder zonnepanelen, met een hybride of all-electric warmtepomp, of met een laadpaal.
 
 ## Taal
 
-Rechtsboven op het dashboard kies je **NL** of **EN**. Elk scherm onthoudt zijn eigen keuze; de eerste keer volgt het de taal van de browser. De instellingen in de Homey-app volgen de taal van je Homey.
+Rechtsboven op het dashboard kies je de taal: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees of Spaans. Elk scherm onthoudt zijn eigen keuze; de eerste keer volgt het de taal van de browser. De instellingen in de Homey-app volgen de taal van je Homey.
 
 ## Uitleg bij elk blok
 
@@ -32,7 +60,7 @@ Tik op het **potlood** rechtsboven op het dashboard:
 - **Breedte**: sleep de blauwe greep aan de rechterkant van een blok. Hij klikt vast op 1/3, 1/2, 2/3 of de hele breedte.
 - **Hoogte**: sleep de blauwe greep aan de onderkant van een blok. De hoogte klikt vast in stappen van 24 pixels, zodat blokken naast elkaar precies gelijk uitkomen. Een blok kan niet kleiner worden dan zijn inhoud toelaat. Met **Hoogte auto** bepaalt de inhoud weer de hoogte.
 - **Verbergen**: tik op **✕**. Verborgen blokken staan onderin bij **Toevoegen**.
-- **Opslaan** bewaart de indeling op je Homey, zodat al je schermen dezelfde indeling tonen. **Standaard** zet de automatische indeling terug.
+- **Opslaan** bewaart de indeling op je Homey, zodat elk scherm met deze indeling hem meteen ziet (zie *Meerdere indelingen*). **Standaard** zet de automatische indeling terug.
 
 Een rij vult zich van links naar rechts: 1/3 + 1/3 + 1/3, 1/2 + 1/2 en 2/3 + 1/3 vullen precies een rij. Naast een hoog blok schuiven kleinere blokken onder elkaar, zodat er geen lege ruimte overblijft. Op een telefoon staan alle blokken onder elkaar, op de hoogte van hun inhoud.
 
@@ -46,44 +74,17 @@ Wat er gebeurt als je een blok hoger maakt:
 | Kengetallen | De meters worden groter; in een smal, hoog blok staan ze onder elkaar |
 | Totalen | De tegels worden hoger |
 | Apparaten nu, Verbruik per apparaat, Kosten | Er passen meer regels in; wat niet past, kun je scrollen |
-| Sluipverbruik, Fasebelasting | De inhoud wordt verticaal verdeeld | De indeling kan ook in de instellingen van de app in Homey.
+| Sluipverbruik, Fasebelasting | De inhoud wordt verticaal verdeeld |
 
-| Blok | Toont |
-|---|---|
-| **Energie nu** | Live energiestroom tussen zon, net, huis en thuisbatterij, met de totalen van vandaag |
-| **Warm water** | Temperatuur van de boiler, of hij warm is, geschatte doucheminuten; bij een Lydos ook douchebeurten |
-| **Verwarming** | Kamertemperatuur van de thermostaat, vermogen van warmtepomp of cv-ketel, stroom- en gasverbruik, grafiek |
-| **Laadpaal** | Laadvermogen, status, geladen kWh, accu van de auto, grafiek |
-| **Totalen** | Verbruik, net, zon, teruglevering, gas, water, batterij, zelfvoorzienend en kosten, met ▲/▼ ten opzichte van de vorige periode |
-| **Stroomprijs** | Dynamische prijzen van vandaag en morgen (van Homey Energie, EnergyZero of Power by the Hour), met het goedkoopste blok van 3 uur |
-| **Kengetallen** | Meters voor zelfvoorzienend, eigen zon gebruikt en netto afgenomen of geleverd |
-| **Elektriciteit** | Waar je stroom vandaan kwam (net, zon, batterij) en waar overschot heen ging, per uur of dag |
-| **Vermogen vandaag** | Het vermogen door de dag heen, zoals in de HomeWizard-app: zelfverbruik van de zon onderaan, daarboven afname van het net en teruglevering, met de dagtotalen erboven. Het laatste stuk loopt live mee. Bij Week of Maand toont het blok vandaag |
-| **Apparaten nu** | Wat er op dit moment het meeste stroom gebruikt, ook apparaten waarvan Homey het verbruik schat ("geschat") |
-| **Energiestromen** | Sankey-grafiek zoals in Home Assistant: bronnen → huis → individuele verbruikers, live of voor de gekozen periode |
-| **Verbruik per apparaat** | Ranglijst van kWh per apparaat in de gekozen periode, ook apparaten die alleen vermogen meten of een schatting in Homey hebben. Apparaten die in Homey op *Uitsluiten van Energie* staan en de kopieën van Power by the Hour (Σ) tellen niet mee |
-| **Kosten** | Kosten per bron: stroom, teruglevering, gas en water |
-| **Zonne-energie** | Opwek per uur of dag |
-| **Gas** | Gasverbruik per uur of dag |
-| **Water** | Waterverbruik per uur of dag in liters, en het huidige verbruik |
-| **Sluipverbruik** | Wat er 's nachts altijd aan staat, en wat dat per jaar kost |
-| **Fasebelasting** | Stroom per fase ten opzichte van je hoofdzekering, en L1, L2 en L3 door de dag heen in één grafiek |
-| **Batterijgebruik** | Wat de thuisbatterij per uur, dag of maand laadde (van de zon of het net) en leverde (aan huis of net), wat laden gemiddeld kostte en ontladen bespaarde, en per dag wanneer hij laadde of leverde en tegen welke prijs |
-| **Maandpiek** | Voor het Belgische capaciteitstarief: je hoogste kwartiervermogen van deze maand, het lopende kwartier, de afgelopen 12 maanden en wat het kost |
-
-Blokken zonder passend apparaat laat de standaardindeling weg. Het dashboard werkt dus ook voor een huis zonder zonnepanelen, met een hybride of all-electric warmtepomp, of met een laadpaal.
+De indeling kan ook in de instellingen van de app in Homey.
 
 ## Installeren
 
-Installeer de [Homey CLI](https://apps.developer.homey.app/the-basics/getting-started/homey-cli) (`npm install -g homey`) en log in met `homey login`. Daarna:
+De app staat als testversie in de Homey App Store: open https://homey.app/a/com.drpeppers.energydashboard/test/ en kies **Installeren**. Updates komen daarna vanzelf binnen, net als bij andere apps.
 
-```powershell
-cd homey-app
-npm install
-homey app install
-```
+Bij het installeren vraagt Homey om **volledige toegang tot Homey**. Die is nodig omdat de app de gegevens van andere apps leest: de P1-meter, je omvormer, je batterij en de boiler. De app leest alleen gegevens en bedient niets. Voor de prijzen uit Power by the Hour vraagt hij ook toegang tot die app.
 
-Bij het installeren vraagt Homey om **volledige toegang tot Homey**. Die is nodig omdat de app de gegevens van andere apps leest: de P1-meter, je omvormer en de Lydos. De app leest alleen gegevens en bedient niets.
+Zelf bouwen kan ook, met de [Homey CLI](https://apps.developer.homey.app/the-basics/getting-started/homey-cli) (`npm install -g homey`, daarna `homey login`): `npm install` en `homey app install` in deze map. Zie ook *Ontwikkelen*.
 
 ## Het adres vinden
 
@@ -91,13 +92,13 @@ In de Homey-app: *Meer → Apps → Energie Dashboard → Instellingen*. Bovenaa
 
 ## Instellingen
 
-Op dezelfde instellingenpagina:
+Op dezelfde instellingenpagina. Elke wijziging wordt meteen bewaard; het vinkje bovenin Homey sluit alleen de pagina.
 
 - **Poort**: standaard 8686 (wie de app al voor versie 0.2.4 had, houdt 8080). Wijzig die als die poort al door iets anders gebruikt wordt.
 - **Toegangscode voor het dashboard**: als je die invult, vraagt een browser er één keer om en onthoudt hem daarna. Voor een tablet aan de muur kun je ook het adres openen met `?code=…` erachter.
 - **Pincode voor bewerken**: als je die invult, vraagt het dashboard erom bij het opslaan van een nieuwe indeling.
 - **Indeling**: zet blokken aan of uit, verplaats ze met ↑ en ↓, en kies de breedte: smal (1/3), half, breed (2/3) of volledig. De hoogte stel je in op het dashboard zelf. Hier kun je die met **Eigen hoogte ✕** weer op automatisch zetten. Op een telefoon staan alle blokken onder elkaar. Zolang je geen eigen indeling kiest, verschijnen nieuwe blokken vanzelf zodra er een passend apparaat bijkomt, bijvoorbeeld een thuisbatterij of laadpaal. Met **Standaardindeling gebruiken** ga je daar weer naar terug.
-- **Apparaten**: laat op "Automatisch" staan. De app zoekt zelf naar een P1-meter, zonnepanelen, thuisbatterij, boiler, warmtepomp of cv-ketel, thermostaat, laadpaal en watermeter.
+- **Apparaten**: laat op "Automatisch" staan. De app zoekt zelf naar een P1-meter, zonnepanelen, thuisbatterij, boiler, warmtepomp of cv-ketel, thermostaat, laadpaal en watermeter. Apparaten die je in Homey op *Uitsluiten van Energie* zette, en de kopieën die Power by the Hour maakt (Σ), slaat hij over; die kun je wel zelf aanvinken. Kiest de app de verkeerde, vink dan zelf aan welke apparaten hij moet gebruiken.
 - **Boiler**: inhoud (Lydos Hybrid: 80 of 110 liter), koud water, douchetemperatuur, liters per minuut van je douchekop, en vanaf welke temperatuur de boiler als "Warm" telt.
 - **Aansluiting**: je hoofdzekering per fase, meestal 25 A, voor het blok Fasebelasting. In België ook je **capaciteitstarief** (€/kW per jaar) en het minimum per maand (2,5 kW), voor het blok Maandpiek.
 - **Zonneverwachting**: zet aan en vul per dakvlak het vermogen (kWp), de hellingshoek en de richting in. Er staan er twee klaar (bijvoorbeeld oost en west); met **+ Dakvlak toevoegen** kunnen het er tot 10 worden. Zie hieronder.
@@ -151,19 +152,20 @@ Met de zonneverwachting aan toont "Vermogen vandaag" een stippellijn met de verw
 
 ## Scherm (tablet aan de muur)
 
-Met het **schermicoon** rechtsboven stel je per scherm in:
+Met het **schermicoon** (het monitortje) rechtsboven stel je per scherm in. Deze keuzes bewaart de browser, dus elke tablet of browser heeft zijn eigen instellingen.
 
 - **Volledig scherm**.
 - **Scherm aan houden**, zodat de tablet niet op slot gaat (als de browser dat ondersteunt).
+- **Periode exporteren (CSV)**: download de gekozen periode als spreadsheet.
 - **Licht of donker**: **Automatisch** volgt het apparaat, **Licht** en **Donker** staan vast, en **Volgt de zon** is donker van zonsondergang tot zonsopkomst op de plek van je Homey.
 - **Sfeerkleur achtergrond**: een zachte gloed achter de blokken in de kleur van waar de stroom nu vandaan komt: geel voor de zon, blauw voor het net, groen-blauw voor de batterij, en rood zonder verbinding. Gebeurt er weinig, dan is er geen gloed.
+- **Beweging**: **Standaard** laat de stromen altijd bewegen (sierlijke effecten volgen de instelling "minder beweging" van je systeem), **Alle effecten** zet ook die aan, **Uit** zet alles stil.
+- **Snelheid stromen**: **Sneller**, **Standaard**, **Trager** of **Kruipend** (tien keer zo traag). Deze keuze staat er niet als Beweging op Uit staat.
 - **Nachtstand**: van een tijd tot een tijd het scherm **dimmen** of **zwart** maken. Tik op het zwarte scherm om het een minuut te wekken. Zolang het zwart is, vraagt het dashboard niets op bij Homey.
 
 Een dashboard dat dagen aan staat, schuift af en toe een paar pixels op tegen inbranden. Na een update van de app laadt het dashboard zichzelf opnieuw, maar niet terwijl je de indeling bewerkt; dat gebeurt dan na Opslaan of Annuleren.
 
 Staat het blok Meldingen in je indeling, dan verschijnt een waarschuwing ook bovenin naast "Live". Tik erop om naar het blok te gaan. Is het opgelost, dan verdwijnt hij vanzelf. Op een touchscreen zijn de knoppen groter.
-
-Onder **Beweging** kies je of de stromen bewegen: **Standaard** laat ze altijd bewegen (sierlijke effecten volgen de instelling "minder beweging" van je systeem), **Alle effecten** zet ook die aan, **Uit** zet alles stil. Bij **Snelheid stromen** maak je de stromen sneller of trager, tot **Kruipend** (tien keer zo traag). Via **Periode exporteren (CSV)** download je de gekozen periode als spreadsheet.
 
 ## Meerdere indelingen
 
@@ -189,7 +191,7 @@ Voor de prijzen gebruikt de app de prijzen die Homey zelf ophaalt, of haalt hij 
 
 Toont een blok geen gegevens, open dan `http://<ip-van-je-homey>:8686/api/diagnose`. Die pagina laat zien welke apparaten de app vond, welke metingen daarvan in Insights staan, hoeveel vermogensmetingen er vandaag zijn en welke meldingen er zijn. Plak die tekst bij een vraag op het forum (er staan geen wachtwoorden in).
 
-Wordt een apparaat niet (goed) herkend, zoals een batterij of hybride omvormer? Gebruik dan **Diagnose delen**: met de **!**-knop naast het potlood op het dashboard (de **?** ernaast opent deze handleiding), of onderaan de instellingen van de app. Dat maakt een anoniem rapport: welke apps en metingen je apparaten hebben en hun huidige waarden, zonder namen, ruimtes, locatie of adres. Met **Kopiëren en mailen** opent je mailprogramma met een mail naar de maker van de app (geen account nodig); met **Delen op GitHub** een GitHub-issue. Het rapport staat erin, of op je klembord om te plakken als het te lang is, en verschijnt ook onder de knoppen. Er gaat pas iets weg als jij de mail verstuurt of het issue plaatst.
+Wordt een apparaat niet (goed) herkend, zoals een batterij of hybride omvormer? Gebruik dan **Diagnose delen**: met de **!**-knop naast het potlood op het dashboard (de **?** ernaast opent deze handleiding), of onderaan de instellingen van de app. Dat maakt een anoniem rapport: welke apps en metingen je apparaten hebben en hun huidige waarden, zonder namen, ruimtes, locatie of adres. Met **Kopiëren en mailen** opent je mailprogramma met een mail naar de maker van de app (geen account nodig); met **Delen op GitHub** een GitHub-issue. Het rapport staat erin, of op je klembord om te plakken als het te lang is, en verschijnt ook onder de knoppen. Er gaat pas iets weg als jij de mail verstuurt of het issue plaatst. Klopt er iets niet in wat het dashboard laat zien, vink dan ook **Mijn dashboard meesturen** aan: dan kan de maker precies zien wat jij ziet. Dan gaan ook de apparaatnamen en het verbruik van vandaag mee.
 
 Heeft je P1-meter geen vermogensmetingen (W) in Insights, dan rekent de app het vermogen voor "Vermogen vandaag" en het sluipverbruik uit met de kWh-tellers van de meter.
 
@@ -197,9 +199,11 @@ Heeft je P1-meter geen vermogensmetingen (W) in Insights, dan rekent de app het 
 
 Heb je een thuisbatterij, dan staat er een eigen blok **Thuisbatterij** op het dashboard: het laadniveau, of hij laadt of ontlaadt en met hoeveel vermogen, hoeveel er in de gekozen periode geladen en ontladen is, welk deel met zon geladen is, het laadniveau door de dag heen, en bij Maand of Jaar het rendement. Met meerdere batterijen staat elke batterij er apart bij.
 
-Het dashboard is voorbereid op een thuisbatterij, zoals de Zendure SolarFlow 2400 AC. Voeg de batterij in Homey toe (bijvoorbeeld met de app [Zendure Local](https://homey.app/en-us/app/com.tweakers.zendure/Zendure-Local/)). Het dashboard vindt hem dan vanzelf als hij als batterij bij Homey Energie bekend is. Zo niet, vink hem aan bij de instellingen.
+Het blok **Batterijgebruik** laat zien wanneer de batterij laadde (van de zon of het net) en leverde (aan huis of net), wat laden gemiddeld kostte en wat ontladen bespaarde.
 
-Daarna verschijnen:
+Voeg de batterij in Homey toe met de app van je merk (bijvoorbeeld [Zendure Local](https://homey.app/en-us/app/com.tweakers.zendure/Zendure-Local/) voor een Zendure SolarFlow). Het dashboard vindt hem dan vanzelf als hij als batterij bij Homey Energie bekend is. Zo niet, vink hem aan bij de instellingen.
+
+Verder verschijnen:
 
 - een **batterij** onder in "Nu", met laadniveau en of hij laadt of ontlaadt;
 - tegels voor **geladen** en **ontladen** kWh;

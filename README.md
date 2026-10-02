@@ -1,27 +1,26 @@
 # Energie dashboard voor Homey Pro
 
-> **Aanbevolen: de Homey-app in [`homey-app/`](homey-app/README.md).** Die draait de webpagina op je Homey Pro zelf (`http://<ip-van-je-homey>:8686`) en heeft geen aparte computer of API-key nodig.
+> **Aanbevolen: de Homey-app in [`homey-app/`](homey-app/README.md)**, als testversie in de App Store: https://homey.app/a/com.drpeppers.energydashboard/test/. Die draait de webpagina op je Homey Pro zelf (`http://<ip-van-je-homey>:8686`) en heeft geen aparte computer of API-key nodig.
 >
 > Deze map bevat ook een losse versie die op een pc draait (hieronder beschreven). Die dient vooral als testomgeving met voorbeelddata. Na wijzigingen in `shared/` of `lib/energy.js` voer je `npm run sync` uit.
 
-Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht als het energy dashboard van Home Assistant:
+Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht als het energy dashboard van Home Assistant. Het bestaat uit blokken die je zelf indeelt:
 
-- **Nu**: live energiestroom tussen zon, net en huis
-- **Boiler (Atag Lydos)**: watertemperatuur, of hij warm is, geschatte doucheminuten, douchebeurten volgens de Lydos, opwarmen, modus en temperatuurverloop van vandaag
-- **Totalen** per dag, week, maand of jaar: verbruik, van het net, zon opgewekt, teruggeleverd, gas, zelfvoorzienend %, eigen zonverbruik % en kosten
-- **Vermogen vandaag**: een lijngrafiek van het vermogen door de dag, met zelfverbruik, afname van het net en teruglevering
-- **Grafieken** per uur of dag voor elektriciteit, zonne-energie en gas
-- **Energiestromen**: een Sankey-grafiek zoals in Home Assistant, van de bronnen (zon, net, batterij) via het huis naar de individuele verbruikers, live of voor de gekozen periode
-- **Thuisbatterij**: laden, ontladen en laadniveau, zodra je er een hebt (zie hieronder)
-- **Apparaten nu**: wat er op dit moment het meeste stroom gebruikt
-- **Terugkijken**: sleep bij Vandaag of Gisteren naar een eerder tijdstip en zie het dashboard van dat moment (zie *Terugkijken* in `homey-app/README.md`)
+- **Energie nu**: live energiestroom tussen zon, net, huis en thuisbatterij
+- **Totalen** per dag, week, maand of jaar, en **grafieken** voor elektriciteit, zon, gas en water
+- **Vermogen vandaag**: het vermogen door de dag, met zelfverbruik, afname van het net en teruglevering
+- **Energiestromen**: een Sankey-grafiek van de bronnen via het huis naar de individuele verbruikers, live of voor de gekozen periode
+- **Apparaten nu** en **Verbruik per apparaat**
+- **Warm water**, **Verwarming**, **Laadpaal**, **Thuisbatterij** en **Batterijgebruik**, zodra je zo'n apparaat hebt
+- **Kosten** en **Stroomprijs** met je eigen contract, **Einde salderen**, **Sluipverbruik**, **Fasebelasting**, **Maandpiek** en **Meldingen**
+- **Terugkijken**: sleep bij Vandaag of Gisteren naar een eerder tijdstip en zie het dashboard van dat moment
 
-Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je de taal: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees of Spaans.
+Alle blokken staan uitgelegd in [`homey-app/README.md`](homey-app/README.md). Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je de taal: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees of Spaans.
 
 ## Wat je nodig hebt
 
 - Een computer die aan blijft staan in je thuisnetwerk (pc, laptop, NAS of Raspberry Pi) met [Node.js](https://nodejs.org) 18 of nieuwer
-- Een Homey Pro met P1-meter, zonnepanelen en de Lydos Hybrid-app
+- Een Homey Pro met een P1-meter; zonnepanelen, thuisbatterij, boiler en andere apparaten zijn optioneel
 
 Er hoeft niets geïnstalleerd te worden met `npm install`: er zijn geen extra pakketten.
 
@@ -48,7 +47,7 @@ Kreeg je een diagnose van een gebruiker met **Mijn dashboard meesturen**, bewaar
 | Instelling | Uitleg |
 |---|---|
 | `port` | Poort van het dashboard (standaard 8080) |
-| `devices.p1`, `devices.solar`, `devices.boiler` | Laat leeg om automatisch te zoeken. Worden je apparaten niet gevonden, open dan `http://localhost:8080/api/devices` en zet de juiste `id` hier neer (`solar` is een lijst, voor meerdere omvormers) |
+| `devices` | `p1`, `solar`, `batteries`, `boiler`, `heating`, `thermostat`, `evChargers` en `water`. Laat leeg om automatisch te zoeken. Worden je apparaten niet gevonden, open dan `http://localhost:8080/api/devices` en zet de juiste `id` hier neer (`solar`, `batteries`, `heating` en `evChargers` zijn lijsten) |
 | `boiler.liters` | Inhoud van je boiler (Lydos Hybrid: 80 of 110 liter) |
 | `boiler.coldWaterTemp` | Temperatuur van het koude leidingwater (ongeveer 10 °C) |
 | `boiler.showerTemp` | Temperatuur waarop je doucht (ongeveer 38–40 °C) |
@@ -64,7 +63,7 @@ Kreeg je een diagnose van een gebruiker met **Mijn dashboard meesturen**, bewaar
 
 ## Thuisbatterij
 
-Het dashboard is voorbereid op een thuisbatterij, zoals de Zendure SolarFlow 2400 AC. Voeg de batterij in Homey toe (bijvoorbeeld met de app [Zendure Local](https://homey.app/en-us/app/com.tweakers.zendure/Zendure-Local/)). Het dashboard vindt hem dan vanzelf als hij als batterij bij Homey Energie bekend is. Zo niet, vink hem aan bij de instellingen.
+Voeg de batterij in Homey toe met de app van je merk (bijvoorbeeld [Zendure Local](https://homey.app/en-us/app/com.tweakers.zendure/Zendure-Local/) voor een Zendure SolarFlow). Het dashboard vindt hem dan vanzelf als hij als batterij bij Homey Energie bekend is. Zo niet, zet zijn `id` bij `devices.batteries` in `config.json`.
 
 Daarna verschijnen:
 
@@ -73,7 +72,7 @@ Daarna verschijnen:
 - in de elektriciteitsgrafiek **"Uit batterij"** boven de nul en **"Batterij geladen"** onder de nul;
 - de batterij als bron en bestemming in de **Energiestromen**.
 
-Zelfvoorzienend telt energie uit de batterij mee, net als in Home Assistant. Staan laden en ontladen omgedraaid, zet dan **"Batterij meet vermogen andersom"** aan.
+Zelfvoorzienend telt energie uit de batterij mee, net als in Home Assistant. Staan laden en ontladen omgedraaid, zet dan `battery.invertPower` op `true`.
 
 ## Energiestromen (Sankey)
 
