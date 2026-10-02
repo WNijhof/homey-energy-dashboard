@@ -1,6 +1,6 @@
 # Energie dashboard voor Homey Pro
 
-> **Aanbevolen: de Homey-app in [`homey-app/`](homey-app/README.md).** Die draait de webpagina op je Homey Pro zelf (`http://<ip-van-je-homey>:8080`) en heeft geen aparte computer of API-key nodig.
+> **Aanbevolen: de Homey-app in [`homey-app/`](homey-app/README.md).** Die draait de webpagina op je Homey Pro zelf (`http://<ip-van-je-homey>:8686`) en heeft geen aparte computer of API-key nodig.
 >
 > Deze map bevat ook een losse versie die op een pc draait (hieronder beschreven). Die dient vooral als testomgeving met voorbeelddata. Na wijzigingen in `shared/` of `lib/energy.js` voer je `npm run sync` uit.
 

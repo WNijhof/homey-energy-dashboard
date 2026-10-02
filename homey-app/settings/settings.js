@@ -42,7 +42,7 @@ function onHomeyReady(Homey) {
     try {
       const [config = {}, list] = await Promise.all([getSetting('config').then(c => c || {}), call('GET', '/settings-info')]);
       showDashboard(list);
-      form.port.value = config.port || 8080;
+      form.port.value = config.port || 8686;
       const devices = config.devices || {};
       const name = id => list.devices.find(d => d.id === id)?.name;
       const autoLabel = id => `${__('automatic')}${name(id) ? ` (${name(id)})` : ''}`;
@@ -89,7 +89,7 @@ function onHomeyReady(Homey) {
       saveTimer = null;
       const number = key => (form[key].value === '' ? undefined : Number(form[key].value));
       const config = {
-        port: number('port') ?? 8080,
+        port: number('port') ?? 8686,
         editPin: form.editPin.value.trim(),
         accessCode: form.accessCode.value.trim(),
         devices: {

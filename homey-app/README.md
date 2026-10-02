@@ -2,7 +2,7 @@
 
 Een Homey-app die een energiedashboard als webpagina aanbiedt in je thuisnetwerk. Het ziet eruit zoals de Homey-app en toont hetzelfde soort overzicht als het energy dashboard van Home Assistant. Alles draait op je Homey Pro zelf, zonder extra computer of API-key.
 
-Open het dashboard op **http://&lt;ip-van-je-homey&gt;:8080**, bijvoorbeeld op een tablet aan de muur.
+Open het dashboard op **http://&lt;ip-van-je-homey&gt;:8686**, bijvoorbeeld op een tablet aan de muur.
 
 ## Wat er op het dashboard staat
 
@@ -93,7 +93,7 @@ In de Homey-app: *Meer → Apps → Energie Dashboard → Instellingen*. Bovenaa
 
 Op dezelfde instellingenpagina:
 
-- **Poort**: standaard 8080. Wijzig die als die poort al door iets anders gebruikt wordt.
+- **Poort**: standaard 8686 (wie de app al voor versie 0.2.4 had, houdt 8080). Wijzig die als die poort al door iets anders gebruikt wordt.
 - **Toegangscode voor het dashboard**: als je die invult, vraagt een browser er één keer om en onthoudt hem daarna. Voor een tablet aan de muur kun je ook het adres openen met `?code=…` erachter.
 - **Pincode voor bewerken**: als je die invult, vraagt het dashboard erom bij het opslaan van een nieuwe indeling.
 - **Indeling**: zet blokken aan of uit, verplaats ze met ↑ en ↓, en kies de breedte: smal (1/3), half, breed (2/3) of volledig. De hoogte stel je in op het dashboard zelf. Hier kun je die met **Eigen hoogte ✕** weer op automatisch zetten. Op een telefoon staan alle blokken onder elkaar. Zolang je geen eigen indeling kiest, verschijnen nieuwe blokken vanzelf zodra er een passend apparaat bijkomt, bijvoorbeeld een thuisbatterij of laadpaal. Met **Standaardindeling gebruiken** ga je daar weer naar terug.
@@ -167,7 +167,7 @@ Onder **Beweging** kies je of de stromen bewegen: **Standaard** laat ze altijd b
 
 ## Meerdere indelingen
 
-Elk scherm kan een eigen indeling hebben, bijvoorbeeld een compacte voor de tablet in de keuken. Kies in de bewerkmodus (potlood) bij de indeling **Nieuwe indeling…**, geef een naam en sla op. Een scherm onthoudt zijn indeling; je kunt er ook een kiezen met het adres, bijvoorbeeld `http://<ip-van-je-homey>:8080/?indeling=keuken`. De standaardindeling stel je ook in bij de instellingen van de app.
+Elk scherm kan een eigen indeling hebben, bijvoorbeeld een compacte voor de tablet in de keuken. Kies in de bewerkmodus (potlood) bij de indeling **Nieuwe indeling…**, geef een naam en sla op. Een scherm onthoudt zijn indeling; je kunt er ook een kiezen met het adres, bijvoorbeeld `http://<ip-van-je-homey>:8686/?indeling=keuken`. De standaardindeling stel je ook in bij de instellingen van de app.
 
 ## Op je beginscherm
 
@@ -187,7 +187,7 @@ Voor de prijzen gebruikt de app de prijzen die Homey zelf ophaalt, of haalt hij 
 
 ## Problemen oplossen
 
-Toont een blok geen gegevens, open dan `http://<ip-van-je-homey>:8080/api/diagnose`. Die pagina laat zien welke apparaten de app vond, welke metingen daarvan in Insights staan, hoeveel vermogensmetingen er vandaag zijn en welke meldingen er zijn. Plak die tekst bij een vraag op het forum (er staan geen wachtwoorden in).
+Toont een blok geen gegevens, open dan `http://<ip-van-je-homey>:8686/api/diagnose`. Die pagina laat zien welke apparaten de app vond, welke metingen daarvan in Insights staan, hoeveel vermogensmetingen er vandaag zijn en welke meldingen er zijn. Plak die tekst bij een vraag op het forum (er staan geen wachtwoorden in).
 
 Wordt een apparaat niet (goed) herkend, zoals een batterij of hybride omvormer? Gebruik dan **Diagnose delen**: met de **!**-knop naast het potlood op het dashboard (de **?** ernaast opent deze handleiding), of onderaan de instellingen van de app. Dat maakt een anoniem rapport: welke apps en metingen je apparaten hebben en hun huidige waarden, zonder namen, ruimtes, locatie of adres. Met **Kopiëren en mailen** opent je mailprogramma met een mail naar de maker van de app (geen account nodig); met **Delen op GitHub** een GitHub-issue. Het rapport staat erin, of op je klembord om te plakken als het te lang is, en verschijnt ook onder de knoppen. Er gaat pas iets weg als jij de mail verstuurt of het issue plaatst.
 

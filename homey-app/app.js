@@ -27,8 +27,11 @@ const ENERGY_LIVE_WAIT = 2 * 1000;
 const TIMELINE_TTL = { today: 2 * 60 * 1000, yesterday: 30 * 60 * 1000 };
 const TIMELINE_FRESH = 30 * 1000;
 
+// 8080 is used by much other software; installs from before 0.2.4 keep it, see keepOldPort()
+const OLD_PORT = 8080;
+
 const DEFAULTS = {
-  port: 8080,
+  port: 8686,
   devices: { p1: '', solar: [], batteries: [], boiler: '', heating: [], thermostat: '', evChargers: [], water: '' },
   boiler: { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 },
   battery: { invertPower: false },
@@ -96,6 +99,7 @@ class EnergyDashboardApp extends Homey.App {
     this.weather = new WeatherService({ log: this.log.bind(this) });
     this.pinGuard = new PinGuard();
 
+    this.keepOldPort();
     this.webServer = new WebServer({ app: this, log: this.log.bind(this), error: this.error.bind(this) });
     await this.webServer.start(this.getConfig().port);
 
@@ -115,6 +119,14 @@ class EnergyDashboardApp extends Homey.App {
       this.nettingCache = null;
       this.webServer.start(this.getConfig().port).catch(this.error);
     });
+  }
+
+  // The default port was 8080 until 0.2.4. An install that ran before has settings of its own
+  // (at least the peak log), and keeps that port so its bookmarks and tablets keep working
+  keepOldPort() {
+    const saved = this.homey.settings.get('config');
+    if (saved?.port || !this.homey.settings.getKeys().length) return;
+    this.homey.settings.set('config', { ...saved, port: OLD_PORT });
   }
 
   async onUninit() {
