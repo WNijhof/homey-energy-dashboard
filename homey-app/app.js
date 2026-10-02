@@ -27,6 +27,15 @@ const ENERGY_LIVE_WAIT = 2 * 1000;
 const TIMELINE_TTL = { today: 2 * 60 * 1000, yesterday: 30 * 60 * 1000 };
 const TIMELINE_FRESH = 30 * 1000;
 
+// Prices can come from the app Power by the Hour (see lib/prices.js). Its earlier prices are read
+// from Insights, in the finest resolution that reaches back far enough.
+const POWERHOUR_APP = 'com.gruijter.powerhour';
+const HOUR = 3600 * 1000;
+const POWERHOUR_RESOLUTIONS = [
+  [24 * HOUR, 'last24Hours'], [7 * 24 * HOUR, 'last7Days'], [31 * 24 * HOUR, 'last31Days'],
+  [92 * 24 * HOUR, 'last3Months'], [183 * 24 * HOUR, 'last6Months'],
+];
+
 // 8080 is used by much other software; installs from before 0.2.4 keep it, see keepOldPort()
 const OLD_PORT = 8080;
 
@@ -90,6 +99,11 @@ class EnergyDashboardApp extends Homey.App {
         priceType: async () => (await this.getApi()).energy.getElectricityPriceType(),
         fixedPrice: async () => (await this.getApi()).energy.getOptionElectricityPriceFixed(),
         currency: async () => (await this.getApi()).energy.getCurrency(),
+      },
+      powerhour: {
+        installed: () => this.homey.api.getApiApp(POWERHOUR_APP).getInstalled(),
+        prices: () => this.homey.api.getApiApp(POWERHOUR_APP).get('/dap-prices'),
+        history: (device, from, now) => this.powerhourHistory(device, from, now),
       },
     });
     // The monthly peak for the Belgian capacity tariff, measured once a minute
@@ -286,6 +300,24 @@ class EnergyDashboardApp extends Homey.App {
 
   // Insights entries of a device capability as [{ t: Date, v: number }] (true or false for
   // on/off), or [] without a log
+  // Earlier prices of a Power by the Hour price device, from its Insights: its current price
+  // (meter_price_h0) and export price, in the finest resolution that still reaches back to `from`
+  async powerhourHistory(device, from, now) {
+    const own = (await this.getDevices()).filter(d => String(d.driverId || '').startsWith(`homey:app:${POWERHOUR_APP}:${device.driverType}`));
+    const homeyDevice = own.find(d => d.name === device.name) || own[0];
+    if (!homeyDevice) return [];
+    const age = now - from;
+    const resolution = POWERHOUR_RESOLUTIONS.find(([span]) => age <= span)?.[1] || 'last2Years';
+    const [prices, exports] = await Promise.all([
+      this.getEntries(homeyDevice.id, 'meter_price_h0', resolution).catch(() => []),
+      this.getEntries(homeyDevice.id, 'meter_price_h0_export', resolution).catch(() => []),
+    ]);
+    const exportAt = new Map(exports.map(e => [e.t.getTime(), e.v]));
+    return prices
+      .filter(e => typeof e.v === 'number' && e.t.getTime() < now)
+      .map(e => ({ t: e.t.getTime(), price: e.v, exportPrice: typeof exportAt.get(e.t.getTime()) === 'number' ? exportAt.get(e.t.getTime()) : null }));
+  }
+
   async getEntries(deviceId, capability, resolution) {
     const id = `homey:device:${deviceId}:${capability}`;
     if (!(await this.getLogIds()).has(id)) return [];
@@ -543,6 +575,10 @@ class EnergyDashboardApp extends Homey.App {
         water: describeAs('water')(found.water),
       },
       batteryLike: batteryLike.slice(0, 10).map(describeAs('battery-like')),
+      // Where Homey keeps "Exclude from Energy" is not known yet: the energy settings of every
+      // metered device, to find it
+      metered: devices.filter(d => (d.capabilities || []).some(c => /^(measure_power|meter_power)/.test(c))).slice(0, 60)
+        .map(d => ({ name: label(d, 'device'), app: d.driverId, class: d.virtualClass || d.class, energyUser: d.energy, energySettings: d.energySettings })),
       today: {
         error: today.error || null,
         p1PowerReadings: await count(found.p1, 'measure_power'),

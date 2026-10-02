@@ -11,7 +11,7 @@
 
   const KEY = 'energy-dashboard-screen';
   const WAKE_FOR = 60 * 1000;
-  const defaults = { night: 'off', from: '23:00', to: '07:00', keepOn: false, motion: 'auto', theme: 'auto', mood: true };
+  const defaults = { night: 'off', from: '23:00', to: '07:00', keepOn: false, motion: 'auto', pace: 'normal', theme: 'auto', mood: true };
   const systemReduced = matchMedia('(prefers-reduced-motion: reduce)');
 
   let settings = { ...defaults };
@@ -47,6 +47,10 @@
   // is off), unless this screen is set to always move.
   const flowsStill = () => settings.motion === 'off';
   const reducedMotion = () => settings.motion === 'off' || (settings.motion !== 'on' && systemReduced.matches);
+
+  // How fast the flows move compared to normal; "crawl" is ten times slower
+  const PACES = { fast: 2, normal: 1, slow: 0.4, crawl: 0.1 };
+  const flowPace = () => PACES[settings.pace] || 1;
 
   function applyMotion() {
     document.documentElement.classList.toggle('motion-on', settings.motion === 'on');
@@ -161,6 +165,14 @@
           <option value="off" ${settings.motion === 'off' ? 'selected' : ''}>Uit</option>
         </select>
       </label>
+      <label class="screen-row" ${settings.motion === 'off' ? 'hidden' : ''}><span>Snelheid stromen</span>
+        <select data-action="pace">
+          <option value="fast" ${settings.pace === 'fast' ? 'selected' : ''}>Sneller</option>
+          <option value="normal" ${settings.pace === 'normal' ? 'selected' : ''}>Standaard</option>
+          <option value="slow" ${settings.pace === 'slow' ? 'selected' : ''}>Trager</option>
+          <option value="crawl" ${settings.pace === 'crawl' ? 'selected' : ''}>Kruipend</option>
+        </select>
+      </label>
       <label class="screen-row"><span>Nachtstand</span>
         <select data-action="night">${option('off', 'Uit')}${option('dim', 'Dimmen')}${option('black', 'Zwart')}</select>
       </label>
@@ -210,9 +222,10 @@
         applyMood();
         return;
       }
-      if (action === 'motion') {
-        settings.motion = event.target.value;
+      if (action === 'motion' || action === 'pace') {
+        settings[action] = event.target.value;
         save();
+        if (action === 'motion') panel.innerHTML = panelHtml();
         applyMotion();
         return;
       }
@@ -255,6 +268,6 @@
     document.addEventListener('visibilitychange', applyKeepOn);
   }
 
-  window.EnergyScreen = { start, sleeping, reducedMotion, flowsStill, setPlace };
+  window.EnergyScreen = { start, sleeping, reducedMotion, flowsStill, flowPace, setPlace };
 
 })();

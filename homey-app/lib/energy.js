@@ -73,11 +73,21 @@ function isCopy(d) {
   return COPY_APPS.includes(app);
 }
 
+// "Exclude from Energy" in the advanced settings of a device in Homey. The Homey app keeps only
+// the energy settings of a device (energySettings), the pc version the whole settings object
+function isExcluded(d) {
+  return (d.energySettings || d.settings || {}).energy_exclude === true;
+}
+
+// Devices the dashboard leaves out unless they are chosen in the settings
+const isLeftOut = d => isCopy(d) || isExcluded(d);
+
 // Finds the P1 meter, solar panels, home batteries and boiler, unless they are pinned in the config
 function discover(devices, pinned = {}) {
   const byId = id => id && devices.find(d => d.id === id);
-  // A copy of another meter is only used when it is chosen in the settings
-  const own = devices.filter(d => !isCopy(d));
+  // A copy of another meter, or a device excluded from Homey Energy, is only used when it is
+  // chosen in the settings
+  const own = devices.filter(d => !isLeftOut(d));
 
   const p1 = byId(pinned.p1)
     || own.find(d => d.energyObj?.cumulative)
@@ -578,7 +588,7 @@ function estimatedDevices(report, devices, found) {
     .filter(item => {
       const d = byId.get(item.id);
       return d && !skip.has(d.id) && !has(d, 'measure_power') && !isGridMeter(d)
-        && !isSourceOrStore(d) && !isCopy(d);
+        && !isSourceOrStore(d) && !isLeftOut(d);
     })
     .map(item => ({ id: item.id, name: byId.get(item.id).name || item.name || '?', watts: item.values.W, estimated: true }));
 }
@@ -600,7 +610,7 @@ function buildLive(devices, found, cfg, { estimated = [], batteryWatts = null } 
 
   const skip = new Set([found.p1?.id, ...found.solar.map(d => d.id), ...found.batteries.map(d => d.id)]);
   const powered = devices
-    .filter(d => !skip.has(d.id) && !isGridMeter(d) && !isSourceOrStore(d) && !isCopy(d) && typeof value(d, 'measure_power') === 'number' && value(d, 'measure_power') > 0)
+    .filter(d => !skip.has(d.id) && !isGridMeter(d) && !isSourceOrStore(d) && !isLeftOut(d) && typeof value(d, 'measure_power') === 'number' && value(d, 'measure_power') > 0)
     .map(d => ({ id: d.id, name: d.name, watts: value(d, 'measure_power') }))
     .concat(estimated)
     .sort((a, b) => b.watts - a.watts);
@@ -1086,7 +1096,7 @@ function isSourceOrStore(d) {
 // (or a power meter for the live view) that is not a meter, panel or battery itself
 function consumptionDevices(devices, found, capability = 'meter_power') {
   const skip = new Set([found.p1?.id, ...found.solar.map(d => d.id), ...found.batteries.map(d => d.id)]);
-  return devices.filter(d => !skip.has(d.id) && has(d, capability) && !isGridMeter(d) && !isSourceOrStore(d) && !isCopy(d));
+  return devices.filter(d => !skip.has(d.id) && has(d, capability) && !isGridMeter(d) && !isSourceOrStore(d) && !isLeftOut(d));
 }
 
 // Runs `fn` over the items with at most `limit` running at a time: a house with hundreds of
@@ -1130,7 +1140,7 @@ function reportDevices(report, devices, found, known) {
   return Object.entries(consumed)
     .map(([id, entry]) => ({ id, entry, device: byId.get(id) }))
     .filter(({ id, entry, device }) => device && !known.has(id) && !skip.has(id) && typeof entry?.period === 'number' && entry.period > 0
-      && !isGridMeter(device) && !isSourceOrStore(device) && !isCopy(device))
+      && !isGridMeter(device) && !isSourceOrStore(device) && !isLeftOut(device))
     .map(({ id, entry, device }) => ({ id, name: device.name || entry.name || '?', kWh: entry.period, estimated: !has(device, 'measure_power') }));
 }
 
@@ -1361,7 +1371,7 @@ async function recordTimeline(readInsights, devices, found, cfg, day, now = new 
   }
   // The power of all other devices, for Devices now and the Sankey
   const done = new Set([found.p1, ...found.solar, ...found.batteries, ...others].filter(Boolean).map(d => d.id));
-  tasks.push(...devices.filter(d => !done.has(d.id) && has(d, 'measure_power') && !isGridMeter(d) && !isSourceOrStore(d) && !isCopy(d)).map(d => record(d, 'measure_power')));
+  tasks.push(...devices.filter(d => !done.has(d.id) && has(d, 'measure_power') && !isGridMeter(d) && !isSourceOrStore(d) && !isLeftOut(d)).map(d => record(d, 'measure_power')));
 
   // A device whose Insights fail is left out; the others still show
   await mapLimited(tasks, INSIGHTS_PARALLEL, task => task().catch(() => {}));
@@ -1758,6 +1768,8 @@ async function buildBaseload(client, found, cfg, marketAverage = null, homey = n
 
 module.exports = {
   isCopy,
+  isExcluded,
+  isLeftOut,
   degreeDayBuckets,
   PERIODS,
   PREVIOUS,

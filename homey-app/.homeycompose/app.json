@@ -1,6 +1,6 @@
 {
   "id": "com.drpeppers.energydashboard",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -36,7 +36,8 @@
   },
   "permissions": [
     "homey:manager:api",
-    "homey:manager:geolocation"
+    "homey:manager:geolocation",
+    "homey:app:com.gruijter.powerhour"
   ],
   "brandColor": "#20C07C",
   "images": {

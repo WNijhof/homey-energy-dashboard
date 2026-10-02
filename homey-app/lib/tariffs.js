@@ -122,8 +122,14 @@ async function tariffFor(contract, priceService, from, till) {
   const g = contract.gas;
   let power = null;
   let gas = null;
+  // Power by the Hour also gives its own export price, with the costs entered there
+  let exported = null;
   if (e.type === 'dynamic' && priceService) {
-    power = priceLookup(await priceService.range('electricity', from, till).catch(() => []));
+    const list = await priceService.range('electricity', from, till).catch(() => []);
+    power = priceLookup(list);
+    if (homey?.source === 'powerhour' && e.allIn === homey.allIn) {
+      exported = priceLookup(list.filter(p => typeof p.exportPrice === 'number').map(p => ({ t: p.t, end: p.end, price: p.exportPrice })));
+    }
   }
   if (g.type === 'dynamic' && priceService) {
     gas = priceLookup(await priceService.range('gas', from, till).catch(() => []));
@@ -148,6 +154,10 @@ async function tariffFor(contract, priceService, from, till) {
   // compensation of the contract, minus the export fee
   const exportNoNetting = (t0, t1) => {
     if (e.type === 'dynamic') {
+      if (exported) {
+        const own = exported.between(t0, t1);
+        if (typeof own === 'number') return own;
+      }
       const market = power?.between(t0, t1);
       return typeof market === 'number' ? e.market(market) - e.exportFee : null;
     }
@@ -185,11 +195,13 @@ async function tariffFor(contract, priceService, from, till) {
 function describeTariff(contract, homey = null) {
   const e = electricityFor(contract, homey);
   const fromHomey = Boolean(e.type === 'dynamic' && homey?.allIn && e.allIn === homey.allIn);
+  const fromPowerhour = fromHomey && homey.source === 'powerhour';
   return {
     electricity: {
       type: e.type,
-      // "homey": the formula entered in Homey makes the all-in price
-      source: fromHomey ? 'homey' : 'contract',
+      // "homey": the formula entered in Homey makes the all-in price; "powerhour": Power by the
+      // Hour gives it, with the markups entered there
+      source: fromPowerhour ? 'powerhour' : fromHomey ? 'homey' : 'contract',
       formula: fromHomey ? homey.formula || null : null,
       // VAT the app adds to Homey's market price (without a formula in Homey), as a fraction
       marketVat: e.marketVat || 0,

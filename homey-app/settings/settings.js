@@ -144,7 +144,9 @@ function onHomeyReady(Homey) {
     form.priceSource.value = prices.source === 'energyzero' && !prices.chosen ? 'auto' : prices.source || 'auto';
     const note = document.getElementById('price-source-note');
     const homey = info?.homey;
-    const parts = [info?.source === 'homey' ? __('sourceInUseHomey') : info?.source === 'off' ? __('sourceInUseOff') : __('sourceInUseEnergyZero')];
+    const parts = [info?.source === 'homey' ? __('sourceInUseHomey') : info?.source === 'powerhour' ? __('sourceInUsePowerhour')
+      : info?.source === 'off' ? __('sourceInUseOff') : __('sourceInUseEnergyZero')];
+    if (prices.source === 'powerhour' && info?.source !== 'powerhour') parts.unshift(__('powerhourMissing'));
     if (homey?.type === 'dynamic') {
       parts.push(homey.usable ? __('homeyFormula', { formula: homey.formula }) : __('homeyNoFormula'));
     } else if (homey?.type === 'fixed' && homey.fixed) {

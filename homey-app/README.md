@@ -55,13 +55,13 @@ Wat er gebeurt als je een blok hoger maakt:
 | **Verwarming** | Kamertemperatuur van de thermostaat, vermogen van warmtepomp of cv-ketel, stroom- en gasverbruik, grafiek |
 | **Laadpaal** | Laadvermogen, status, geladen kWh, accu van de auto, grafiek |
 | **Totalen** | Verbruik, net, zon, teruglevering, gas, water, batterij, zelfvoorzienend en kosten, met ▲/▼ ten opzichte van de vorige periode |
-| **Stroomprijs** | Dynamische prijzen van vandaag en morgen (van Homey Energie of EnergyZero), met het goedkoopste blok van 3 uur |
+| **Stroomprijs** | Dynamische prijzen van vandaag en morgen (van Homey Energie, EnergyZero of Power by the Hour), met het goedkoopste blok van 3 uur |
 | **Kengetallen** | Meters voor zelfvoorzienend, eigen zon gebruikt en netto afgenomen of geleverd |
 | **Elektriciteit** | Waar je stroom vandaan kwam (net, zon, batterij) en waar overschot heen ging, per uur of dag |
 | **Vermogen vandaag** | Het vermogen door de dag heen, zoals in de HomeWizard-app: zelfverbruik van de zon onderaan, daarboven afname van het net en teruglevering, met de dagtotalen erboven. Het laatste stuk loopt live mee. Bij Week of Maand toont het blok vandaag |
 | **Apparaten nu** | Wat er op dit moment het meeste stroom gebruikt, ook apparaten waarvan Homey het verbruik schat ("geschat") |
 | **Energiestromen** | Sankey-grafiek zoals in Home Assistant: bronnen → huis → individuele verbruikers, live of voor de gekozen periode |
-| **Verbruik per apparaat** | Ranglijst van kWh per apparaat in de gekozen periode, ook apparaten die alleen vermogen meten of een schatting in Homey hebben |
+| **Verbruik per apparaat** | Ranglijst van kWh per apparaat in de gekozen periode, ook apparaten die alleen vermogen meten of een schatting in Homey hebben. Apparaten die in Homey op *Uitsluiten van Energie* staan en de kopieën van Power by the Hour (Σ) tellen niet mee |
 | **Kosten** | Kosten per bron: stroom, teruglevering, gas en water |
 | **Zonne-energie** | Opwek per uur of dag |
 | **Gas** | Gasverbruik per uur of dag |
@@ -106,7 +106,7 @@ Op dezelfde instellingenpagina:
 
 ## Prijzen en kosten
 
-**Waar de prijzen vandaan komen.** Staan er in Homey Energie dynamische prijzen (in de Homey-app bij Energie → Instellingen), dan gebruikt de app die: voor elk land dat Homey kent, per kwartier of uur. Heb je in Homey ook je kosten ingevuld (een formule zoals `([[price]] * 1,21) + 0,13`), dan rekent het dashboard daarmee de all-in prijs uit, en tellen de opslag en energiebelasting van het contract in de app niet mee. Zonder prijzen in Homey komen ze van EnergyZero, de Nederlandse marktprijs inclusief btw. Bij **Stroomprijzen** kun je ook zelf kiezen (Homey, EnergyZero of geen prijzen); daaronder staat wat nu in gebruik is. Laat je het stroomcontract in de app leeg, dan rekenen de kosten met de prijzen en kosten uit Homey, of met de vaste prijs die in Homey staat. Gas komt altijd van EnergyZero: Homey heeft geen dynamische gasprijzen. Bedragen staan in de valuta van Homey Energie.
+**Waar de prijzen vandaan komen.** Staan er in Homey Energie dynamische prijzen (in de Homey-app bij Energie → Instellingen), dan gebruikt de app die: voor elk land dat Homey kent, per kwartier of uur. Heb je in Homey ook je kosten ingevuld (een formule zoals `([[price]] * 1,21) + 0,13`), dan rekent het dashboard daarmee de all-in prijs uit, en tellen de opslag en energiebelasting van het contract in de app niet mee. Zonder prijzen in Homey komen ze van EnergyZero, de Nederlandse marktprijs inclusief btw. Bij **Stroomprijzen** kun je ook zelf kiezen (Homey, EnergyZero, Power by the Hour of geen prijzen); daaronder staat wat nu in gebruik is. Kies je **Power by the Hour**, dan neemt de app de prijzen van die app over, all-in met de opslagen die je daar invulde, en ook de terugleverprijs. Komende prijzen komen uit de app zelf, eerdere uit Insights van het prijsapparaat van Power by the Hour (een apparaat per kwartier gaat voor een apparaat per uur). Laat je het stroomcontract in de app leeg, dan rekenen de kosten met de prijzen en kosten uit Homey, of met de vaste prijs die in Homey staat. Gas komt altijd van EnergyZero: Homey heeft geen dynamische gasprijzen. Bedragen staan in de valuta van Homey Energie.
 
 Alle bedragen zijn inclusief btw. Laat een veld leeg om die kosten weg te laten.
 
@@ -163,7 +163,7 @@ Een dashboard dat dagen aan staat, schuift af en toe een paar pixels op tegen in
 
 Staat het blok Meldingen in je indeling, dan verschijnt een waarschuwing ook bovenin naast "Live". Tik erop om naar het blok te gaan. Is het opgelost, dan verdwijnt hij vanzelf. Op een touchscreen zijn de knoppen groter.
 
-Onder **Beweging** kies je of de stromen bewegen: **Standaard** laat ze altijd bewegen (sierlijke effecten volgen de instelling "minder beweging" van je systeem), **Alle effecten** zet ook die aan, **Uit** zet alles stil. Via **Periode exporteren (CSV)** download je de gekozen periode als spreadsheet.
+Onder **Beweging** kies je of de stromen bewegen: **Standaard** laat ze altijd bewegen (sierlijke effecten volgen de instelling "minder beweging" van je systeem), **Alle effecten** zet ook die aan, **Uit** zet alles stil. Bij **Snelheid stromen** maak je de stromen sneller of trager, tot **Kruipend** (tien keer zo traag). Via **Periode exporteren (CSV)** download je de gekozen periode als spreadsheet.
 
 ## Meerdere indelingen
 

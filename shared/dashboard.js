@@ -237,8 +237,9 @@
   let flowFrame = 0;
   let flowTime = 0;
 
-  // SVG units per second: faster with more power
-  const flowSpeed = watts => 190 / Math.max(0.9, 4.2 - Math.log10(watts) * 0.9);
+  // SVG units per second: faster with more power, times the pace chosen for this screen
+  const flowPace = () => (window.EnergyScreen?.flowPace ? window.EnergyScreen.flowPace() : 1);
+  const flowSpeed = watts => flowPace() * 190 / Math.max(0.9, 4.2 - Math.log10(watts) * 0.9);
 
   // Thicker lines for more power
   const flowWidth = watts => 2.5 + Math.min(3, Math.max(0, Math.log10(watts) - 1.5));
@@ -1738,6 +1739,7 @@
     // Where the price comes from: Homey Energy (with the costs entered in Homey) or EnergyZero
     const fromHomey = prices.source === 'Homey';
     setText('prices-source', prices.homeyCosts ? 'all-in volgens Homey'
+      : prices.powerhourCosts ? 'all-in volgens Power by the Hour'
       : prices.allIn ? 'all-in: markt + belasting + opslag'
         : fromHomey ? 'marktprijs van Homey' : 'marktprijs incl. btw');
     setText('price-now', typeof prices.current === 'number' ? euro(prices.current, 3) : '–');
@@ -2531,7 +2533,9 @@
     if (!tf) return [];
     const e = tf.electricity;
     const out = [];
-    if (e.type === 'dynamic' && e.source === 'homey') {
+    if (e.type === 'dynamic' && e.source === 'powerhour') {
+      out.push('<p>De all-in prijs komt van Power by the Hour, met de opslagen die je daar invulde.</p>');
+    } else if (e.type === 'dynamic' && e.source === 'homey') {
       out.push('<p>De all-in prijs komt uit de formule die je in Homey invulde.</p>');
       if (e.formula) out.push(`<ul class="facts">${fact('Formule in Homey', `<code>${escapeHtml(e.formula)}</code>`)}</ul>`);
     } else if (e.type === 'dynamic') {
@@ -2548,7 +2552,9 @@
         ? `<ul class="facts">${fact('Terugleververgoeding', `${money(e.export, 4)} per kWh`)}</ul>`
         : '<p>Met salderen levert teruglevering de prijs van dat moment op.</p>');
     } else {
-      out.push(e.type === 'dynamic'
+      out.push(e.type === 'dynamic' && e.source === 'powerhour'
+        ? '<p>Zonder salderen levert teruglevering de terugleverprijs van Power by the Hour op.</p>'
+        : e.type === 'dynamic'
         ? '<p>Zonder salderen levert teruglevering de marktprijs op, min de terugleverkosten.</p>'
         : '<p>Zonder salderen levert teruglevering de terugleververgoeding op, min de terugleverkosten.</p>');
       if (e.exportFee) out.push(`<ul class="facts">${fact('Terugleverkosten', `${money(e.exportFee, 4)} per kWh`)}</ul>`);
