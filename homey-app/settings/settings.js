@@ -68,7 +68,7 @@ function onHomeyReady(Homey) {
         d => d.class === 'evcharger' || /laadpa|charger|wallbox|easee|zaptec|alfen/i.test(d.name),
         __('noEv'));
       initLayout(list);
-      fillGroups(config.groups || [], list.devices);
+      fillGroups(config.groups || [], list.devices, config.groupsSolarPhases);
 
       fillChecks('solar-list', 'solar', list.devices, devices.solar || [],
         d => d.class === 'solarpanel' || /solar|zon|omvormer|inverter|pv/i.test(d.name),
@@ -110,6 +110,7 @@ function onHomeyReady(Homey) {
         alerts: { hours: number('alertHours') ?? 4, notify: form.alertNotify.checked },
         layout: layoutToSave(),
         groups: groupsToSave(),
+        groupsSolarPhases: phasesFrom(form.groupsSolarPhases.value),
         battery: { invertPower: form.invertPower.checked },
         boiler: Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
       };
@@ -237,8 +238,9 @@ function onHomeyReady(Homey) {
         <label><span>${escapeText(__('groupName'))}</span> <input data-field="name" type="text" maxlength="40" value="${escapeText(g.name || '')}" placeholder="${escapeText(__('groupPlaceholder', { n: i + 1 }))}"></label>
         <label><span>${escapeText(__('groupFuse'))}</span> <input data-field="fuseAmps" type="number" min="1" max="80" step="1" value="${g.fuseAmps ?? 16}"></label>
         <label><span>${escapeText(__('groupPhases'))}</span>
-          <select data-field="phases"><option value="1" ${g.phases === 3 ? '' : 'selected'}>1</option><option value="3" ${g.phases === 3 ? 'selected' : ''}>3</option></select>
+          <select data-field="phases">${phaseOptions(g.phases)}</select>
         </label>
+        <label><span>${escapeText(__('groupFixed'))}</span> <input data-field="fixedWatts" type="number" min="0" max="10000" step="1" value="${g.fixedWatts || ''}" placeholder="0"></label>
         <p><span></span><button type="button" class="link" data-remove-group="${i}">${escapeText(__('removeGroup'))}</button></p>
       </div>`).join('');
     document.getElementById('group-add').hidden = groups.length >= MAX_GROUPS;
@@ -262,7 +264,8 @@ function onHomeyReady(Homey) {
     document.querySelectorAll('#groups [data-group]').forEach(el => {
       const g = groups[Number(el.dataset.group)];
       el.querySelectorAll('[data-field]').forEach(input => {
-        g[input.dataset.field] = input.dataset.field === 'name' ? input.value.trim() : Number(input.value) || undefined;
+        const field = input.dataset.field;
+        g[field] = field === 'name' ? input.value.trim() : field === 'phases' ? phasesFrom(input.value) : Number(input.value) || undefined;
       });
     });
     document.querySelectorAll('#group-devices [data-group-device]').forEach(select => {
@@ -273,13 +276,14 @@ function onHomeyReady(Homey) {
     });
   }
 
-  function fillGroups(saved, devices) {
+  function fillGroups(saved, devices, solarOn) {
     groupDevices = devices.filter(d => d.power);
-    groups = saved.map(g => ({ id: String(g.id || g.name), name: g.name || '', fuseAmps: g.fuseAmps ?? 16, phases: g.phases === 3 ? 3 : 1, devices: [...(g.devices || [])] }));
+    groups = saved.map(g => ({ id: String(g.id || g.name), name: g.name || '', fuseAmps: g.fuseAmps ?? 16, phases: g.phases === 3 ? [1, 2, 3] : phasesFrom(g.phases), fixedWatts: g.fixedWatts || 0, devices: [...(g.devices || [])] }));
+    form.groupsSolarPhases.innerHTML = phaseOptions(phasesFrom(solarOn), __('allPhases'));
     renderGroups();
     document.getElementById('group-add').onclick = () => {
       readGroups();
-      if (groups.length < MAX_GROUPS) groups.push({ id: `g${Date.now().toString(36)}${newGroup++}`, name: '', fuseAmps: 16, phases: 1, devices: [] });
+      if (groups.length < MAX_GROUPS) groups.push({ id: `g${Date.now().toString(36)}${newGroup++}`, name: '', fuseAmps: 16, phases: [], fixedWatts: 0, devices: [] });
       renderGroups();
       document.querySelector(`#groups [data-group="${groups.length - 1}"] input`)?.focus();
     };
@@ -299,7 +303,15 @@ function onHomeyReady(Homey) {
     readGroups();
     return groups
       .filter(g => g.name)
-      .map(g => ({ id: g.id, name: g.name, fuseAmps: g.fuseAmps || 16, phases: g.phases === 3 ? 3 : 1, devices: g.devices }));
+      .map(g => ({ id: g.id, name: g.name, fuseAmps: g.fuseAmps || 16, phases: g.phases, fixedWatts: g.fixedWatts || 0, devices: g.devices }));
+  }
+
+  // The phases of a group as a choice: unknown, one phase, or two or three together
+  const PHASE_CHOICES = ['', '1', '2', '3', '1,2', '1,3', '2,3', '1,2,3'];
+  const phasesFrom = text => [...new Set(String(text ?? '').split(',').map(Number).filter(n => n >= 1 && n <= 3))].sort();
+  function phaseOptions(phases, empty = '–') {
+    const chosen = (phases || []).join(',');
+    return PHASE_CHOICES.map(v => `<option value="${v}" ${v === chosen ? 'selected' : ''}>${escapeText(v ? v.split(',').map(n => `L${n}`).join(' + ') : empty)}</option>`).join('');
   }
 
   // ---------- Contract ----------

@@ -593,8 +593,12 @@ function buildPhases(device, cfg) {
   return { phases, fuseAmps: cfg.grid?.fuseAmps || 25 };
 }
 
-// Groups in the fuse box, set in the app settings: [{ id, name, fuseAmps, phases, devices: [ids] }].
-// Groups without a name are left out.
+// Groups in the fuse box, set in the app settings:
+// [{ id, name, fuseAmps, phases: [1..3], fixedWatts, devices: [ids] }]. `phases` are the phases
+// the group is on (empty when unknown; a cooking group can be on two). Groups without a name are
+// left out. Older settings saved `phases` as a count (1 or 3).
+const phaseList = list => [...new Set((Array.isArray(list) ? list : []).map(Number).filter(n => n >= 1 && n <= 3))].sort();
+
 function savedGroups(cfg = {}) {
   return (Array.isArray(cfg.groups) ? cfg.groups : [])
     .filter(g => g && String(g.name || '').trim())
@@ -602,34 +606,93 @@ function savedGroups(cfg = {}) {
       id: String(g.id || g.name),
       name: String(g.name).trim(),
       fuseAmps: Number(g.fuseAmps) > 0 ? Number(g.fuseAmps) : 16,
-      phases: Number(g.phases) === 3 ? 3 : 1,
+      phases: Number(g.phases) === 3 ? [1, 2, 3] : phaseList(g.phases),
+      fixedWatts: Number(g.fixedWatts) > 0 ? Number(g.fixedWatts) : 0,
       devices: Array.isArray(g.devices) ? g.devices.map(String) : [],
     }));
 }
 
-// The load per group: the power of its devices added up, as a current against the group's fuse.
-// Only measured power counts; a group knows nothing about the devices in it that are not in Homey.
-function buildGroups(devices, cfg) {
+// The phases the solar panels feed in on, for what each phase uses: all three unless set
+function solarPhases(cfg = {}) {
+  const list = phaseList(cfg.groupsSolarPhases);
+  return list.length ? list : [1, 2, 3];
+}
+
+// The power of each group: its measured devices plus the fixed use entered for it
+function groupWatts(group, byId) {
+  const powered = group.devices
+    .map(id => byId.get(id))
+    .filter(Boolean)
+    .map(d => ({ name: d.name, watts: Math.max(0, amount(d, 'measure_power') || 0) }))
+    .filter(d => d.watts > 0)
+    .sort((a, b) => b.watts - a.watts);
+  return { powered, watts: powered.reduce((sum, d) => sum + d.watts, 0) + group.fixedWatts };
+}
+
+// What each phase of the house uses: the meter's power on that phase (negative while exporting)
+// plus the solar power fed in on it. Null for a phase the meter says nothing about.
+function phaseUse(phases, solarW, cfg) {
+  if (!phases?.phases?.length) return {};
+  const onSolar = solarPhases(cfg);
+  const out = {};
+  for (const p of phases.phases) {
+    const net = typeof p.watts === 'number' ? p.watts
+      : typeof p.amps === 'number' ? p.amps * (p.volts || 230) : null;
+    if (net === null) continue;
+    out[p.phase] = Math.max(0, net + (onSolar.includes(p.phase) ? (solarW || 0) / onSolar.length : 0));
+  }
+  return out;
+}
+
+// The load per group as a current against its fuse, with the devices that use the most, and per
+// phase what the groups on it do not explain ("Overig"): the meter measures every phase, so the
+// rest is what has no measurement of its own. A group on more phases counts evenly on each.
+function buildGroups(devices, cfg, { phases = null, solarW = 0 } = {}) {
   const groups = savedGroups(cfg);
   if (!groups.length) return null;
   const byId = new Map(devices.map(d => [d.id, d]));
-  return groups.map(g => {
-    const members = g.devices.map(id => byId.get(id)).filter(Boolean);
-    const powered = members
-      .map(d => ({ name: d.name, watts: Math.max(0, amount(d, 'measure_power') || 0) }))
-      .filter(d => d.watts > 0)
-      .sort((a, b) => b.watts - a.watts);
-    const watts = powered.reduce((sum, d) => sum + d.watts, 0);
+  const list = groups.map(g => {
+    const { powered, watts } = groupWatts(g, byId);
     return {
       id: g.id,
       name: g.name,
       watts: Math.round(watts),
-      amps: watts / (230 * g.phases),
+      amps: watts / (230 * Math.max(1, g.phases.length)),
       fuseAmps: g.fuseAmps,
       phases: g.phases,
-      devices: members.length,
+      fixedWatts: g.fixedWatts,
+      devices: g.devices.length,
       on: powered.slice(0, 3),
     };
+  });
+  const use = phaseUse(phases, solarW, cfg);
+  const perPhase = [1, 2, 3]
+    .filter(n => list.some(g => g.phases.includes(n)))
+    .map(n => {
+      const groupsW = list.filter(g => g.phases.includes(n)).reduce((sum, g) => sum + g.watts / g.phases.length, 0);
+      const total = typeof use[n] === 'number' ? use[n] : null;
+      return { phase: n, watts: total === null ? null : Math.round(total), rest: total === null ? null : Math.round(Math.max(0, total - groupsW)) };
+    });
+  return { groups: list, phases: perPhase };
+}
+
+// The load of each group through the day in steps of 5 minutes, as a share of its fuse, from the
+// Insights of its devices. Devices without readings count as 0, the fixed use always.
+async function groupHistory(groups, devices, entries, start, steps) {
+  const byId = new Map(devices.map(d => [d.id, d]));
+  const series = new Map();
+  const ids = [...new Set(groups.flatMap(g => g.devices))].filter(id => has(byId.get(id), 'measure_power'));
+  await mapLimited(ids, INSIGHTS_PARALLEL, async id => {
+    const list = await entries(byId.get(id), 'measure_power').catch(() => []);
+    if (list.length) series.set(id, averageInSteps(list.map(e => ({ t: e.t, v: Math.max(0, e.v) })), start, steps, { idleZero: true, hold: HOLD_STEPS }));
+  });
+  return groups.map(g => {
+    const values = [];
+    for (let i = 0; i < steps; i++) {
+      const watts = g.devices.reduce((sum, id) => sum + (series.get(id)?.[i] || 0), 0) + g.fixedWatts;
+      values.push(Math.round(watts / (230 * Math.max(1, g.phases.length)) / g.fuseAmps * 100));
+    }
+    return { id: g.id, name: g.name, values };
   });
 }
 
@@ -712,7 +775,7 @@ function buildLive(devices, found, cfg, { estimated = [], batteryWatts = null } 
     ev: buildEv(found),
     water: buildWater(found.water),
     phases: buildPhases(found.p1, cfg),
-    groups: buildGroups(devices, cfg),
+    groups: buildGroups(devices, cfg, { phases: buildPhases(found.p1, cfg), solarW }),
     layout: resolveLayout(cfg.layout, found, cfg),
     updated: new Date().toISOString(),
   };
@@ -1076,8 +1139,10 @@ function buildZoneFlow({ solarW, gridW, batteryW, homeW, flows }, devices, zoneN
   const nodes = [];
   const links = [];
   const node = (id, label, kind, column) => nodes.push({ id, label, kind, column });
+  // Not rounded: the widget adds up the links of a node, and rounding each one first made the
+  // grid there a watt off from the Energy now widget
   const link = (source, target, value) => {
-    if (value >= 1) links.push({ source, target, value: Math.round(value) });
+    if (value >= 1) links.push({ source, target, value: Math.round(value * 1000) / 1000 });
   };
   const home = homeW || 0;
 
@@ -1676,6 +1741,17 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
     }
   }
 
+  // The load of each group in the fuse box through the day
+  let groupLoad = null;
+  const groups = savedGroups(cfg);
+  if (groups.length && !light && shown.has('groups') && PERIODS[period].bucket === 'hour') {
+    const until = Math.min(Date.now(), periodEnd(period, start).getTime());
+    const steps = Math.max(0, Math.ceil((until - start.getTime()) / POWER_STEP));
+    jobs.push(groupHistory(groups, devices, entries, start, steps).then(list => {
+      groupLoad = { start: start.toISOString(), step: POWER_STEP / 1000, groups: list };
+    }).catch(() => {}));
+  }
+
   let power = null;
   if (!light && shown.has('power') && PERIODS[period].bucket === 'hour') {
     jobs.push(buildPowerHistory(client, found, period, cfg).then(curve => { power = curve; }).catch(() => {}));
@@ -1698,6 +1774,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
     boilerTemperature,
     batterySoc,
     phaseHistory,
+    groupLoad,
     power,
     deviceEnergy,
     hasBattery: found.batteries.length > 0,
@@ -1850,6 +1927,7 @@ module.exports = {
   blockCatalog,
   savedGroups,
   buildGroups,
+  buildPhases,
   todayTotals,
   validateLayout,
   layoutName,

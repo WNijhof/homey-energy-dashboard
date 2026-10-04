@@ -1,7 +1,7 @@
 {
   "0.2.7": {
-    "en": "New Circuits block: the load per circuit in your fuse box against its fuse, with the devices that use the most. Add your circuits in the app settings and choose per device which circuit it is on. The P1 meter is chosen better automatically: a water meter or a virtual test device is no longer taken for it.",
-    "nl": "Nieuw blok Groepen: de belasting per groep in je meterkast ten opzichte van de zekering, met de apparaten die het meest gebruiken. Maak je groepen aan in de instellingen van de app en kies per apparaat op welke groep het zit. De P1-meter wordt automatisch beter gekozen: een watermeter of virtueel testapparaat wordt er niet meer voor aangezien."
+    "en": "New Circuits block: the load per circuit in your fuse box against its fuse, per phase, with the devices that use the most, a fixed use for devices without a meter, and per phase the rest the circuits do not explain. A bar per circuit shows how heavily it was loaded through the day, and every circuit gets a tag (load in % and watts) for your Flows. The P1 meter is chosen better automatically, and the two widgets no longer differ by a watt.",
+    "nl": "Nieuw blok Groepen: de belasting per groep in je meterkast ten opzichte van de zekering, per fase, met de apparaten die het meest gebruiken, een vast verbruik voor apparaten zonder meting en per fase wat de groepen niet verklaren. Een balk per groep laat zien hoe zwaar die door de dag belast was, en elke groep krijgt een tag (belasting in % en vermogen) voor je Flows. De P1-meter wordt automatisch beter gekozen, en de twee widgets verschillen niet meer een watt."
   },
   "0.2.6": {
     "en": "Devices set to Exclude from Energy in Homey no longer show in the dashboard. Prices can come from Power by the Hour, all-in with the markups entered there, including its export price. In the screen menu you can choose how fast the flows move, down to ten times slower.",

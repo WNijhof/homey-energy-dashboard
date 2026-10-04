@@ -1699,12 +1699,13 @@
 
   // With week or month chosen, the chart (and the phases) still show today, which then needs its own history
   async function loadPowerToday() {
-    if ((!$('power-chart') && !$('phases-chart')) || POWER_DAYS[state.period]) return;
+    if ((!$('power-chart') && !$('phases-chart') && !$('groups-chart')) || POWER_DAYS[state.period]) return;
     try {
       state.powerToday = await state.options.get('/history?period=today');
     } catch { /* keep what was shown */ }
     renderPower();
     renderPhaseChart();
+    renderGroupChart();
   }
 
   // ---------- Prices ----------
@@ -1947,23 +1948,81 @@
 
   // ---------- Groups ----------
 
-  // The load per group in the fuse box against its fuse, with the devices that use the most
-  function renderGroups(groups) {
+  // Green up to half the fuse, then yellow, orange from 70% and red from 90%
+  const loadColor = share => (share > 0.9 ? 'var(--hot)' : share > 0.7 ? 'var(--warm)' : share > 0.5 ? '#ffd60a' : 'var(--ok)');
+  const phaseLabel = phases => phases.map(n => `L${n}`).join('+');
+
+  // The load per group in the fuse box against its fuse, with the devices that use the most.
+  // With phases set, the groups are shown per phase, each with what the meter measures on that
+  // phase and the rest that no group explains ("Overig").
+  function renderGroups(data) {
     const el = $('groups');
     if (!el) return;
-    toggleEmpty('groups', Boolean(groups?.length));
-    if (!groups?.length) return;
-    el.innerHTML = groups.map(g => {
-      const load = g.amps / g.fuseAmps;
-      const color = load > 0.9 ? 'var(--hot)' : load > 0.7 ? 'var(--warm)' : 'var(--home)';
-      const on = g.on.map(d => `${escapeHtml(d.name)} ${formatPower(d.watts)}`).join(' · ');
+    const groups = data?.groups || [];
+    toggleEmpty('groups', groups.length > 0);
+    if (!groups.length) return;
+    const row = g => {
+      const share = g.amps / g.fuseAmps;
+      // The fixed use in an element of its own, so the translation finds it
+      const on = [...g.on.map(d => `${escapeHtml(d.name)} ${formatPower(d.watts)}`), ...(g.fixedWatts ? [`<span>vast ${formatPower(g.fixedWatts)}</span>`] : [])].join(' · ');
+      const tag = g.phases.length > 1 ? ` <small class="muted">${phaseLabel(g.phases)}</small>` : '';
       return `
         <li>
-          <div class="consumer-row"><span>${escapeHtml(g.name)}</span><strong>${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small></strong></div>
-          <div class="bar"><i style="width:${Math.min(100, Math.max(2, load * 100))}%;background:${color}"></i></div>
+          <div class="consumer-row"><span>${escapeHtml(g.name)}${tag}</span><strong>${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small></strong></div>
+          <div class="bar"><i style="width:${Math.min(100, Math.max(2, share * 100))}%;background:${loadColor(share)}"></i></div>
           ${on ? `<small class="muted">${on}</small>` : ''}
         </li>`;
+    };
+    const phases = data.phases || [];
+    if (!phases.length) {
+      el.innerHTML = groups.map(row).join('');
+    } else {
+      const sections = phases.map(p => {
+        const head = `<li class="group-phase"><span>L${p.phase}</span>${typeof p.watts === 'number' ? `<strong>${formatPower(p.watts)}</strong>` : ''}</li>`;
+        const rest = typeof p.rest === 'number'
+          ? `<li class="group-rest"><div class="consumer-row"><span>Overig</span><strong>${formatPower(p.rest)}</strong></div></li>` : '';
+        return head + groups.filter(g => g.phases.includes(p.phase)).map(row).join('') + rest;
+      });
+      const loose = groups.filter(g => !g.phases.length);
+      if (loose.length) sections.push(`<li class="group-phase"><span>Zonder fase</span></li>${loose.map(row).join('')}`);
+      el.innerHTML = sections.join('');
+    }
+    renderGroupChart();
+  }
+
+  // Every group as a row of colored steps through the day: how heavily it was loaded when.
+  // With week or month chosen it shows today, like the power chart.
+  function renderGroupChart() {
+    const el = $('groups-chart');
+    if (!el) return;
+    charts.set('groups-chart', renderGroupChart);
+    const history = POWER_DAYS[state.period] ? state.history : state.powerToday;
+    const data = history?.groupLoad;
+    if (!data?.groups?.length) {
+      el.innerHTML = '';
+      return;
+    }
+    const width = el.clientWidth || 300;
+    const rowH = 12;
+    const gap = 3;
+    const pad = { left: Math.min(110, width * 0.3), right: 4, top: 2, bottom: 16 };
+    const plotW = width - pad.left - pad.right;
+    const height = pad.top + data.groups.length * (rowH + gap) + pad.bottom;
+    const start = Date.parse(data.start);
+    const day = 24 * 3600 * 1000;
+    const stepW = plotW * data.step * 1000 / day;
+    const X = t => pad.left + (t - start) / day * plotW;
+    const rows = data.groups.map((g, r) => {
+      const y = pad.top + r * (rowH + gap);
+      const cells = g.values.map((v, k) => (v > 0
+        ? `<rect x="${X(start + k * data.step * 1000).toFixed(1)}" y="${y}" width="${(stepW + 0.4).toFixed(2)}" height="${rowH}" fill="${loadColor(v / 100)}"><title>${escapeHtml(g.name)} ${hm(new Date(start + k * data.step * 1000).toISOString())}: ${v}%</title></rect>`
+        : '')).join('');
+      const label = `<text x="0" y="${y + rowH - 2}" style="font-size:11px">${escapeHtml(g.name)}</text>`;
+      return `<rect x="${pad.left}" y="${y}" width="${plotW}" height="${rowH}" rx="3" fill="var(--track)"/>${cells}${label}`;
     }).join('');
+    let axis = '';
+    for (const h of [6, 12, 18]) axis += `<text x="${X(new Date(start).setHours(h)).toFixed(1)}" y="${height - 3}" text-anchor="middle">${String(h).padStart(2, '0')}</text>`;
+    el.innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Groepen vandaag"><g class="axis">${axis}</g>${rows}</svg>`;
   }
 
   // The phases through the day, one line each; with currents the main fuse as a dashed line.
@@ -2542,7 +2601,7 @@
     baseload: 'Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.',
     alerts: 'Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.',
     phases: 'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.',
-    groups: 'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf, als stroom (vermogen ÷ 230 V, bij drie fasen ÷ 3) ten opzichte van de zekering van de groep. Apparaten zonder eigen meting tellen niet mee.',
+    groups: 'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf, plus het vaste verbruik dat je invulde, als stroom (vermogen ÷ 230 V, gedeeld over de fasen van de groep) ten opzichte van de zekering. Overig is per fase wat je slimme meter meet (plus de zonnestroom op die fase) en wat de groepen niet verklaren. De balken onderaan tonen per groep hoe zwaar die door de dag belast was.',
     peak: 'Voor het Belgische capaciteitstarief: je hoogste gemiddelde afname over een kwartier deze maand, van je meter of elke minuut gemeten door de app.',
   };
 
@@ -3089,6 +3148,7 @@
     renderCosts(history);
     renderBatteryHistory(history);
     renderPhaseChart();
+    renderGroupChart();
     renderTimeline();
     renderWater(state.live, history);
     if (state.live) {

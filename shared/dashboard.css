@@ -642,6 +642,10 @@ h2 { font-size: 17px; font-weight: 600; }
 
 /* Phases through the day, monthly peak and battery use */
 #phases-chart, #peak-chart { margin-top: 10px; }
+#groups-chart { margin-top: 10px; }
+.phases li.group-phase { display: flex; justify-content: space-between; padding: 10px 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; }
+.phases li.group-phase strong { font-weight: 600; }
+.phases li.group-rest { color: var(--muted); }
 #batteryhistory-legend { margin: 10px 0 4px; }
 .facts li.over strong { color: var(--hot); }
 .sessions { margin-top: 10px; }

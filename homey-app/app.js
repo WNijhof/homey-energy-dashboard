@@ -5,7 +5,7 @@ const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
-  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt,
+  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -122,6 +122,11 @@ class EnergyDashboardApp extends Homey.App {
     this.notified = new Map();
     this.homey.setInterval(() => this.checkAlerts().catch(err => this.error(`Alerts: ${err.message}`)), 60 * 1000);
 
+    // A tag per group in the fuse box (load in % of its fuse, and watts), for Flows
+    this.groupTokens = new Map();
+    this.homey.setInterval(() => this.updateGroupTokens().catch(err => this.error(`Group tags: ${err.message}`)), 30 * 1000);
+    this.homey.setTimeout(() => this.updateGroupTokens().catch(err => this.error(`Group tags: ${err.message}`)), 10 * 1000);
+
     // New settings can change the port, the devices and the prices
     // Only the settings themselves; the app's own logs are kept in other keys
     this.homey.settings.on('set', key => {
@@ -181,6 +186,8 @@ class EnergyDashboardApp extends Homey.App {
       editPin: saved.editPin || '',
       accessCode: saved.accessCode || '',
       alerts: { hours: 4, notify: false, ...saved.alerts },
+      groups: Array.isArray(saved.groups) ? saved.groups : [],
+      groupsSolarPhases: Array.isArray(saved.groupsSolarPhases) ? saved.groupsSolarPhases : [],
     };
   }
 
@@ -498,6 +505,33 @@ class EnergyDashboardApp extends Homey.App {
   }
 
   // Tracks the devices, and sends new warnings to the Homey timeline when that is turned on
+  // Keeps one pair of tags per group: made for a new group, renamed with it, removed with it
+  async updateGroupTokens() {
+    const cfg = this.getConfig();
+    const devices = await this.getDevices();
+    const found = discover(devices, cfg.devices);
+    const solarW = found.solar.reduce((sum, d) => sum + Math.abs(Number(d.capabilitiesObj?.measure_power?.value) || 0), 0);
+    const groups = buildGroups(devices, cfg, { phases: buildPhases(found.p1, cfg), solarW })?.groups || [];
+    const wanted = new Map();
+    for (const g of groups) {
+      wanted.set(`group-${g.id}-load`, { title: this.homey.__('tokens.groupLoad', { name: g.name }), value: Math.round(g.amps / g.fuseAmps * 100) });
+      wanted.set(`group-${g.id}-watts`, { title: this.homey.__('tokens.groupWatts', { name: g.name }), value: g.watts });
+    }
+    for (const [id, token] of this.groupTokens) {
+      if (wanted.get(id)?.title === token.title) continue;
+      this.groupTokens.delete(id);
+      await token.flowToken.unregister().catch(() => {});
+    }
+    for (const [id, { title, value }] of wanted) {
+      let token = this.groupTokens.get(id);
+      if (!token) {
+        token = { title, flowToken: await this.homey.flow.createToken(id, { type: 'number', title, value }) };
+        this.groupTokens.set(id, token);
+      }
+      await token.flowToken.setValue(value);
+    }
+  }
+
   async checkAlerts() {
     const cfg = this.getConfig();
     const devices = await this.getDevices();

@@ -150,14 +150,18 @@
     "shareSnapshot": "Include my dashboard",
     "shareSnapshotHelp": "This lets the maker see exactly what you see, to fix a display problem. Device names and today's use are included then. The report is then too big for the e-mail itself: paste it from your clipboard.",
     "groups": "Circuits in the fuse box",
-    "groupsHelp": "For the Circuits block: add your circuits with their fuse and give every device with a power meter the circuit it is on. The block adds up the measured power per circuit and compares it with the fuse. Devices without their own measurement are not counted.",
+    "groupsHelp": "For the Circuits block: add your circuits with their fuse and the phase they are on, and give every device with a power meter the circuit it is on. For devices without a meter whose use stays about the same (modem, switch) enter a fixed use. What the circuits together do not explain is shown per phase as Other.",
     "addGroup": "Add circuit",
     "groupName": "Name",
     "groupPlaceholder": "Circuit __n__",
     "groupFuse": "Fuse (A)",
-    "groupPhases": "Phases",
+    "groupPhases": "Phase",
     "removeGroup": "Remove circuit",
-    "groupDevicesHelp": "Which circuit is each device on?"
+    "groupDevicesHelp": "Which circuit is each device on?",
+    "groupFixed": "Fixed use (W)",
+    "allPhases": "All three phases",
+    "groupsSolar": "Solar panels feed in on",
+    "groupsSolarHelp": "For Other per phase: your smart meter measures import minus export per phase, so the block adds the solar power on a phase back to it."
   },
   "blocks": {
     "alerts": "Warnings",
@@ -207,5 +211,9 @@
     "noP1": "No P1 meter found. Choose one in the app settings.",
     "today": "today",
     "kwhToday": "kWh today"
+  },
+  "tokens": {
+    "groupLoad": "__name__: load (%)",
+    "groupWatts": "__name__: power (W)"
   }
 }

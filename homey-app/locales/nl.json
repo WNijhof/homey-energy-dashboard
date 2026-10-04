@@ -150,14 +150,18 @@
     "shareSnapshot": "Mijn dashboard meesturen",
     "shareSnapshotHelp": "Zo kan de maker precies zien wat jij ziet, om een fout in de weergave op te lossen. Dan gaan ook de apparaatnamen en het verbruik van vandaag mee. Het rapport is dan te groot voor de mail zelf: plak het uit je klembord.",
     "groups": "Groepen in de meterkast",
-    "groupsHelp": "Voor het blok Groepen: maak je groepen aan met hun zekering en geef elk apparaat met een vermogensmeting de groep waar het op zit. Het blok telt het gemeten vermogen per groep op en zet dat af tegen de zekering. Apparaten zonder eigen meting tellen niet mee.",
+    "groupsHelp": "Voor het blok Groepen: maak je groepen aan met hun zekering en de fase waar ze op zitten, en geef elk apparaat met een vermogensmeting de groep waar het op zit. Voor apparaten zonder meting die ongeveer gelijk blijven (modem, switch) vul je een vast verbruik in. Wat de groepen samen niet verklaren, toont het blok per fase als Overig.",
     "addGroup": "Groep toevoegen",
     "groupName": "Naam",
     "groupPlaceholder": "Groep __n__",
     "groupFuse": "Zekering (A)",
-    "groupPhases": "Fasen",
+    "groupPhases": "Fase",
     "removeGroup": "Groep verwijderen",
-    "groupDevicesHelp": "Op welke groep zit elk apparaat?"
+    "groupDevicesHelp": "Op welke groep zit elk apparaat?",
+    "groupFixed": "Vast verbruik (W)",
+    "allPhases": "Alle drie de fasen",
+    "groupsSolar": "Zonnepanelen voeden in op",
+    "groupsSolarHelp": "Voor Overig per fase: je slimme meter meet per fase afname min teruglevering, dus de zonnestroom op een fase telt het blok daar weer bij op."
   },
   "blocks": {
     "alerts": "Meldingen",
@@ -207,5 +211,9 @@
     "noP1": "Geen P1-meter gevonden. Kies er een in de instellingen van de app.",
     "today": "vandaag",
     "kwhToday": "kWh vandaag"
+  },
+  "tokens": {
+    "groupLoad": "__name__: belasting (%)",
+    "groupWatts": "__name__: vermogen (W)"
   }
 }

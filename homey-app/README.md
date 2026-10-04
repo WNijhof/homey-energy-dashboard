@@ -31,7 +31,7 @@ Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgord
 | **Sluipverbruik** | Wat er 's nachts altijd aan staat, en wat dat per jaar kost |
 | **Meldingen** | Apparaten die blijven aanstaan, stijgend sluipverbruik, een meter die niet reageert, een negatieve prijs terwijl je teruglevert (zie *Meldingen*) |
 | **Fasebelasting** | Stroom per fase ten opzichte van je hoofdzekering, en L1, L2 en L3 door de dag heen in één grafiek |
-| **Groepen** | De belasting per groep in je meterkast ten opzichte van de zekering van die groep, met de apparaten die het meest gebruiken. Je maakt de groepen aan in de instellingen van de app |
+| **Groepen** | De belasting per groep in je meterkast ten opzichte van de zekering, per fase, met de apparaten die het meest gebruiken en per fase wat de groepen niet verklaren (Overig). Daaronder per groep een balk door de dag. Je maakt de groepen aan in de instellingen van de app |
 | **Batterijgebruik** | Wat de thuisbatterij per uur, dag of maand laadde (van de zon of het net) en leverde (aan huis of net), wat laden gemiddeld kostte en ontladen bespaarde, en per dag wanneer hij laadde of leverde en tegen welke prijs |
 | **Maandpiek** | Voor het Belgische capaciteitstarief: je hoogste kwartiervermogen van deze maand, het lopende kwartier, de afgelopen 12 maanden en wat het kost |
 
@@ -102,7 +102,7 @@ Op dezelfde instellingenpagina. Elke wijziging wordt meteen bewaard; het vinkje 
 - **Apparaten**: laat op "Automatisch" staan. De app zoekt zelf naar een P1-meter, zonnepanelen, thuisbatterij, boiler, warmtepomp of cv-ketel, thermostaat, laadpaal en watermeter. Apparaten die je in Homey op *Uitsluiten van Energie* zette, en de kopieën die Power by the Hour maakt (Σ), slaat hij over; die kun je wel zelf aanvinken. Kiest de app de verkeerde, vink dan zelf aan welke apparaten hij moet gebruiken.
 - **Boiler**: inhoud (Lydos Hybrid: 80 of 110 liter), koud water, douchetemperatuur, liters per minuut van je douchekop, en vanaf welke temperatuur de boiler als "Warm" telt.
 - **Aansluiting**: je hoofdzekering per fase, meestal 25 A, voor het blok Fasebelasting. In België ook je **capaciteitstarief** (€/kW per jaar) en het minimum per maand (2,5 kW), voor het blok Maandpiek.
-- **Groepen in de meterkast**: maak je groepen aan met hun zekering (en 3 fasen voor bijvoorbeeld een kookgroep) en kies per apparaat met een vermogensmeting op welke groep het zit. Het blok Groepen telt het gemeten vermogen per groep op; apparaten zonder eigen meting tellen niet mee.
+- **Groepen in de meterkast**: maak je groepen aan met hun zekering en fase (twee of drie fasen voor bijvoorbeeld een kookgroep), vul eventueel een vast verbruik in voor apparaten zonder meting (modem, switch) en kies per apparaat met een vermogensmeting op welke groep het zit. Kies ook op welke fase je zonnepanelen invoeden, zodat Overig per fase klopt. Elke groep krijgt twee tags voor Flows: belasting (% van de zekering) en vermogen (W), bijvoorbeeld voor een melding als een groep boven 90% komt.
 - **Zonneverwachting**: zet aan en vul per dakvlak het vermogen (kWp), de hellingshoek en de richting in. Er staan er twee klaar (bijvoorbeeld oost en west); met **+ Dakvlak toevoegen** kunnen het er tot 10 worden. Zie hieronder.
 - **Stroomprijzen**: waar de marktprijzen vandaan komen. Zie *Prijzen en kosten* hieronder.
 - **Stroomcontract**, **gascontract**, **vaste kosten en water**: zie *Prijzen en kosten* hieronder.
