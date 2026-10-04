@@ -53,7 +53,8 @@ form label {
   margin-bottom: 8px;
 }
 select,
-input[type="number"] {
+input[type="number"],
+input[type="text"] {
   font: inherit;
   font-size: 14px;
   color: var(--text);
@@ -181,3 +182,8 @@ button.link {
 [hidden] { display: none !important; }
 .warning { font-size: 13px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 159, 10, 0.14); border-left: 3px solid #ff9f0a; }
 .warning:empty { display: none; }
+
+/* Groups in the fuse box: each group set apart, the device choices below them */
+#groups .plane { padding: 8px 0; border-top: 1px solid rgba(128, 128, 128, 0.25); }
+#groups .plane:first-child { border-top: 0; }
+.group-devices { margin-top: 12px; }

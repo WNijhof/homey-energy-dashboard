@@ -68,6 +68,7 @@ function onHomeyReady(Homey) {
         d => d.class === 'evcharger' || /laadpa|charger|wallbox|easee|zaptec|alfen/i.test(d.name),
         __('noEv'));
       initLayout(list);
+      fillGroups(config.groups || [], list.devices);
 
       fillChecks('solar-list', 'solar', list.devices, devices.solar || [],
         d => d.class === 'solarpanel' || /solar|zon|omvormer|inverter|pv/i.test(d.name),
@@ -108,6 +109,7 @@ function onHomeyReady(Homey) {
         forecast: forecastToSave(),
         alerts: { hours: number('alertHours') ?? 4, notify: form.alertNotify.checked },
         layout: layoutToSave(),
+        groups: groupsToSave(),
         battery: { invertPower: form.invertPower.checked },
         boiler: Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
       };
@@ -218,6 +220,86 @@ function onHomeyReady(Homey) {
       .map(p => ({ kwp: p.kwp, tilt: p.tilt ?? 35, azimuth: p.azimuth ?? 0 }))
       .filter(p => p.kwp > 0);
     return { enabled: form.forecastOn.checked && kept.length > 0, planes: kept };
+  }
+
+  // ---------- Groups ----------
+
+  // Groups in the fuse box with their fuse, and per device with a power meter the group it is
+  // on. A device is on one group at most; groups without a name are not saved.
+  const MAX_GROUPS = 40;
+  let groups = [];
+  let groupDevices = [];
+  let newGroup = 0;
+
+  function renderGroups() {
+    document.getElementById('groups').innerHTML = groups.map((g, i) => `
+      <div class="plane" data-group="${i}">
+        <label><span>${escapeText(__('groupName'))}</span> <input data-field="name" type="text" maxlength="40" value="${escapeText(g.name || '')}" placeholder="${escapeText(__('groupPlaceholder', { n: i + 1 }))}"></label>
+        <label><span>${escapeText(__('groupFuse'))}</span> <input data-field="fuseAmps" type="number" min="1" max="80" step="1" value="${g.fuseAmps ?? 16}"></label>
+        <label><span>${escapeText(__('groupPhases'))}</span>
+          <select data-field="phases"><option value="1" ${g.phases === 3 ? '' : 'selected'}>1</option><option value="3" ${g.phases === 3 ? 'selected' : ''}>3</option></select>
+        </label>
+        <p><span></span><button type="button" class="link" data-remove-group="${i}">${escapeText(__('removeGroup'))}</button></p>
+      </div>`).join('');
+    document.getElementById('group-add').hidden = groups.length >= MAX_GROUPS;
+    renderGroupDevices();
+  }
+
+  // One list of devices with a choice of group each: easier than a list of devices per group
+  function renderGroupDevices() {
+    const box = document.getElementById('group-devices');
+    const named = groups.filter(g => g.name);
+    if (!named.length) { box.innerHTML = ''; return; }
+    const options = selected => `<option value="">–</option>${named.map(g => `<option value="${escapeText(g.id)}" ${g.id === selected ? 'selected' : ''}>${escapeText(g.name)}</option>`).join('')}`;
+    box.innerHTML = `<p class="muted">${escapeText(__('groupDevicesHelp'))}</p>`
+      + groupDevices.map(d => {
+        const on = groups.find(g => g.devices.includes(d.id));
+        return `<label><span>${escapeText(d.name)}</span> <select data-group-device="${d.id}">${options(on?.id)}</select></label>`;
+      }).join('');
+  }
+
+  function readGroups() {
+    document.querySelectorAll('#groups [data-group]').forEach(el => {
+      const g = groups[Number(el.dataset.group)];
+      el.querySelectorAll('[data-field]').forEach(input => {
+        g[input.dataset.field] = input.dataset.field === 'name' ? input.value.trim() : Number(input.value) || undefined;
+      });
+    });
+    document.querySelectorAll('#group-devices [data-group-device]').forEach(select => {
+      const id = select.dataset.groupDevice;
+      groups.forEach(g => { g.devices = g.devices.filter(x => x !== id); });
+      const g = groups.find(x => x.id === select.value);
+      if (g) g.devices.push(id);
+    });
+  }
+
+  function fillGroups(saved, devices) {
+    groupDevices = devices.filter(d => d.power);
+    groups = saved.map(g => ({ id: String(g.id || g.name), name: g.name || '', fuseAmps: g.fuseAmps ?? 16, phases: g.phases === 3 ? 3 : 1, devices: [...(g.devices || [])] }));
+    renderGroups();
+    document.getElementById('group-add').onclick = () => {
+      readGroups();
+      if (groups.length < MAX_GROUPS) groups.push({ id: `g${Date.now().toString(36)}${newGroup++}`, name: '', fuseAmps: 16, phases: 1, devices: [] });
+      renderGroups();
+      document.querySelector(`#groups [data-group="${groups.length - 1}"] input`)?.focus();
+    };
+    document.getElementById('groups').onclick = event => {
+      const remove = event.target.closest('[data-remove-group]');
+      if (!remove) return;
+      readGroups();
+      groups.splice(Number(remove.dataset.removeGroup), 1);
+      renderGroups();
+      autosave();
+    };
+    // A new or renamed group shows up in the device choices
+    document.getElementById('groups').addEventListener('change', () => { readGroups(); renderGroupDevices(); });
+  }
+
+  function groupsToSave() {
+    readGroups();
+    return groups
+      .filter(g => g.name)
+      .map(g => ({ id: g.id, name: g.name, fuseAmps: g.fuseAmps || 16, phases: g.phases === 3 ? 3 : 1, devices: g.devices }));
   }
 
   // ---------- Contract ----------

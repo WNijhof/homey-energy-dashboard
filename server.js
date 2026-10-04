@@ -13,7 +13,7 @@ const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
 const { WeatherService } = require('./lib/weather');
 const { AlertMonitor, buildAlerts, recordBaseload } = require('./lib/alerts');
-const { contractFrom, allInFunction, describeTariff } = require('./lib/tariffs');
+const { contractFrom, allInFunction, describeTariff, SUPPLIERS } = require('./lib/tariffs');
 const { PeakTracker, peakSummary } = require('./lib/peak');
 const demo = require('./lib/demo');
 
@@ -383,7 +383,13 @@ async function getDeviceList() {
         { id: 'demo-thermostat', name: 'Thermostaat woonkamer', class: 'thermostat' },
         { id: 'demo-ev', name: 'Laadpaal oprit', class: 'evcharger' },
         { id: 'demo-water', name: 'Watermeter', class: 'sensor' },
+        { id: 'demo-dishwasher', name: 'Vaatwasser', class: 'socket', power: true },
+        { id: 'demo-washer', name: 'Wasmachine', class: 'socket', power: true },
+        { id: 'demo-fridge', name: 'Koelkast', class: 'socket', power: true },
       ],
+      contract: contractFrom(cfg),
+      suppliers: SUPPLIERS,
+      prices: { source: cfg.prices?.source || 'auto' },
     };
   }
   const devices = await getDevices();
@@ -403,11 +409,15 @@ async function getDeviceList() {
       evChargers: found.evChargers.map(d => d.id),
       water: found.water?.id || null,
     },
+    contract: contractFrom(cfg),
+    suppliers: SUPPLIERS,
+    prices: { source: cfg.prices?.source || 'auto' },
     devices: devices.map(d => ({
       id: d.id,
       name: d.name,
       class: d.virtualClass || d.class,
       capabilities: d.capabilities,
+      power: (d.capabilities || []).includes('measure_power'),
     })),
   };
 }
@@ -432,9 +442,17 @@ async function getDiagnosisReport(withSnapshot) {
 // Development preview of the Homey app settings page, with a stand-in for the Homey object
 const HOMEY_APP_DIR = path.join(__dirname, 'homey-app');
 
+// Texts come from the Dutch locale, as Homey fills them in: data-i18n elements and Homey.__()
 const FAKE_SETTINGS_HOMEY = `
   const store = {};
+  const texts = ${JSON.stringify(JSON.parse(fs.readFileSync(path.join(HOMEY_APP_DIR, 'locales', 'nl.json'), 'utf8')))};
+  const __ = (key, tokens = {}) => {
+    const text = key.split('.').reduce((o, k) => (o ? o[k] : undefined), texts);
+    return typeof text === 'string' ? text.replace(/__(\\w+)__/g, (m, k) => (k in tokens ? tokens[k] : m)) : '';
+  };
+  window.addEventListener('load', () => document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = __(el.dataset.i18n); }));
   window.addEventListener('load', () => onHomeyReady({
+    __,
     api: (method, path, body, cb) => fetch(path === '/settings-info' ? '/api/devices' : '/api' + path).then(r => r.json()).then(d => cb(null, d), cb),
     get: (key, cb) => cb(null, store[key]),
     set: (key, value, cb) => { store[key] = value; console.log('Homey.set', key, JSON.stringify(value)); cb(null); },

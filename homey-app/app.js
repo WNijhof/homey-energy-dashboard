@@ -691,7 +691,7 @@ class EnergyDashboardApp extends Homey.App {
       },
       devices: devices
         .filter(d => hasCapability(d, /^(measure_power|meter_power|meter_gas|meter_water|measure_temperature|measure_battery)/))
-        .map(d => ({ id: d.id, name: d.name, class: d.virtualClass || d.class }))
+        .map(d => ({ id: d.id, name: d.name, class: d.virtualClass || d.class, power: (d.capabilities || []).includes('measure_power') }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     };
   }

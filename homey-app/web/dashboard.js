@@ -1945,6 +1945,27 @@
     renderPhaseChart();
   }
 
+  // ---------- Groups ----------
+
+  // The load per group in the fuse box against its fuse, with the devices that use the most
+  function renderGroups(groups) {
+    const el = $('groups');
+    if (!el) return;
+    toggleEmpty('groups', Boolean(groups?.length));
+    if (!groups?.length) return;
+    el.innerHTML = groups.map(g => {
+      const load = g.amps / g.fuseAmps;
+      const color = load > 0.9 ? 'var(--hot)' : load > 0.7 ? 'var(--warm)' : 'var(--home)';
+      const on = g.on.map(d => `${escapeHtml(d.name)} ${formatPower(d.watts)}`).join(' · ');
+      return `
+        <li>
+          <div class="consumer-row"><span>${escapeHtml(g.name)}</span><strong>${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small></strong></div>
+          <div class="bar"><i style="width:${Math.min(100, Math.max(2, load * 100))}%;background:${color}"></i></div>
+          ${on ? `<small class="muted">${on}</small>` : ''}
+        </li>`;
+    }).join('');
+  }
+
   // The phases through the day, one line each; with currents the main fuse as a dashed line.
   // With week or month chosen it shows today, like the power chart.
   const PHASE_COLORS = ['#5e8cff', '#ff9f0a', '#a55eea'];
@@ -2174,6 +2195,7 @@
       renderPrices(state.live.prices);
       renderBaseload(state.live.baseload);
       renderPhases(state.live.phases);
+      renderGroups(state.live.groups);
       renderPeak(state.live.peak);
       renderWater(state.live, state.history);
       renderSankeyBlock();
@@ -2520,6 +2542,7 @@
     baseload: 'Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.',
     alerts: 'Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.',
     phases: 'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.',
+    groups: 'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf, als stroom (vermogen ÷ 230 V, bij drie fasen ÷ 3) ten opzichte van de zekering van de groep. Apparaten zonder eigen meting tellen niet mee.',
     peak: 'Voor het Belgische capaciteitstarief: je hoogste gemiddelde afname over een kwartier deze maand, van je meter of elke minuut gemeten door de app.',
   };
 
@@ -2996,6 +3019,7 @@
       renderPrices(live.prices);
       renderBaseload(live.baseload);
       renderPhases(live.phases);
+      renderGroups(live.groups);
       renderPeak(live.peak);
       renderWater(live, state.history);
       if (state.sankeyMode === 'live') renderSankeyBlock();

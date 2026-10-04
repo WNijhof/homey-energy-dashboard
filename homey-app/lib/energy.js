@@ -186,6 +186,7 @@ const BLOCKS = [
   { id: 'baseload', title: 'Sluipverbruik', size: 'small', available: f => Boolean(f.p1) },
   { id: 'alerts', title: 'Meldingen', size: 'small', available: () => true },
   { id: 'phases', title: 'Fasebelasting', size: 'small', available: f => phaseCapabilities(f.p1).length > 0 },
+  { id: 'groups', title: 'Groepen', size: 'small', available: (f, cfg) => savedGroups(cfg).length > 0 },
   // The Belgian capacity tariff: shown when the meter reports its monthly peak or a tariff is set.
   // HomeWizard gives every P1 meter the capability, but a Dutch meter leaves it empty.
   { id: 'peak', title: 'Maandpiek', size: 'small', available: (f, cfg) => typeof value(f.p1, peakCapabilities(f.p1).peak) === 'number' || Number(cfg.grid?.capacityTariff) > 0 },
@@ -592,6 +593,46 @@ function buildPhases(device, cfg) {
   return { phases, fuseAmps: cfg.grid?.fuseAmps || 25 };
 }
 
+// Groups in the fuse box, set in the app settings: [{ id, name, fuseAmps, phases, devices: [ids] }].
+// Groups without a name are left out.
+function savedGroups(cfg = {}) {
+  return (Array.isArray(cfg.groups) ? cfg.groups : [])
+    .filter(g => g && String(g.name || '').trim())
+    .map(g => ({
+      id: String(g.id || g.name),
+      name: String(g.name).trim(),
+      fuseAmps: Number(g.fuseAmps) > 0 ? Number(g.fuseAmps) : 16,
+      phases: Number(g.phases) === 3 ? 3 : 1,
+      devices: Array.isArray(g.devices) ? g.devices.map(String) : [],
+    }));
+}
+
+// The load per group: the power of its devices added up, as a current against the group's fuse.
+// Only measured power counts; a group knows nothing about the devices in it that are not in Homey.
+function buildGroups(devices, cfg) {
+  const groups = savedGroups(cfg);
+  if (!groups.length) return null;
+  const byId = new Map(devices.map(d => [d.id, d]));
+  return groups.map(g => {
+    const members = g.devices.map(id => byId.get(id)).filter(Boolean);
+    const powered = members
+      .map(d => ({ name: d.name, watts: Math.max(0, amount(d, 'measure_power') || 0) }))
+      .filter(d => d.watts > 0)
+      .sort((a, b) => b.watts - a.watts);
+    const watts = powered.reduce((sum, d) => sum + d.watts, 0);
+    return {
+      id: g.id,
+      name: g.name,
+      watts: Math.round(watts),
+      amps: watts / (230 * g.phases),
+      fuseAmps: g.fuseAmps,
+      phases: g.phases,
+      devices: members.length,
+      on: powered.slice(0, 3),
+    };
+  });
+}
+
 function buildWater(device) {
   if (!device) return null;
   return {
@@ -671,6 +712,7 @@ function buildLive(devices, found, cfg, { estimated = [], batteryWatts = null } 
     ev: buildEv(found),
     water: buildWater(found.water),
     phases: buildPhases(found.p1, cfg),
+    groups: buildGroups(devices, cfg),
     layout: resolveLayout(cfg.layout, found, cfg),
     updated: new Date().toISOString(),
   };
@@ -1806,6 +1848,8 @@ module.exports = {
   defaultLayout,
   resolveLayout,
   blockCatalog,
+  savedGroups,
+  buildGroups,
   todayTotals,
   validateLayout,
   layoutName,

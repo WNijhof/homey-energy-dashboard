@@ -277,6 +277,16 @@
       'Appareils allumés plus longtemps que d\'habitude, veille plus élevée que ces deux dernières semaines, compteurs qui ne répondent pas, un prix négatif pendant l\'injection et un quart d\'heure au-dessus de votre pic mensuel.',
       'Aparelhos ligados mais tempo do que o normal, standby mais alto do que nas últimas duas semanas, contadores que não respondem, um preço negativo enquanto injeta e um quarto de hora acima do pico mensal.',
       'Aparatos encendidos más tiempo de lo normal, consumo en espera más alto que las últimas dos semanas, contadores que no responden, un precio negativo mientras inyectas y un cuarto de hora por encima de tu pico mensual.'],
+    'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf, als stroom (vermogen ÷ 230 V, bij drie fasen ÷ 3) ten opzichte van de zekering van de groep. Apparaten zonder eigen meting tellen niet mee.': [
+      'The load per circuit in your fuse box: the measured power of the devices you assigned to the circuit in the app settings, as a current (power ÷ 230 V, ÷ 3 for three phases) compared with the circuit\'s fuse. Devices without their own measurement are not counted.',
+      'Die Last pro Stromkreis in deinem Sicherungskasten: die gemessene Leistung der Geräte, die du dem Stromkreis in den App-Einstellungen zugeordnet hast, als Strom (Leistung ÷ 230 V, bei drei Phasen ÷ 3) im Verhältnis zur Sicherung des Stromkreises. Geräte ohne eigene Messung zählen nicht mit.',
+      'Belastningen per kurs i sikringsskapet: målt effekt for enhetene du har lagt til kursen i appinnstillingene, som strøm (effekt ÷ 230 V, ÷ 3 ved tre faser) sammenlignet med kursens sikring. Enheter uten egen måling telles ikke med.',
+      'Belastningen per grupp i elcentralen: uppmätt effekt för enheterna du har kopplat till gruppen i appinställningarna, som ström (effekt ÷ 230 V, ÷ 3 vid tre faser) jämfört med gruppens säkring. Enheter utan egen mätning räknas inte.',
+      'Belastningen pr. gruppe i eltavlen: målt effekt for de enheder, du har tilknyttet gruppen i appindstillingerne, som strøm (effekt ÷ 230 V, ÷ 3 ved tre faser) sammenlignet med gruppens sikring. Enheder uden egen måling tæller ikke med.',
+      'Il carico per circuito nel tuo quadro elettrico: la potenza misurata dei dispositivi che hai assegnato al circuito nelle impostazioni dell\'app, come corrente (potenza ÷ 230 V, ÷ 3 con tre fasi) rispetto al fusibile del circuito. I dispositivi senza misura propria non vengono contati.',
+      'La charge par circuit de ton tableau électrique : la puissance mesurée des appareils que tu as attribués au circuit dans les réglages de l\'app, sous forme de courant (puissance ÷ 230 V, ÷ 3 en triphasé) par rapport au disjoncteur du circuit. Les appareils sans mesure propre ne comptent pas.',
+      'A carga por circuito no seu quadro elétrico: a potência medida dos aparelhos que atribuiu ao circuito nas definições da app, como corrente (potência ÷ 230 V, ÷ 3 com três fases) face ao disjuntor do circuito. Aparelhos sem medição própria não contam.',
+      'La carga por circuito en tu cuadro eléctrico: la potencia medida de los aparatos que asignaste al circuito en los ajustes de la app, como corriente (potencia ÷ 230 V, ÷ 3 con tres fases) frente al magnetotérmico del circuito. Los aparatos sin medición propia no cuentan.'],
     'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.': [
       'Current per phase from your smart meter compared with your main fuse; negative is export. The chart shows the phases through the day.',
       'Strom pro Phase aus deinem Smart Meter im Verhältnis zur Hauptsicherung; negativ ist Einspeisung. Die Grafik zeigt die Phasen über den Tag.',
@@ -445,6 +455,7 @@
     'Gas': ['Gas', 'Gas', 'Gass', 'Gas', 'Gas', 'Gas', 'Gaz', 'Gás', 'Gas'],
     'Water': ['Water', 'Wasser', 'Vann', 'Vatten', 'Vand', 'Acqua', 'Eau', 'Água', 'Agua'],
     'Sluipverbruik': ['Standby use', 'Standby-Verbrauch', 'Standby-forbruk', 'Standby-förbrukning', 'Standbyforbrug', 'Consumo in standby', 'Consommation en veille', 'Consumo em standby', 'Consumo en espera'],
+    'Groepen': ['Circuits', 'Stromkreise', 'Kurser', 'Grupper', 'Grupper', 'Circuiti', 'Circuits', 'Circuitos', 'Circuitos'],
     'Fasebelasting': ['Phase load', 'Phasenlast', 'Fasebelastning', 'Fasbelastning', 'Fasebelastning', 'Carico per fase', 'Charge par phase', 'Carga por fase', 'Carga por fase'],
 
     // Energy now
@@ -589,6 +600,7 @@
     'Kost per jaar': ['Cost per year', 'Kosten pro Jahr', 'Kostnad per år', 'Kostnad per år', 'Pris pr. år', 'Costo annuo', 'Coût par an', 'Custo por ano', 'Coste por año'],
     'Gemeten': ['Measured', 'Gemessen', 'Målt', 'Uppmätt', 'Målt', 'Misurato', 'Mesuré', 'Medido', 'Medido'],
     'vannacht 1:00–5:00': ['last night 1:00–5:00', 'letzte Nacht 1:00–5:00', 'i natt 1:00–5:00', 'i natt 1:00–5:00', 'i nat 1:00–5:00', 'stanotte 1:00–5:00', 'cette nuit 1:00–5:00', 'esta noite 1:00–5:00', 'anoche 1:00–5:00'],
+    'Stel je groepen in bij de instellingen van de app in Homey.': ['Set up your circuits in the app settings in Homey.', 'Richte deine Stromkreise in den App-Einstellungen in Homey ein.', 'Sett opp kursene dine i appinnstillingene i Homey.', 'Ställ in dina grupper i appinställningarna i Homey.', 'Opsæt dine grupper i appindstillingerne i Homey.', 'Configura i tuoi circuiti nelle impostazioni dell\'app in Homey.', 'Configure tes circuits dans les réglages de l\'app dans Homey.', 'Configure os seus circuitos nas definições da app no Homey.', 'Configura tus circuitos en los ajustes de la app en Homey.'],
     'Je slimme meter geeft geen waarden per fase door.': ['Your smart meter does not report values per phase.', 'Dein Smart Meter liefert keine Werte pro Phase.', 'Den smarte måleren din sender ikke verdier per fase.', 'Din smarta elmätare rapporterar inga värden per fas.', 'Din smarte måler sender ikke værdier pr. fase.', 'Il tuo contatore intelligente non fornisce valori per fase.', 'Votre compteur communicant ne transmet pas de valeurs par phase.', 'O seu contador inteligente não envia valores por fase.', 'Tu contador inteligente no envía valores por fase.'],
 
     // Messages

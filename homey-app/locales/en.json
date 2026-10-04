@@ -148,7 +148,16 @@
     "sharePaste": "(Paste the report here; it is on your clipboard.)",
     "noGas": "No gas (all-electric)",
     "shareSnapshot": "Include my dashboard",
-    "shareSnapshotHelp": "This lets the maker see exactly what you see, to fix a display problem. Device names and today's use are included then. The report is then too big for the e-mail itself: paste it from your clipboard."
+    "shareSnapshotHelp": "This lets the maker see exactly what you see, to fix a display problem. Device names and today's use are included then. The report is then too big for the e-mail itself: paste it from your clipboard.",
+    "groups": "Circuits in the fuse box",
+    "groupsHelp": "For the Circuits block: add your circuits with their fuse and give every device with a power meter the circuit it is on. The block adds up the measured power per circuit and compares it with the fuse. Devices without their own measurement are not counted.",
+    "addGroup": "Add circuit",
+    "groupName": "Name",
+    "groupPlaceholder": "Circuit __n__",
+    "groupFuse": "Fuse (A)",
+    "groupPhases": "Phases",
+    "removeGroup": "Remove circuit",
+    "groupDevicesHelp": "Which circuit is each device on?"
   },
   "blocks": {
     "alerts": "Warnings",
@@ -172,6 +181,7 @@
     "water": "Water",
     "baseload": "Standby use",
     "phases": "Phase load",
+    "groups": "Circuits",
     "batteryhistory": "Battery use",
     "peak": "Monthly peak"
   },

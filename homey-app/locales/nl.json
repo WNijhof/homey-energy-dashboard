@@ -148,7 +148,16 @@
     "sharePaste": "(Plak hier het rapport; het staat op je klembord.)",
     "noGas": "Geen gas (all-electric)",
     "shareSnapshot": "Mijn dashboard meesturen",
-    "shareSnapshotHelp": "Zo kan de maker precies zien wat jij ziet, om een fout in de weergave op te lossen. Dan gaan ook de apparaatnamen en het verbruik van vandaag mee. Het rapport is dan te groot voor de mail zelf: plak het uit je klembord."
+    "shareSnapshotHelp": "Zo kan de maker precies zien wat jij ziet, om een fout in de weergave op te lossen. Dan gaan ook de apparaatnamen en het verbruik van vandaag mee. Het rapport is dan te groot voor de mail zelf: plak het uit je klembord.",
+    "groups": "Groepen in de meterkast",
+    "groupsHelp": "Voor het blok Groepen: maak je groepen aan met hun zekering en geef elk apparaat met een vermogensmeting de groep waar het op zit. Het blok telt het gemeten vermogen per groep op en zet dat af tegen de zekering. Apparaten zonder eigen meting tellen niet mee.",
+    "addGroup": "Groep toevoegen",
+    "groupName": "Naam",
+    "groupPlaceholder": "Groep __n__",
+    "groupFuse": "Zekering (A)",
+    "groupPhases": "Fasen",
+    "removeGroup": "Groep verwijderen",
+    "groupDevicesHelp": "Op welke groep zit elk apparaat?"
   },
   "blocks": {
     "alerts": "Meldingen",
@@ -172,6 +181,7 @@
     "water": "Water",
     "baseload": "Sluipverbruik",
     "phases": "Fasebelasting",
+    "groups": "Groepen",
     "batteryhistory": "Batterijgebruik",
     "peak": "Maandpiek"
   },
