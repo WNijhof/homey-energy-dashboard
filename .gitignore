@@ -8,3 +8,6 @@ docs/*post*.md
 
 # Feedback mails and diagnoses from users (personal data)
 user reports/
+
+# Private maintainer notes, a clone of the private repo homey-energy-dashboard-notes
+notes/
