@@ -6,7 +6,7 @@ const path = require('path');
 const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
-  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower,
+  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
@@ -275,7 +275,9 @@ async function getHistory(period, { light = false } = {}) {
     const devices = await getDevices();
     // The location for the weather: `location` in config.json, or the one of the solar forecast
     const location = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null);
-    data = await buildHistory(client, devices, discover(devices, cfg.devices), period, cfg, { light, prices, weather, location });
+    const found = discover(devices, cfg.devices);
+    const estimated = light ? [] : await getEstimated(devices, found);
+    data = await buildHistory(client, devices, found, period, cfg, { light, prices, weather, location, estimated });
     if (period === 'today' && !light && cfg.forecast?.enabled) {
       data.forecast = await forecast.get({ lat: cfg.forecast.lat, lon: cfg.forecast.lon, planes: cfg.forecast.planes }).catch(() => null);
       if (data.forecast) forecastLog = recordForecast(forecastLog, data.forecast);
@@ -418,6 +420,7 @@ async function getDeviceList() {
       class: d.virtualClass || d.class,
       capabilities: d.capabilities,
       power: (d.capabilities || []).includes('measure_power'),
+      estimate: hasUsageEstimate(d),
     })),
   };
 }

@@ -162,10 +162,13 @@
     "removeGroup": "Groep verwijderen",
     "groupDevicesHelp": "Op welke groep zit elk apparaat?",
     "groupFixed": "Vast verbruik (W)",
-    "groupFixedHelp": "Optioneel. Voor wat op deze groep hangt zonder eigen meting, zoals een router of koelkast: vul je schatting in watt in. Dit wordt bij het gemeten vermogen opgeteld. Niets van dien aard? Laat het leeg.",
+    "groupFixedHelp": "Optioneel. Voor wat op deze groep hangt zonder eigen meting, zoals een router of koelkast: vul je schatting in watt in. Een apparaat zonder meter met een verbruik ingesteld in Homey (Geavanceerde instellingen, Energie) kun je hieronder ook aan deze groep geven; het telt dan met dat verbruik. Dit wordt bij het gemeten vermogen opgeteld. Niets van dien aard? Laat het leeg.",
     "allPhases": "Alle drie de fasen",
     "groupsSolar": "Zonnepanelen voeden in op",
-    "groupsSolarHelp": "Voor Overig per fase: je slimme meter meet per fase afname min teruglevering, dus de zonnestroom op een fase telt het blok daar weer bij op."
+    "groupsSolarHelp": "Voor Overig per fase: je slimme meter meet per fase afname min teruglevering, dus de zonnestroom op een fase telt het blok daar weer bij op.",
+    "groupEstimate": "schatting in Homey",
+    "groupsBattery": "Thuisbatterij zit op",
+    "groupsBatteryHelp": "Voor Overig per fase: wat de batterij laadt, gaat van die fase af, en wat hij levert telt erbij op, net als zonnestroom. Een stekkerbatterij zit meestal op één fase. Weet je het niet? Laat het op alle drie staan."
   },
   "blocks": {
     "alerts": "Meldingen",

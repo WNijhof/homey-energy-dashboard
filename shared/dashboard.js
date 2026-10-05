@@ -365,8 +365,8 @@
   // `watts` makes the value count to its new number; `active` gives the circle a soft pulse
   function node({ x, y, color, iconName, label, labelAbove, value, watts, sub, ring, total, active, spin }) {
     const r = 44;
-    const labelY = labelAbove ? -(r + (total ? 22 : 8)) : r + 18;
-    const totalY = labelAbove ? -(r + 8) : r + 32;
+    const labelY = labelAbove ? -(r + (total ? 24 : 8)) : r + 18;
+    const totalY = labelAbove ? -(r + 8) : r + 34;
     const tween = typeof watts === 'number' ? ` data-tween="${iconName}" data-watts="${watts}"` : '';
     return `
       <g transform="translate(${x} ${y})">
@@ -420,7 +420,7 @@
 
     // Today's totals take one extra line of text under (or above) each circle
     const today = live.today;
-    const extra = today ? 14 : 0;
+    const extra = today ? 16 : 0;
     const top = hasSolar ? 24 + extra : 0;
     const y = hasSolar ? 244 + extra : 60;
     const H = (hasSolar ? 314 : 170) + extra * (hasSolar ? 2 : 1) + (hasBattery ? 150 : 0);
@@ -1964,7 +1964,7 @@
     const row = g => {
       const share = g.amps / g.fuseAmps;
       // The fixed use in an element of its own, so the translation finds it
-      const on = [...g.on.map(d => `${escapeHtml(d.name)} ${formatPower(d.watts)}`), ...(g.fixedWatts ? [`<span>vast ${formatPower(g.fixedWatts)}</span>`] : [])].join(' · ');
+      const on = [...g.on.map(d => `${escapeHtml(d.name)} ${d.estimated ? '≈' : ''}${formatPower(d.watts)}`), ...(g.fixedWatts ? [`<span>vast ${formatPower(g.fixedWatts)}</span>`] : [])].join(' · ');
       const tag = g.phases.length > 1 ? ` <small class="muted">${phaseLabel(g.phases)}</small>` : '';
       return `
         <li>
@@ -2601,7 +2601,7 @@
     baseload: 'Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.',
     alerts: 'Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.',
     phases: 'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.',
-    groups: 'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf, plus het vaste verbruik dat je invulde, als stroom (vermogen ÷ 230 V, gedeeld over de fasen van de groep) ten opzichte van de zekering. Overig is per fase wat je slimme meter meet (plus de zonnestroom op die fase) en wat de groepen niet verklaren. De balken onderaan tonen per groep hoe zwaar die door de dag belast was.',
+    groups: 'De belasting per groep in je meterkast: het gemeten vermogen van de apparaten die je in de instellingen van de app aan de groep gaf (zonder meter: het verbruik dat in Homey is ingesteld), plus het vaste verbruik dat je invulde, als stroom (vermogen ÷ 230 V, gedeeld over de fasen van de groep) ten opzichte van de zekering. Overig is per fase wat je slimme meter meet (plus de zonnestroom op die fase, min wat de thuisbatterij er laadt) en wat de groepen niet verklaren. De balken onderaan tonen per groep hoe zwaar die door de dag belast was.',
     peak: 'Voor het Belgische capaciteitstarief: je hoogste gemiddelde afname over een kwartier deze maand, van je meter of elke minuut gemeten door de app.',
   };
 

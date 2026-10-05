@@ -1,7 +1,7 @@
 {
   "0.2.8": {
-    "en": "Circuits: a circuit on phase L3 alone is no longer shown on all three phases, and the Fixed use field now explains what to enter. Prices can be entered with a comma or a dot, with an example in each field.",
-    "nl": "Groepen: een groep die alleen op fase L3 zit, wordt niet meer op alle drie de fasen getoond, en bij het veld Vast verbruik staat nu wat je erin invult. Prijzen kun je invullen met een komma of een punt, met een voorbeeld in elk veld."
+    "en": "Circuits: a circuit on phase L3 alone is no longer shown on all three phases, and the Fixed use field now explains what to enter. Prices can be entered with a comma or a dot, with an example in each field. Devices without a meter can join a circuit with the use set for them in Homey, Other per phase takes a home battery into account, and the Now block shows today's kWh more clearly.",
+    "nl": "Groepen: een groep die alleen op fase L3 zit, wordt niet meer op alle drie de fasen getoond, en bij het veld Vast verbruik staat nu wat je erin invult. Prijzen kun je invullen met een komma of een punt, met een voorbeeld in elk veld. Apparaten zonder meter kunnen in een groep meetellen met het verbruik dat in Homey is ingesteld, Overig per fase houdt rekening met een thuisbatterij, en het blok Nu toont de kWh van vandaag duidelijker."
   },
   "0.2.7": {
     "en": "New Circuits block: the load per circuit in your fuse box against its fuse, per phase, with the devices that use the most, a fixed use for devices without a meter, and per phase the rest the circuits do not explain. A bar per circuit shows how heavily it was loaded through the day, and every circuit gets a tag (load in % and watts) for your Flows. The P1 meter is chosen better automatically, and the two widgets no longer differ by a watt.",

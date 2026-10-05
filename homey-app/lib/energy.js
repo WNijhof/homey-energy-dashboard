@@ -618,28 +618,52 @@ function solarPhases(cfg = {}) {
   return list.length ? list : [1, 2, 3];
 }
 
-// The power of each group: its measured devices plus the fixed use entered for it
-function groupWatts(group, byId) {
+// The phases the home battery is connected to: all three unless set
+function batteryPhases(cfg = {}) {
+  const list = phaseList(cfg.groupsBatteryPhases);
+  return list.length ? list : [1, 2, 3];
+}
+
+// Whether Homey estimates the use of a device without a power meter: a constant use or a use when
+// on and off, set by the user on the device (energy_value_*) or by its app (energy.approximation)
+function hasUsageEstimate(d) {
+  if (!d || has(d, 'measure_power')) return false;
+  const set = Object.entries(d.energySettings || d.settings || {})
+    .some(([key, v]) => /^energy_value_/.test(key) && Number(v) > 0);
+  const approx = d.energy?.approximation || d.energyObj?.approximation || {};
+  return set || ['usageConstant', 'usageOn', 'usageOff'].some(key => Number(approx[key]) > 0);
+}
+
+// The power of each group: its measured devices, devices without a meter by Homey's own estimate
+// (the "Constant power usage" or on/off usage set on the device, from Homey Energy), plus the
+// fixed use entered for the group. `estimates` holds the estimated watts by device id.
+function groupWatts(group, byId, estimates = new Map()) {
   const powered = group.devices
     .map(id => byId.get(id))
     .filter(Boolean)
-    .map(d => ({ name: d.name, watts: Math.max(0, amount(d, 'measure_power') || 0) }))
+    .map(d => (has(d, 'measure_power')
+      ? { name: d.name, watts: Math.max(0, amount(d, 'measure_power') || 0) }
+      : { name: d.name, watts: estimates.get(d.id) || 0, estimated: true }))
     .filter(d => d.watts > 0)
     .sort((a, b) => b.watts - a.watts);
   return { powered, watts: powered.reduce((sum, d) => sum + d.watts, 0) + group.fixedWatts };
 }
 
 // What each phase of the house uses: the meter's power on that phase (negative while exporting)
-// plus the solar power fed in on it. Null for a phase the meter says nothing about.
-function phaseUse(phases, solarW, cfg) {
+// plus the solar power fed in on it, minus what the home battery charges on it (a discharging
+// battery adds, like solar). Null for a phase the meter says nothing about.
+function phaseUse(phases, solarW, cfg, batteryW = 0) {
   if (!phases?.phases?.length) return {};
   const onSolar = solarPhases(cfg);
+  const onBattery = batteryPhases(cfg);
   const out = {};
   for (const p of phases.phases) {
     const net = typeof p.watts === 'number' ? p.watts
       : typeof p.amps === 'number' ? p.amps * (p.volts || 230) : null;
     if (net === null) continue;
-    out[p.phase] = Math.max(0, net + (onSolar.includes(p.phase) ? (solarW || 0) / onSolar.length : 0));
+    const solar = onSolar.includes(p.phase) ? (solarW || 0) / onSolar.length : 0;
+    const battery = onBattery.includes(p.phase) ? (batteryW || 0) / onBattery.length : 0;
+    out[p.phase] = Math.max(0, net + solar - battery);
   }
   return out;
 }
@@ -647,12 +671,17 @@ function phaseUse(phases, solarW, cfg) {
 // The load per group as a current against its fuse, with the devices that use the most, and per
 // phase what the groups on it do not explain ("Overig"): the meter measures every phase, so the
 // rest is what has no measurement of its own. A group on more phases counts evenly on each.
-function buildGroups(devices, cfg, { phases = null, solarW = 0 } = {}) {
+// `estimated` is the list from estimatedDevices; `batteries` the home batteries as
+// [{ id, watts }] (positive while charging). A battery put in a group already counts there.
+function buildGroups(devices, cfg, { phases = null, solarW = 0, estimated = [], batteries = [] } = {}) {
   const groups = savedGroups(cfg);
   if (!groups.length) return null;
   const byId = new Map(devices.map(d => [d.id, d]));
+  const estimates = new Map(estimated.filter(d => d.id && d.watts > 0).map(d => [d.id, d.watts]));
+  const inGroup = new Set(groups.flatMap(g => g.devices));
+  const batteryW = batteries.filter(b => !inGroup.has(b.id)).reduce((sum, b) => sum + (b.watts || 0), 0);
   const list = groups.map(g => {
-    const { powered, watts } = groupWatts(g, byId);
+    const { powered, watts } = groupWatts(g, byId, estimates);
     return {
       id: g.id,
       name: g.name,
@@ -665,7 +694,7 @@ function buildGroups(devices, cfg, { phases = null, solarW = 0 } = {}) {
       on: powered.slice(0, 3),
     };
   });
-  const use = phaseUse(phases, solarW, cfg);
+  const use = phaseUse(phases, solarW, cfg, batteryW);
   const perPhase = [1, 2, 3]
     .filter(n => list.some(g => g.phases.includes(n)))
     .map(n => {
@@ -677,11 +706,15 @@ function buildGroups(devices, cfg, { phases = null, solarW = 0 } = {}) {
 }
 
 // The load of each group through the day in steps of 5 minutes, as a share of its fuse, from the
-// Insights of its devices. Devices without readings count as 0, the fixed use always.
-async function groupHistory(groups, devices, entries, start, steps) {
+// Insights of its devices. Devices without readings count as 0, the fixed use always. A device
+// without a meter and without on/off has a constant use: its estimate now counts all day.
+async function groupHistory(groups, devices, entries, start, steps, estimated = []) {
   const byId = new Map(devices.map(d => [d.id, d]));
   const series = new Map();
   const ids = [...new Set(groups.flatMap(g => g.devices))].filter(id => has(byId.get(id), 'measure_power'));
+  const constant = new Map(estimated
+    .filter(d => byId.has(d.id) && !has(byId.get(d.id), 'measure_power') && !has(byId.get(d.id), 'onoff') && d.watts > 0)
+    .map(d => [d.id, d.watts]));
   await mapLimited(ids, INSIGHTS_PARALLEL, async id => {
     const list = await entries(byId.get(id), 'measure_power').catch(() => []);
     if (list.length) series.set(id, averageInSteps(list.map(e => ({ t: e.t, v: Math.max(0, e.v) })), start, steps, { idleZero: true, hold: HOLD_STEPS }));
@@ -689,7 +722,7 @@ async function groupHistory(groups, devices, entries, start, steps) {
   return groups.map(g => {
     const values = [];
     for (let i = 0; i < steps; i++) {
-      const watts = g.devices.reduce((sum, id) => sum + (series.get(id)?.[i] || 0), 0) + g.fixedWatts;
+      const watts = g.devices.reduce((sum, id) => sum + (series.get(id)?.[i] || constant.get(id) || 0), 0) + g.fixedWatts;
       values.push(Math.round(watts / (230 * Math.max(1, g.phases.length)) / g.fuseAmps * 100));
     }
     return { id: g.id, name: g.name, values };
@@ -775,7 +808,12 @@ function buildLive(devices, found, cfg, { estimated = [], batteryWatts = null } 
     ev: buildEv(found),
     water: buildWater(found.water),
     phases: buildPhases(found.p1, cfg),
-    groups: buildGroups(devices, cfg, { phases: buildPhases(found.p1, cfg), solarW }),
+    groups: buildGroups(devices, cfg, {
+      phases: buildPhases(found.p1, cfg),
+      solarW,
+      estimated,
+      batteries: found.batteries.map(d => ({ id: d.id, watts: batteryWatts ? batteryWatts[d.id] ?? 0 : batteryPower(d, cfg.battery) })),
+    }),
     layout: resolveLayout(cfg.layout, found, cfg),
     updated: new Date().toISOString(),
   };
@@ -1588,7 +1626,7 @@ function degreeDayBuckets(period, buckets, temps, now = new Date()) {
   return out;
 }
 
-async function buildHistory(client, devices, found, period, cfg, { light = false, prices = null, weather = null, location = null } = {}) {
+async function buildHistory(client, devices, found, period, cfg, { light = false, prices = null, weather = null, location = null, estimated = [] } = {}) {
   const { resolution } = PERIODS[period];
   const buckets = makeBuckets(period);
   const series = {};
@@ -1747,7 +1785,7 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
   if (groups.length && !light && shown.has('groups') && PERIODS[period].bucket === 'hour') {
     const until = Math.min(Date.now(), periodEnd(period, start).getTime());
     const steps = Math.max(0, Math.ceil((until - start.getTime()) / POWER_STEP));
-    jobs.push(groupHistory(groups, devices, entries, start, steps).then(list => {
+    jobs.push(groupHistory(groups, devices, entries, start, steps, estimated).then(list => {
       groupLoad = { start: start.toISOString(), step: POWER_STEP / 1000, groups: list };
     }).catch(() => {}));
   }
@@ -1927,6 +1965,7 @@ module.exports = {
   blockCatalog,
   savedGroups,
   buildGroups,
+  hasUsageEstimate,
   buildPhases,
   todayTotals,
   validateLayout,

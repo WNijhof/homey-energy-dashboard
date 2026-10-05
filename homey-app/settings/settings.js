@@ -88,7 +88,8 @@ function onHomeyReady(Homey) {
         d => d.class === 'evcharger' || /laadpa|charger|wallbox|easee|zaptec|alfen/i.test(d.name),
         __('noEv'));
       initLayout(list);
-      fillGroups(config.groups || [], list.devices, config.groupsSolarPhases);
+      fillGroups(config.groups || [], list.devices, config.groupsSolarPhases, config.groupsBatteryPhases);
+      document.getElementById('group-battery').hidden = !list.found.batteries.length;
 
       fillChecks('solar-list', 'solar', list.devices, devices.solar || [],
         d => d.class === 'solarpanel' || /solar|zon|omvormer|inverter|pv/i.test(d.name),
@@ -133,6 +134,7 @@ function onHomeyReady(Homey) {
         layout: layoutToSave(),
         groups: groupsToSave(),
         groupsSolarPhases: phasesFrom(form.groupsSolarPhases.value),
+        groupsBatteryPhases: phasesFrom(form.groupsBatteryPhases.value),
         battery: { invertPower: form.invertPower.checked },
         boiler: Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
       };
@@ -247,8 +249,8 @@ function onHomeyReady(Homey) {
 
   // ---------- Groups ----------
 
-  // Groups in the fuse box with their fuse, and per device with a power meter the group it is
-  // on. A device is on one group at most; groups without a name are not saved.
+  // Groups in the fuse box with their fuse, and per device with a power meter (or an estimate in
+  // Homey) the group it is on. A device is on one group at most; groups without a name are not saved.
   const MAX_GROUPS = 40;
   let groups = [];
   let groupDevices = [];
@@ -279,7 +281,8 @@ function onHomeyReady(Homey) {
     box.innerHTML = `<p class="muted">${escapeText(__('groupDevicesHelp'))}</p>`
       + groupDevices.map(d => {
         const on = groups.find(g => g.devices.includes(d.id));
-        return `<label><span>${escapeText(d.name)}</span> <select data-group-device="${d.id}">${options(on?.id)}</select></label>`;
+        const name = d.power ? d.name : `${d.name} (${__('groupEstimate')})`;
+        return `<label><span>${escapeText(name)}</span> <select data-group-device="${d.id}">${options(on?.id)}</select></label>`;
       }).join('');
   }
 
@@ -299,10 +302,11 @@ function onHomeyReady(Homey) {
     });
   }
 
-  function fillGroups(saved, devices, solarOn) {
-    groupDevices = devices.filter(d => d.power);
+  function fillGroups(saved, devices, solarOn, batteryOn) {
+    groupDevices = devices.filter(d => d.power || d.estimate);
     groups = saved.map(g => ({ id: String(g.id || g.name), name: g.name || '', fuseAmps: g.fuseAmps ?? 16, phases: g.phases === 3 ? [1, 2, 3] : phasesFrom(g.phases), fixedWatts: g.fixedWatts || 0, devices: [...(g.devices || [])] }));
     form.groupsSolarPhases.innerHTML = phaseOptions(phasesFrom(solarOn), __('allPhases'));
+    form.groupsBatteryPhases.innerHTML = phaseOptions(phasesFrom(batteryOn), __('allPhases'));
     renderGroups();
     document.getElementById('group-add').onclick = () => {
       readGroups();

@@ -162,10 +162,13 @@
     "removeGroup": "Remove circuit",
     "groupDevicesHelp": "Which circuit is each device on?",
     "groupFixed": "Fixed use (W)",
-    "groupFixedHelp": "Optional. For what hangs on this circuit without a meter of its own, such as a router or fridge: enter your estimate in watts. It is added to the measured power. Nothing like that? Leave it empty.",
+    "groupFixedHelp": "Optional. For what hangs on this circuit without a meter of its own, such as a router or fridge: enter your estimate in watts. A device without a meter that has a use set in Homey (Advanced settings, Energy) can also be given this circuit below; it then counts with that use. It is added to the measured power. Nothing like that? Leave it empty.",
     "allPhases": "All three phases",
     "groupsSolar": "Solar panels feed in on",
-    "groupsSolarHelp": "For Other per phase: your smart meter measures import minus export per phase, so the block adds the solar power on a phase back to it."
+    "groupsSolarHelp": "For Other per phase: your smart meter measures import minus export per phase, so the block adds the solar power on a phase back to it.",
+    "groupEstimate": "estimate in Homey",
+    "groupsBattery": "Home battery is connected to",
+    "groupsBatteryHelp": "For Other per phase: what the battery charges is taken off that phase, and what it delivers is added, like solar power. A plug-in battery is usually on one phase. Unknown? Leave it on all three."
   },
   "blocks": {
     "alerts": "Warnings",

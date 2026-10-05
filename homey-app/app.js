@@ -5,7 +5,7 @@ const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
-  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases,
+  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -188,6 +188,7 @@ class EnergyDashboardApp extends Homey.App {
       alerts: { hours: 4, notify: false, ...saved.alerts },
       groups: Array.isArray(saved.groups) ? saved.groups : [],
       groupsSolarPhases: Array.isArray(saved.groupsSolarPhases) ? saved.groupsSolarPhases : [],
+      groupsBatteryPhases: Array.isArray(saved.groupsBatteryPhases) ? saved.groupsBatteryPhases : [],
     };
   }
 
@@ -511,7 +512,8 @@ class EnergyDashboardApp extends Homey.App {
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
     const solarW = found.solar.reduce((sum, d) => sum + Math.abs(Number(d.capabilitiesObj?.measure_power?.value) || 0), 0);
-    const groups = buildGroups(devices, cfg, { phases: buildPhases(found.p1, cfg), solarW })?.groups || [];
+    const estimated = await this.getEstimated(devices, found).catch(() => []);
+    const groups = buildGroups(devices, cfg, { phases: buildPhases(found.p1, cfg), solarW, estimated })?.groups || [];
     const wanted = new Map();
     for (const g of groups) {
       wanted.set(`group-${g.id}-load`, { title: this.homey.__('tokens.groupLoad', { name: g.name }), value: Math.round(g.amps / g.fuseAmps * 100) });
@@ -666,7 +668,9 @@ class EnergyDashboardApp extends Homey.App {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const location = { lat: this.homey.geolocation.getLatitude(), lon: this.homey.geolocation.getLongitude() };
-    const data = await buildHistory(this, devices, discover(devices, cfg.devices), period, cfg, { light, prices: this.prices, weather: this.weather, location });
+    const found = discover(devices, cfg.devices);
+    const estimated = light ? [] : await this.getEstimated(devices, found).catch(() => []);
+    const data = await buildHistory(this, devices, found, period, cfg, { light, prices: this.prices, weather: this.weather, location, estimated });
     if (period === 'today' && !light && cfg.forecast.enabled) {
       data.forecast = await this.forecast.get({ ...location, planes: cfg.forecast.planes }).catch(() => null);
       if (data.forecast) this.homey.settings.set('forecastLog', recordForecast(this.homey.settings.get('forecastLog') || {}, data.forecast));
@@ -702,6 +706,7 @@ class EnergyDashboardApp extends Homey.App {
     const cfg = this.getConfig();
     const devices = await this.getDevices();
     const found = discover(devices, cfg.devices);
+    const estimatedIds = new Set((await this.getEstimated(devices, found).catch(() => [])).map(d => d.id));
     const hasCapability = (d, pattern) => (d.capabilities || []).some(c => pattern.test(c));
     return {
       dashboardUrl: await this.getDashboardUrl(),
@@ -723,9 +728,17 @@ class EnergyDashboardApp extends Homey.App {
         evChargers: found.evChargers.map(d => d.id),
         water: found.water?.id || null,
       },
+      // Devices without a meter but with an estimate from Homey can be put in a group as well
       devices: devices
-        .filter(d => hasCapability(d, /^(measure_power|meter_power|meter_gas|meter_water|measure_temperature|measure_battery)/))
-        .map(d => ({ id: d.id, name: d.name, class: d.virtualClass || d.class, power: (d.capabilities || []).includes('measure_power') }))
+        .filter(d => hasCapability(d, /^(measure_power|meter_power|meter_gas|meter_water|measure_temperature|measure_battery)/)
+          || hasUsageEstimate(d) || estimatedIds.has(d.id))
+        .map(d => ({
+          id: d.id,
+          name: d.name,
+          class: d.virtualClass || d.class,
+          power: (d.capabilities || []).includes('measure_power'),
+          estimate: hasUsageEstimate(d) || estimatedIds.has(d.id),
+        }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     };
   }
