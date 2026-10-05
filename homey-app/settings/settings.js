@@ -241,6 +241,7 @@ function onHomeyReady(Homey) {
           <select data-field="phases">${phaseOptions(g.phases)}</select>
         </label>
         <label><span>${escapeText(__('groupFixed'))}</span> <input data-field="fixedWatts" type="number" min="0" max="10000" step="1" value="${g.fixedWatts || ''}" placeholder="0"></label>
+        <p class="muted">${escapeText(__('groupFixedHelp'))}</p>
         <p><span></span><button type="button" class="link" data-remove-group="${i}">${escapeText(__('removeGroup'))}</button></p>
       </div>`).join('');
     document.getElementById('group-add').hidden = groups.length >= MAX_GROUPS;

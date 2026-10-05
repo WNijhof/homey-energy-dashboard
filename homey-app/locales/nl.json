@@ -159,6 +159,7 @@
     "removeGroup": "Groep verwijderen",
     "groupDevicesHelp": "Op welke groep zit elk apparaat?",
     "groupFixed": "Vast verbruik (W)",
+    "groupFixedHelp": "Optioneel. Voor wat op deze groep hangt zonder eigen meting, zoals een router of koelkast: vul je schatting in watt in. Dit wordt bij het gemeten vermogen opgeteld. Niets van dien aard? Laat het leeg.",
     "allPhases": "Alle drie de fasen",
     "groupsSolar": "Zonnepanelen voeden in op",
     "groupsSolarHelp": "Voor Overig per fase: je slimme meter meet per fase afname min teruglevering, dus de zonnestroom op een fase telt het blok daar weer bij op."

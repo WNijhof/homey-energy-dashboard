@@ -159,6 +159,7 @@
     "removeGroup": "Remove circuit",
     "groupDevicesHelp": "Which circuit is each device on?",
     "groupFixed": "Fixed use (W)",
+    "groupFixedHelp": "Optional. For what hangs on this circuit without a meter of its own, such as a router or fridge: enter your estimate in watts. It is added to the measured power. Nothing like that? Leave it empty.",
     "allPhases": "All three phases",
     "groupsSolar": "Solar panels feed in on",
     "groupsSolarHelp": "For Other per phase: your smart meter measures import minus export per phase, so the block adds the solar power on a phase back to it."
