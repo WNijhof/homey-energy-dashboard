@@ -13,6 +13,26 @@ function onHomeyReady(Homey) {
   form.editPin.placeholder = __('none');
   form.accessCode.placeholder = __('none');
 
+  // Amounts are text fields so a comma works as well as a dot; a number field in Homey only took
+  // a dot and kept refusing to save. The example shows how an amount looks.
+  const decimal = __('decimalSeparator') || '.';
+  const amounts = [...form.querySelectorAll('[data-amount]')];
+  const readAmount = text => {
+    const clean = String(text).trim().replace(/\s|€/g, '').replace(',', '.');
+    return clean === '' ? undefined : /^-?(\d+\.?\d*|\.\d+)$/.test(clean) ? Number(clean) : NaN;
+  };
+  const showAmount = value => (value === null || value === undefined || value === '' ? '' : String(value).replace('.', decimal));
+  const checkAmount = input => {
+    const value = readAmount(input.value);
+    const min = input.dataset.min === undefined ? -Infinity : Number(input.dataset.min);
+    input.setCustomValidity(Number.isNaN(value) ? __('amountInvalid', { example: input.placeholder })
+      : value < min ? __('amountNegative') : '');
+  };
+  amounts.forEach(input => {
+    input.placeholder = showAmount(input.dataset.example);
+    input.addEventListener('input', () => checkAmount(input));
+  });
+
   const call = (method, path) => new Promise((resolve, reject) => {
     Homey.api(method, path, null, (err, result) => (err ? reject(err) : resolve(result)));
   });
@@ -52,7 +72,7 @@ function onHomeyReady(Homey) {
       fillSelect(form.thermostat, list.devices, devices.thermostat, autoLabel(list.found.thermostat));
       fillSelect(form.water, list.devices, devices.water, autoLabel(list.found.water));
       form.fuseAmps.value = config.grid?.fuseAmps ?? 25;
-      form.capacityTariff.value = config.grid?.capacityTariff ?? '';
+      form.capacityTariff.value = showAmount(config.grid?.capacityTariff);
       form.capacityMin.value = config.grid?.capacityMin ?? 2.5;
       form.editPin.value = config.editPin || '';
       form.accessCode.value = config.accessCode || '';
@@ -88,7 +108,9 @@ function onHomeyReady(Homey) {
       event.preventDefault();
       clearTimeout(saveTimer);
       saveTimer = null;
-      const number = key => (form[key].value === '' ? undefined : Number(form[key].value));
+      const number = key => (form[key].dataset.amount === undefined
+        ? (form[key].value === '' ? undefined : Number(form[key].value))
+        : readAmount(form[key].value));
       const config = {
         port: number('port') ?? 8686,
         editPin: form.editPin.value.trim(),
@@ -328,7 +350,7 @@ function onHomeyReady(Homey) {
   function fillContract(contract, suppliers) {
     const e = contract.electricity;
     const g = contract.gas;
-    const value = v => (v === null || v === undefined ? '' : v);
+    const value = showAmount;
     form.elecType.value = e.type;
     form.elecNormal.value = value(e.normal);
     form.elecLow.value = value(e.low);
@@ -341,14 +363,14 @@ function onHomeyReady(Homey) {
       .map(s => `<option value="${s.id}">${escapeText(s.id === 'other' ? __('otherSupplier') : s.name)}</option>`)
       .join('');
     form.supplier.value = e.supplier;
-    form.elecMarkup.value = e.markup;
-    form.elecTax.value = e.energyTax;
+    form.elecMarkup.value = value(e.markup);
+    form.elecTax.value = value(e.energyTax);
     form.netting.checked = e.netting;
-    form.exportFee.value = e.exportFee;
+    form.exportFee.value = value(e.exportFee);
     form.gasType.value = g.type;
     form.gasPrice.value = value(g.price);
-    form.gasMarkup.value = g.markup;
-    form.gasTax.value = g.energyTax;
+    form.gasMarkup.value = value(g.markup);
+    form.gasTax.value = value(g.energyTax);
     form.monthly.value = value(contract.monthly);
     form.taxReduction.value = value(contract.taxReduction);
     form.waterPrice.value = value(contract.water);
@@ -371,9 +393,11 @@ function onHomeyReady(Homey) {
       const supplier = suppliers.find(s => s.id === form.supplier.value);
       showSupplierNote(supplier);
       if (!supplier || supplier.id === 'other') return;
-      form.elecMarkup.value = supplier.markup;
+      form.elecMarkup.value = showAmount(supplier.markup);
       // An unknown gas markup is left empty rather than keeping another supplier's amount
-      form.gasMarkup.value = typeof supplier.gasMarkup === 'number' ? supplier.gasMarkup : '';
+      form.gasMarkup.value = typeof supplier.gasMarkup === 'number' ? showAmount(supplier.gasMarkup) : '';
+      checkAmount(form.elecMarkup);
+      checkAmount(form.gasMarkup);
     };
     showSupplierNote(suppliers.find(s => s.id === e.supplier));
     form.elecType.onchange = showContractFields;

@@ -81,7 +81,7 @@
 
     <h3 data-i18n="settings.connection"></h3>
     <label><span data-i18n="settings.fuseAmps"></span> <input name="fuseAmps" type="number" min="6" max="80" step="1"></label>
-    <label><span data-i18n="settings.capacityTariff"></span> <input name="capacityTariff" type="number" min="0" step="0.01"></label>
+    <label><span data-i18n="settings.capacityTariff"></span> <input name="capacityTariff" type="text" inputmode="decimal" data-amount data-min="0" data-example="50"></label>
     <label><span data-i18n="settings.capacityMin"></span> <input name="capacityMin" type="number" min="0" max="20" step="0.1"></label>
     <p class="muted" data-i18n="settings.capacityHelp"></p>
 
@@ -118,25 +118,25 @@
       </select>
     </label>
     <div data-contract="elec-fixed">
-      <label><span data-i18n="settings.normalRate"></span> <input name="elecNormal" type="number" min="0" step="0.0001"></label>
-      <label><span data-i18n="settings.lowRate"></span> <input name="elecLow" type="number" min="0" step="0.0001"></label>
+      <label><span data-i18n="settings.normalRate"></span> <input name="elecNormal" type="text" inputmode="decimal" data-amount data-min="0" data-example="0.25"></label>
+      <label><span data-i18n="settings.lowRate"></span> <input name="elecLow" type="text" inputmode="decimal" data-amount data-min="0" data-example="0.23"></label>
       <label><span data-i18n="settings.lowHours"></span> <span class="inline"><input name="lowFrom" type="number" min="0" max="23" step="1"> – <input name="lowTo" type="number" min="0" max="23" step="1"></span></label>
       <label class="check-row"><span data-i18n="settings.lowWeekend"></span> <input name="lowWeekend" type="checkbox"></label>
-      <label><span data-i18n="settings.exportRate"></span> <input name="elecExport" type="number" step="0.0001"></label>
+      <label><span data-i18n="settings.exportRate"></span> <input name="elecExport" type="text" inputmode="decimal" data-amount data-example="0.25"></label>
       <p class="muted" data-i18n="settings.exportRateHelp"></p>
-      <label><span data-i18n="settings.exportAfter"></span> <input name="exportAfter" type="number" step="0.0001"></label>
+      <label><span data-i18n="settings.exportAfter"></span> <input name="exportAfter" type="text" inputmode="decimal" data-amount data-example="0.05"></label>
       <p class="muted" data-i18n="settings.exportAfterHelp"></p>
     </div>
     <div data-contract="elec-dynamic">
       <label><span data-i18n="settings.supplier"></span> <select name="supplier"></select></label>
       <p class="warning" id="supplier-note"></p>
-      <label><span data-i18n="settings.markup"></span> <input name="elecMarkup" type="number" step="0.0001"></label>
-      <label><span data-i18n="settings.energyTax"></span> <input name="elecTax" type="number" min="0" step="0.00001"></label>
+      <label><span data-i18n="settings.markup"></span> <input name="elecMarkup" type="text" inputmode="decimal" data-amount data-example="0.02"></label>
+      <label><span data-i18n="settings.energyTax"></span> <input name="elecTax" type="text" inputmode="decimal" data-amount data-min="0" data-example="0.11"></label>
       <p class="muted" data-i18n="settings.supplierHelp"></p>
     </div>
     <!-- For both kinds of contract -->
     <label class="check-row"><span><span data-i18n="settings.netting"></span><br><small class="muted" data-i18n="settings.nettingHelp"></small></span> <input name="netting" type="checkbox"></label>
-    <label><span data-i18n="settings.exportFee"></span> <input name="exportFee" type="number" step="0.0001"></label>
+    <label><span data-i18n="settings.exportFee"></span> <input name="exportFee" type="text" inputmode="decimal" data-amount data-example="0.10"></label>
 
     <h3 data-i18n="settings.gasContract"></h3>
     <label><span data-i18n="settings.contractType"></span>
@@ -147,18 +147,18 @@
       </select>
     </label>
     <div data-contract="gas-fixed">
-      <label><span data-i18n="settings.gasPrice"></span> <input name="gasPrice" type="number" min="0" step="0.0001"></label>
+      <label><span data-i18n="settings.gasPrice"></span> <input name="gasPrice" type="text" inputmode="decimal" data-amount data-min="0" data-example="1.25"></label>
     </div>
     <div data-contract="gas-dynamic">
-      <label><span data-i18n="settings.gasMarkup"></span> <input name="gasMarkup" type="number" step="0.0001"></label>
-      <label><span data-i18n="settings.gasTax"></span> <input name="gasTax" type="number" min="0" step="0.00001"></label>
+      <label><span data-i18n="settings.gasMarkup"></span> <input name="gasMarkup" type="text" inputmode="decimal" data-amount data-example="0.05"></label>
+      <label><span data-i18n="settings.gasTax"></span> <input name="gasTax" type="text" inputmode="decimal" data-amount data-min="0" data-example="0.70"></label>
     </div>
 
     <h3 data-i18n="settings.otherCosts"></h3>
-    <label><span data-i18n="settings.monthly"></span> <input name="monthly" type="number" min="0" step="0.01"></label>
-    <label><span data-i18n="settings.taxReduction"></span> <input name="taxReduction" type="number" min="0" step="0.01"></label>
+    <label><span data-i18n="settings.monthly"></span> <input name="monthly" type="text" inputmode="decimal" data-amount data-min="0" data-example="45.00"></label>
+    <label><span data-i18n="settings.taxReduction"></span> <input name="taxReduction" type="text" inputmode="decimal" data-amount data-min="0" data-example="600"></label>
     <p class="muted" data-i18n="settings.monthlyHelp"></p>
-    <label><span data-i18n="settings.water"></span> <input name="waterPrice" type="number" min="0" step="0.001"></label>
+    <label><span data-i18n="settings.water"></span> <input name="waterPrice" type="text" inputmode="decimal" data-amount data-min="0" data-example="1.10"></label>
 
 
     <div class="form-actions">
