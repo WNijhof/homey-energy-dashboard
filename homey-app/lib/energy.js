@@ -606,7 +606,7 @@ function savedGroups(cfg = {}) {
       id: String(g.id || g.name),
       name: String(g.name).trim(),
       fuseAmps: Number(g.fuseAmps) > 0 ? Number(g.fuseAmps) : 16,
-      phases: Number(g.phases) === 3 ? [1, 2, 3] : phaseList(g.phases),
+      phases: !Array.isArray(g.phases) && Number(g.phases) === 3 ? [1, 2, 3] : phaseList(g.phases),
       fixedWatts: Number(g.fixedWatts) > 0 ? Number(g.fixedWatts) : 0,
       devices: Array.isArray(g.devices) ? g.devices.map(String) : [],
     }));
