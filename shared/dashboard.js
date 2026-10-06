@@ -1910,20 +1910,58 @@
   // What a home battery would have to cover: the use while the sun gives (almost) nothing, per
   // night over the last year, the solar surplus to charge it with, and what each size and power
   // would cover. The app fills its log of nights in the background.
-  function renderBatterySize(data) {
+  // Which nights the block counts, chosen per screen: only measured ones, plus those from an
+  // imported meter export, or plus modelled months as well (the default). A view the app could
+  // not make falls back to the one before it.
+  const BATTERY_VIEW_KEY = 'energy-dashboard-battery-view';
+  const BATTERY_VIEWS = ['measured', 'export', 'model'];
+  function batteryView(data) {
+    if (!data) return { key: null, view: null, views: {} };
+    const views = data.views || { measured: data };
+    let chosen = 'model';
+    try { chosen = localStorage.getItem(BATTERY_VIEW_KEY) || 'model'; } catch { /* storage unavailable */ }
+    for (let i = Math.max(0, BATTERY_VIEWS.indexOf(chosen)); i >= 0; i--) {
+      if (views[BATTERY_VIEWS[i]]) return { key: BATTERY_VIEWS[i], view: views[BATTERY_VIEWS[i]], views };
+    }
+    const first = BATTERY_VIEWS.find(k => views[k]);
+    return { key: first || null, view: first ? views[first] : null, views };
+  }
+
+  // A colour from the theme, lighter: for modelled values
+  const lighter = color => (/^#[0-9a-f]{6}$/i.test(color) ? `${color}66` : color);
+
+  function renderBatterySize(input) {
     if (!$('batterysize-dark')) return;
+    const { key, view: data, views } = batteryView(input);
+    const nav = $('batterysize-view');
+    if (nav) {
+      const available = BATTERY_VIEWS.filter(k => views[k]);
+      nav.hidden = available.length < 2;
+      nav.querySelectorAll('button').forEach(b => {
+        b.hidden = !views[b.dataset.view];
+        b.classList.toggle('active', b.dataset.view === key);
+      });
+      nav.onclick = event => {
+        const chosen = event.target.closest('button[data-view]')?.dataset.view;
+        if (!chosen) return;
+        try { localStorage.setItem(BATTERY_VIEW_KEY, chosen); } catch { /* storage unavailable */ }
+        renderBatterySize(input);
+        relayout();
+      };
+    }
     const ok = Boolean(data && data.nights > 0);
     toggleEmpty('batterysize', ok);
     if (!ok) {
       const empty = $('batterysize-empty');
       if (empty) {
-        empty.textContent = data === undefined ? 'Verschijnt na het opslaan van de indeling'
-          : !data || data.building ? 'Wordt berekend uit de metingen in Homey…'
-            : data.skippedCount ? 'De nachten tot nu toe hadden ontbrekende of onlogische metingen. Elke nacht komt er een bij.'
+        empty.textContent = input === undefined ? 'Verschijnt na het opslaan van de indeling'
+          : !input || input.building ? 'Wordt berekend uit de metingen in Homey…'
+            : data?.skippedCount ? 'De nachten tot nu toe hadden ontbrekende of onlogische metingen. Elke nacht komt er een bij.'
               : 'Nog geen nachten gevonden met metingen per uur of fijner. Elke nacht komt er een bij.';
       }
       return;
     }
+    data.building = input.building;
     // While the app is still reading Homey Energy's history, the number of nights grows
     setText('batterysize-basis', data.building ? `${nf(0).format(data.nights)} nachten, wordt aangevuld` : `${nf(0).format(data.nights)} nachten`);
     setText('batterysize-dark', `${nf(1).format(data.avgDark)} kWh`);
@@ -1939,13 +1977,21 @@
     if (data.skippedCount) facts.push(fact('Overgeslagen nachten', nf(0).format(data.skippedCount)));
     // Nights from an imported meter export, dark by the height of the sun
     if (data.estimated) facts.push(fact('Geschat uit meterexport', nf(0).format(data.estimated)));
+    // Nights of months without readings, modelled from Homey Energy's month totals
+    if (data.modelled) facts.push(fact('Gemodelleerd uit maandtotalen', nf(0).format(data.modelled)));
     $('batterysize-facts').innerHTML = facts.join('');
+    const modelNote = $('batterysize-model');
+    if (modelNote) modelNote.hidden = !data.modelled;
 
-    const positive = [{ key: 'dark', label: 'Verbruik in het donker', color: css('--grid') }];
+    // The modelled part of a month in a lighter colour; the surplus of such a month is that
+    // month's measured export, so it stays as it is
+    const rows = data.months.map(m => ({ ...m, darkMeasured: m.dark * (1 - (m.modelled || 0)), darkModel: m.dark * (m.modelled || 0) }));
+    const positive = [{ key: 'darkMeasured', label: 'Verbruik in het donker', color: css('--grid') }];
+    if (data.modelled) positive.push({ key: 'darkModel', label: 'Verbruik in het donker (model)', color: lighter(css('--grid')) });
     const negative = [{ key: 'surplus', label: 'Zonne-overschot', color: css('--solar') }];
     const legend = $('batterysize-legend');
     if (legend) legend.innerHTML = [...positive, ...negative].map(x => `<span><i style="background:${x.color}"></i>${x.label}</span>`).join('');
-    renderBars('batterysize-chart', data.months, { positive, negative, unit: 'kWh', digits: 1, bucket: 'month' });
+    renderBars('batterysize-chart', rows, { positive, negative, unit: 'kWh', digits: 1, bucket: 'month' });
 
     const share = v => (typeof v === 'number' ? `${nf(0).format(v * 100)}%` : '–');
     $('batterysize-sizes').innerHTML = `<tr><td>Capaciteit</td><td class="muted">dekt</td><td>per jaar</td></tr>`
@@ -2750,8 +2796,11 @@
       return rows.length ? `<ul class="facts">${rows.join('')}</ul>` : '';
     }
     if (id === 'batterysize') {
-      const b = state.live?.batterysize;
+      const all = state.live?.batterysize;
+      const b = batteryView(all).view;
       if (!b || !b.nights) return '';
+      b.imported = all.imported;
+      b.check = all.check;
       const rows = [
         fact('Nachten', `${nf(0).format(b.nights)} (${b.from} – ${b.to})`),
         fact('Per jaar', `${nf(2).format(b.avgDark)} kWh × 365 = ${nf(0).format(b.yearDark)} kWh`),
@@ -2760,6 +2809,9 @@
       if (typeof b.unlimited === 'number') rows.push(fact('Hoogst haalbaar met zon', `${nf(0).format(b.unlimited * 100)}%`));
       if (b.imported) rows.push(fact('Import', `${b.imported.from} – ${b.imported.to}, donker onder ${nf(1).format(b.imported.darkHeight)}° zon`));
       if (b.check) rows.push(fact('Schatting t.o.v. gemeten', `${nf(0).format(b.check.nights)} nachten: ${nf(1).format(b.check.estimated / b.check.nights)} / ${nf(1).format(b.check.measured / b.check.nights)} kWh${b.check.factor !== 1 ? `, ×${nf(2).format(b.check.factor)}` : ''}`));
+      if (b.modelled && all.fit) {
+        rows.push(fact('Model', `${nf(0).format(all.fit.modelled.length)} maanden uit maandtotalen, gefit op ${nf(0).format(all.fit.months.length)}${typeof all.fit.error === 'number' ? `, afwijking ± ${nf(0).format(all.fit.error * 100)}%` : ''}`));
+      }
       const reasons = { gaps: 'Ontbrekende metingen', stuck: 'Meter bleef hangen', solar: 'Teruglevering zonder zon', zero: 'Bijna geen verbruik', low: 'Veel lager dan normaal', mismatch: 'Vermogen klopt niet met kWh-totaal' };
       for (const [reason, count] of Object.entries(b.skipped || {})) rows.push(fact(reasons[reason] || reason, `${nf(0).format(count)}`));
       return `<ul class="facts">${rows.join('')}</ul>`;

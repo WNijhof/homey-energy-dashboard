@@ -726,6 +726,23 @@
     "Geschat uit meterexport": ["Estimated from meter export", "Geschätzt aus Zählerexport", "Anslått fra måler-eksport", "Uppskattat från mätarexport", "Anslået fra måler-eksport", "Stimato dall'esportazione del contatore", "Estimé à partir de l'export du compteur", "Estimado a partir da exportação do contador", "Estimado a partir de la exportación del contador"],
     "Schatting t.o.v. gemeten": ["Estimate vs measured", "Schätzung vs. gemessen", "Anslag mot målt", "Uppskattning mot uppmätt", "Skøn mod målt", "Stima vs misurato", "Estimation vs mesuré", "Estimativa vs medido", "Estimación vs medido"],
     "Import": ["Import", "Import", "Import", "Import", "Import", "Importazione", "Import", "Importação", "Importación"],
+    "Gemeten": ["Measured", "Gemessen", "Målt", "Uppmätt", "Målt", "Misurato", "Mesuré", "Medido", "Medido"],
+    "+ export": ["+ export", "+ Export", "+ eksport", "+ export", "+ eksport", "+ esportazione", "+ export", "+ exportação", "+ exportación"],
+    "+ model": ["+ model", "+ Modell", "+ modell", "+ modell", "+ model", "+ modello", "+ modèle", "+ modelo", "+ modelo"],
+    "Verbruik in het donker (model)": ["Use in the dark (model)", "Verbrauch im Dunkeln (Modell)", "Forbruk i mørket (modell)", "Förbrukning i mörker (modell)", "Forbrug i mørke (model)", "Consumo al buio (modello)", "Consommation dans le noir (modèle)", "Consumo no escuro (modelo)", "Consumo a oscuras (modelo)"],
+    "Gemodelleerd uit maandtotalen": ["Modelled from month totals", "Aus Monatssummen modelliert", "Modellert fra månedstotaler", "Modellerat från månadstotaler", "Modelleret ud fra månedstotaler", "Modellato dai totali mensili", "Modélisé à partir des totaux mensuels", "Modelado a partir dos totais mensais", "Modelado a partir de los totales mensuales"],
+    "Model": ["Model", "Modell", "Modell", "Modell", "Model", "Modello", "Modèle", "Modelo", "Modelo"],
+    "Lichtere balken zijn gemodelleerd uit de maandtotalen van Homey Energy, niet gemeten. Kies Gemeten of + export om ze weg te laten.": [
+      "Lighter bars are modelled from Homey Energy's month totals, not measured. Choose Measured or + export to leave them out.",
+      "Hellere Balken sind aus den Monatssummen von Homey Energy modelliert, nicht gemessen. Wähle Gemessen oder + Export, um sie wegzulassen.",
+      "Lysere stolper er modellert fra månedstotalene i Homey Energy, ikke målt. Velg Målt eller + eksport for å utelate dem.",
+      "Ljusare staplar är modellerade från månadstotalerna i Homey Energy, inte uppmätta. Välj Uppmätt eller + export för att utelämna dem.",
+      "Lysere søjler er modelleret ud fra månedstotalerne i Homey Energy, ikke målt. Vælg Målt eller + eksport for at udelade dem.",
+      "Le barre più chiare sono modellate dai totali mensili di Homey Energy, non misurate. Scegli Misurato o + esportazione per escluderle.",
+      "Les barres plus claires sont modélisées à partir des totaux mensuels de Homey Energy, pas mesurées. Choisis Mesuré ou + export pour les exclure.",
+      "As barras mais claras são modeladas a partir dos totais mensais do Homey Energy, não medidas. Escolha Medido ou + exportação para as excluir.",
+      "Las barras más claras están modeladas a partir de los totales mensuales de Homey Energy, no medidas. Elige Medido o + exportación para excluirlas."
+    ],
     "Ontbrekende metingen": [
       "Missing readings",
       "Fehlende Messwerte",
@@ -1031,6 +1048,8 @@
   const PATTERNS = [
     [/^(.+) – (.+), donker onder (.+)° zon$/, ["$1 – $2, dark below $3° sun", "$1 – $2, dunkel unter $3° Sonne", "$1 – $2, mørkt under $3° sol", "$1 – $2, mörkt under $3° sol", "$1 – $2, mørkt under $3° sol", "$1 – $2, buio sotto $3° di sole", "$1 – $2, nuit sous $3° de soleil", "$1 – $2, escuro abaixo de $3° de sol", "$1 – $2, oscuro por debajo de $3° de sol"]],
     [/^(.+) nachten: (.+) \/ (.+) kWh(.*)$/, ["$1 nights: $2 / $3 kWh$4", "$1 Nächte: $2 / $3 kWh$4", "$1 netter: $2 / $3 kWh$4", "$1 nätter: $2 / $3 kWh$4", "$1 nætter: $2 / $3 kWh$4", "$1 notti: $2 / $3 kWh$4", "$1 nuits : $2 / $3 kWh$4", "$1 noites: $2 / $3 kWh$4", "$1 noches: $2 / $3 kWh$4"]],
+    [/^(.+) maanden uit maandtotalen, gefit op (\d+), afwijking ± (.+)%$/, ["$1 months from month totals, fitted on $2, off by ± $3%", "$1 Monate aus Monatssummen, angepasst an $2, Abweichung ± $3 %", "$1 måneder fra månedstotaler, tilpasset $2, avvik ± $3 %", "$1 månader från månadstotaler, anpassat på $2, avvikelse ± $3 %", "$1 måneder fra månedstotaler, tilpasset $2, afvigelse ± $3 %", "$1 mesi dai totali mensili, adattato su $2, scarto ± $3%", "$1 mois à partir des totaux mensuels, ajusté sur $2, écart ± $3 %", "$1 meses a partir dos totais mensais, ajustado a $2, desvio ± $3%", "$1 meses a partir de los totales mensuales, ajustado a $2, desviación ± $3 %"]],
+    [/^(.+) maanden uit maandtotalen, gefit op (\d+)$/, ["$1 months from month totals, fitted on $2", "$1 Monate aus Monatssummen, angepasst an $2", "$1 måneder fra månedstotaler, tilpasset $2", "$1 månader från månadstotaler, anpassat på $2", "$1 måneder fra månedstotaler, tilpasset $2", "$1 mesi dai totali mensili, adattato su $2", "$1 mois à partir des totaux mensuels, ajusté sur $2", "$1 meses a partir dos totais mensais, ajustado a $2", "$1 meses a partir de los totales mensuales, ajustado a $2"]],
     [/^(.+) nachten, wordt aangevuld$/, ["$1 nights, being filled in", "$1 Nächte, wird ergänzt", "$1 netter, fylles inn", "$1 nätter, fylls på", "$1 nætter, udfyldes", "$1 notti, in completamento", "$1 nuits, en cours de complétion", "$1 noites, a completar", "$1 noches, completándose"]],
     [/^(.+) nachten$/, ["$1 nights", "$1 Nächte", "$1 netter", "$1 nätter", "$1 nætter", "$1 notti", "$1 nuits", "$1 noites", "$1 noches"]],
     [/^vast (.+)$/, ["fixed $1", "fest $1", "fast $1", "fast $1", "fast $1", "fisso $1", "fixe $1", "fixo $1", "fijo $1"]],

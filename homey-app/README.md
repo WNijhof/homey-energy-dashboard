@@ -260,6 +260,14 @@ De gegevens komen uit de dagrapporten van Homey Energy: daarin staat per 5 minut
 
 **Een jaar terug met een HomeWizard-export.** Homey bewaart het verbruik per 5 minuten maar een maand. Heb je een HomeWizard P1-meter met Energy+, exporteer dan in de HomeWizard Energy-app een jaar per 15 minuten (Instellingen → Grafieken → elektriciteit → Grafiekgegevens exporteren, interval 15 minuten, periode tot 365 dagen) en kies dat bestand in de instellingen van de app bij *Geschiedenis voor Batterij kiezen*. De export bevat alleen het net, niet wat de panelen leverden. Daarom telt een kwartier als donker als de zon lager staat dan een hoek die de app ijkt op de nachten die Homey zelf meet, en er niets wordt teruggeleverd. Gemeten nachten gaan altijd voor. Overlappen de export en de metingen een week of meer, dan worden de geschatte nachten gecorrigeerd met de gemeten verhouding; bij de (i) staat hoe groot het verschil was. Het blok toont hoeveel nachten geschat zijn.
 
+**Model voor maanden zonder metingen.** Ontbreken er van het afgelopen jaar maanden (bijvoorbeeld de winter, omdat je HomeWizard-export pas in april begint), dan vult de app die aan met een model op basis van de maandtotalen van Homey Energy:
+
+- *Zonne-overschot per dag*: de teruglevering van die maand gedeeld door het aantal dagen (gemeten, maar zonder verschil tussen zonnige en grijze dagen).
+- *Verbruik in het donker*: het dagverbruik van die maand × het deel dat in het donker valt. Dat deel hangt af van het aantal donkere uren, die de app berekent uit de zonnestand en de zonneopbrengst van die maand. Het verband wordt gefit op de maanden waarvan wel nachten bekend zijn; bij de (i) staat hoe ver het model op die maanden afweek.
+- Gemodelleerde maanden staan als lichtere balken in de grafiek, en het blok noemt hoeveel nachten gemodelleerd zijn. Gemodelleerde nachten hebben geen piekvermogen.
+
+Bovenaan het blok kies je per scherm wat meetelt: **Gemeten** (alleen nachten die Homey mat), **+ export** (ook de nachten uit je meterexport) of **+ model** (ook de gemodelleerde maanden). Een keuze die niets toevoegt, wordt niet getoond.
+
 Het vermogen is een gemiddelde per 5 minuten (of per uur uit Insights), dus korte pieken zoals een waterkoker vallen weg: kies het vermogen van een batterij liever wat ruimer.
 
 ## Hoe de doucheminuten berekend worden

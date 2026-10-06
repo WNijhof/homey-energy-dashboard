@@ -1551,18 +1551,57 @@
     if (typeof ((_b2 = live == null ? void 0 : live.water) == null ? void 0 : _b2.flow) === "number") parts.push("nu ".concat(nf(1).format(live.water.flow), " L/min"));
     setText("water-total", parts.join(" · "));
   }
-  function renderBatterySize(data) {
+  const BATTERY_VIEW_KEY = "energy-dashboard-battery-view";
+  const BATTERY_VIEWS = ["measured", "export", "model"];
+  function batteryView(data) {
+    if (!data) return { key: null, view: null, views: {} };
+    const views = data.views || { measured: data };
+    let chosen = "model";
+    try {
+      chosen = localStorage.getItem(BATTERY_VIEW_KEY) || "model";
+    } catch {
+    }
+    for (let i = Math.max(0, BATTERY_VIEWS.indexOf(chosen)); i >= 0; i--) {
+      if (views[BATTERY_VIEWS[i]]) return { key: BATTERY_VIEWS[i], view: views[BATTERY_VIEWS[i]], views };
+    }
+    const first = BATTERY_VIEWS.find((k) => views[k]);
+    return { key: first || null, view: first ? views[first] : null, views };
+  }
+  const lighter = (color) => /^#[0-9a-f]{6}$/i.test(color) ? "".concat(color, "66") : color;
+  function renderBatterySize(input) {
     var _a2, _b2;
     if (!$("batterysize-dark")) return;
+    const { key, view: data, views } = batteryView(input);
+    const nav = $("batterysize-view");
+    if (nav) {
+      const available = BATTERY_VIEWS.filter((k) => views[k]);
+      nav.hidden = available.length < 2;
+      nav.querySelectorAll("button").forEach((b) => {
+        b.hidden = !views[b.dataset.view];
+        b.classList.toggle("active", b.dataset.view === key);
+      });
+      nav.onclick = (event) => {
+        var _a3;
+        const chosen = (_a3 = event.target.closest("button[data-view]")) == null ? void 0 : _a3.dataset.view;
+        if (!chosen) return;
+        try {
+          localStorage.setItem(BATTERY_VIEW_KEY, chosen);
+        } catch {
+        }
+        renderBatterySize(input);
+        relayout();
+      };
+    }
     const ok = Boolean(data && data.nights > 0);
     toggleEmpty("batterysize", ok);
     if (!ok) {
       const empty = $("batterysize-empty");
       if (empty) {
-        empty.textContent = data === void 0 ? "Verschijnt na het opslaan van de indeling" : !data || data.building ? "Wordt berekend uit de metingen in Homey…" : data.skippedCount ? "De nachten tot nu toe hadden ontbrekende of onlogische metingen. Elke nacht komt er een bij." : "Nog geen nachten gevonden met metingen per uur of fijner. Elke nacht komt er een bij.";
+        empty.textContent = input === void 0 ? "Verschijnt na het opslaan van de indeling" : !input || input.building ? "Wordt berekend uit de metingen in Homey…" : (data == null ? void 0 : data.skippedCount) ? "De nachten tot nu toe hadden ontbrekende of onlogische metingen. Elke nacht komt er een bij." : "Nog geen nachten gevonden met metingen per uur of fijner. Elke nacht komt er een bij.";
       }
       return;
     }
+    data.building = input.building;
     setText("batterysize-basis", data.building ? "".concat(nf(0).format(data.nights), " nachten, wordt aangevuld") : "".concat(nf(0).format(data.nights), " nachten"));
     setText("batterysize-dark", "".concat(nf(1).format(data.avgDark), " kWh"));
     const fact2 = (label, value) => "<li><span>".concat(label, "</span><strong>").concat(value, "</strong></li>");
@@ -1575,12 +1614,17 @@
     if (typeof ((_b2 = data.advice) == null ? void 0 : _b2.watts) === "number") facts.push(fact2("Vermogen voor 90% van dat verbruik", "± ".concat(formatPower(data.advice.watts))));
     if (data.skippedCount) facts.push(fact2("Overgeslagen nachten", nf(0).format(data.skippedCount)));
     if (data.estimated) facts.push(fact2("Geschat uit meterexport", nf(0).format(data.estimated)));
+    if (data.modelled) facts.push(fact2("Gemodelleerd uit maandtotalen", nf(0).format(data.modelled)));
     $("batterysize-facts").innerHTML = facts.join("");
-    const positive = [{ key: "dark", label: "Verbruik in het donker", color: css("--grid") }];
+    const modelNote = $("batterysize-model");
+    if (modelNote) modelNote.hidden = !data.modelled;
+    const rows = data.months.map((m) => ({ ...m, darkMeasured: m.dark * (1 - (m.modelled || 0)), darkModel: m.dark * (m.modelled || 0) }));
+    const positive = [{ key: "darkMeasured", label: "Verbruik in het donker", color: css("--grid") }];
+    if (data.modelled) positive.push({ key: "darkModel", label: "Verbruik in het donker (model)", color: lighter(css("--grid")) });
     const negative = [{ key: "surplus", label: "Zonne-overschot", color: css("--solar") }];
     const legend = $("batterysize-legend");
     if (legend) legend.innerHTML = [...positive, ...negative].map((x) => '<span><i style="background:'.concat(x.color, '"></i>').concat(x.label, "</span>")).join("");
-    renderBars("batterysize-chart", data.months, { positive, negative, unit: "kWh", digits: 1, bucket: "month" });
+    renderBars("batterysize-chart", rows, { positive, negative, unit: "kWh", digits: 1, bucket: "month" });
     const share = (v) => typeof v === "number" ? "".concat(nf(0).format(v * 100), "%") : "–";
     $("batterysize-sizes").innerHTML = '<tr><td>Capaciteit</td><td class="muted">dekt</td><td>per jaar</td></tr>' + data.sizes.map((s) => "<tr><td>".concat(nf(1).format(s.kWh), ' kWh</td><td class="muted">').concat(share(s.share), "</td><td>").concat(typeof s.perYear === "number" ? "".concat(nf(0).format(s.perYear), " kWh") : "–", "</td></tr>")).join("");
     $("batterysize-powers").innerHTML = "<tr><td>Vermogen</td><td>dekt</td></tr>" + data.powers.map((p) => "<tr><td>".concat(formatPower(p.watts), "</td><td>").concat(share(p.share), "</td></tr>")).join("");
@@ -2284,8 +2328,11 @@
       return rows.length ? '<ul class="facts">'.concat(rows.join(""), "</ul>") : "";
     }
     if (id === "batterysize") {
-      const b = (_g = state.live) == null ? void 0 : _g.batterysize;
+      const all = (_g = state.live) == null ? void 0 : _g.batterysize;
+      const b = batteryView(all).view;
       if (!b || !b.nights) return "";
+      b.imported = all.imported;
+      b.check = all.check;
       const rows = [
         fact("Nachten", "".concat(nf(0).format(b.nights), " (").concat(b.from, " – ").concat(b.to, ")")),
         fact("Per jaar", "".concat(nf(2).format(b.avgDark), " kWh × 365 = ").concat(nf(0).format(b.yearDark), " kWh")),
@@ -2294,6 +2341,9 @@
       if (typeof b.unlimited === "number") rows.push(fact("Hoogst haalbaar met zon", "".concat(nf(0).format(b.unlimited * 100), "%")));
       if (b.imported) rows.push(fact("Import", "".concat(b.imported.from, " – ").concat(b.imported.to, ", donker onder ").concat(nf(1).format(b.imported.darkHeight), "° zon")));
       if (b.check) rows.push(fact("Schatting t.o.v. gemeten", "".concat(nf(0).format(b.check.nights), " nachten: ").concat(nf(1).format(b.check.estimated / b.check.nights), " / ").concat(nf(1).format(b.check.measured / b.check.nights), " kWh").concat(b.check.factor !== 1 ? ", ×".concat(nf(2).format(b.check.factor)) : "")));
+      if (b.modelled && all.fit) {
+        rows.push(fact("Model", "".concat(nf(0).format(all.fit.modelled.length), " maanden uit maandtotalen, gefit op ").concat(nf(0).format(all.fit.months.length)).concat(typeof all.fit.error === "number" ? ", afwijking ± ".concat(nf(0).format(all.fit.error * 100), "%") : "")));
+      }
       const reasons = { gaps: "Ontbrekende metingen", stuck: "Meter bleef hangen", solar: "Teruglevering zonder zon", zero: "Bijna geen verbruik", low: "Veel lager dan normaal", mismatch: "Vermogen klopt niet met kWh-totaal" };
       for (const [reason, count] of Object.entries(b.skipped || {})) rows.push(fact(reasons[reason] || reason, "".concat(nf(0).format(count))));
       return '<ul class="facts">'.concat(rows.join(""), "</ul>");

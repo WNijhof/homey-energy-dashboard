@@ -2401,6 +2401,8 @@ function batteryAdvice(log, now = new Date()) {
       nights: list.length,
       dark: list.length ? sum(list, n => n.dark) / list.length : 0,
       surplus: sunny.length ? sum(sunny, n => n.surplus) / sunny.length : 0,
+      // Share of the nights that is modelled, for a lighter bar
+      modelled: list.length ? list.filter(n => n.modelled).length / list.length : 0,
     });
   }
 
@@ -2408,6 +2410,8 @@ function batteryAdvice(log, now = new Date()) {
     nights: nights.length,
     // Nights from an imported meter export, with the dark hours from the height of the sun
     estimated: nights.filter(n => n.estimated).length,
+    // Nights of months without readings, from Homey Energy's month totals (modelNights)
+    modelled: nights.filter(n => n.modelled).length,
     skipped,
     skippedCount,
     from: nights[0].date,
@@ -2417,7 +2421,7 @@ function batteryAdvice(log, now = new Date()) {
     avgDark,
     avgHours: sum(nights, n => n.hours) / nights.length,
     yearDark: avgDark * 365,
-    peak: Math.max(...nights.map(n => n.peak || 0)),
+    peak: Math.max(...nights.map(n => n.peak || 0)) || null,
     advice: { kWh: adviceKWh, watts: adviceW },
     unlimited,
     sizes,
@@ -2599,7 +2603,172 @@ function mergeNights(log, imported) {
   return { nights: merged, check: overlap.length ? { nights: overlap.length, measured: measuredSum, estimated: importedSum, factor } : null };
 }
 
+// ---------- Modelled nights for months without readings ----------
+
+// The totals of a Homey Energy month report that the model needs (kWh for the whole month), or
+// null without them. Consumption is imported + generated - exported when Homey leaves it out.
+function monthTotals(report) {
+  const el = report?.electricity;
+  if (!el) return null;
+  const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const imported = num(el.importedPeriod);
+  const exported = num(el.exportedPeriod);
+  const generated = num(el.generatedPeriod);
+  let consumed = num(el.consumedPeriod);
+  if (consumed === null && imported !== null && exported !== null) consumed = imported + (generated || 0) - exported;
+  if (imported === null || exported === null || consumed === null) return null;
+  return { imported, exported, generated, consumed };
+}
+
+// The months (YYYY-MM) of the last year that have no night yet on most of their days: the ones
+// to model. The month running now is never modelled.
+function monthsToModel(nights, now = new Date()) {
+  const out = [];
+  for (let k = 12; k >= 1; k--) {
+    const first = new Date(now.getFullYear(), now.getMonth() - k, 1);
+    const key = localDate(first).slice(0, 7);
+    const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    const have = Object.entries(nights).filter(([date, n]) => date.startsWith(key) && n && !n.skipped && !n.missing && typeof n.dark === 'number').length;
+    if (have < days / 2) out.push(key);
+  }
+  return out;
+}
+
+// Hours of a night (noon to noon) that the panels give less than DARK_SOLAR_W, when they make
+// `generated` kWh a day on average: their power follows the height of the sun, and the clouds
+// differ per day, so the hours are averaged over dull to bright days around that average.
+// Without solar the whole night counts.
+const CLEARNESS = [0.25, 0.6, 1, 1.4, 1.75];
+function modelDarkHours(date, place, generated) {
+  const step = 10 * 60 * 1000;
+  const hours = step / 3600000;
+  const start = new Date(`${date}T12:00:00`).getTime();
+  const sines = [];
+  for (let t = start; t < start + DAY_MS; t += step) {
+    sines.push(Math.max(0, Math.sin(sunHeight(place.lat, place.lon, new Date(t + step / 2)) * Math.PI / 180)));
+  }
+  const area = sines.reduce((a, b) => a + b, 0) * hours;
+  if (!(generated > 0) || !area) return 24;
+  const scale = generated * 1000 / area;
+  const dark = CLEARNESS.map(q => sines.filter(v => scale * q * v < DARK_SOLAR_W).length * hours);
+  return dark.reduce((a, b) => a + b, 0) / dark.length;
+}
+
+const MODEL_MIN_NIGHTS = 15; // nights a month needs to fit the model on
+
+// Nights for the months of the last year without readings, from Homey Energy's month totals:
+// the surplus of a day is that month's export per day (measured), the use while dark is the
+// use per day × the share of it that falls in the dark, which follows the dark hours (from the
+// sun and that month's solar yield) along a line fitted on the months that do have nights. Every modelled night carries `modelled: true` and no peak.
+// `monthReports` maps YYYY-MM to monthTotals(). Returns { nights, fit } (fit null without
+// enough months to fit on).
+function modelNights(nights, monthReports, { place, now = new Date() } = {}) {
+  if (!place) return { nights: {}, fit: null };
+  const valid = Object.entries(nights || {}).filter(([, n]) => n && !n.skipped && !n.missing && typeof n.dark === 'number' && !n.modelled);
+  // The factor per month with enough nights: average dark use / (use per day × dark share)
+  const fits = [];
+  const byMonth = new Map();
+  for (const [date, n] of valid) {
+    const key = date.slice(0, 7);
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key).push(n);
+  }
+  for (const [key, list] of byMonth) {
+    const totals = monthReports[key];
+    if (!totals || list.length < MODEL_MIN_NIGHTS) continue;
+    const days = new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)), 0).getDate();
+    const perDay = totals.consumed / days;
+    const dark = list.reduce((s, n) => s + n.dark, 0) / list.length;
+    // The dark hours by the same model as for the months to fill, so the factor matches it
+    const hours = modelDarkHours(`${key}-15`, place, (totals.generated || 0) / days);
+    if (perDay > 0 && hours > 0) fits.push({ month: key, share: dark / perDay, dark, perDay, hours });
+  }
+  if (!fits.length) return { nights: {}, fit: null };
+  // The share of a day's use that falls in the dark, against the dark hours: a straight line,
+  // because the longer nights of winter take in the evening peak (a ratio when the months are
+  // too alike to draw a line through)
+  const line = list => {
+    const n = list.length;
+    const mx = list.reduce((s, f) => s + f.hours, 0) / n;
+    const my = list.reduce((s, f) => s + f.share, 0) / n;
+    const sxx = list.reduce((s, f) => s + (f.hours - mx) ** 2, 0);
+    const sxy = list.reduce((s, f) => s + (f.hours - mx) * (f.share - my), 0);
+    if (n < 3 || sxx < 4) {
+      const ratio = list.reduce((s, f) => s + f.share / f.hours, 0) / n;
+      return hours => ratio * hours;
+    }
+    const slope = sxy / sxx;
+    return hours => Math.min(1, Math.max(0, my + slope * (hours - mx)));
+  };
+  const shareAt = line(fits);
+  // How far off the model is on the months it was fitted on, each left out in turn
+  const errors = fits.length > 1 ? fits.map(f => Math.abs(line(fits.filter(g => g !== f))(f.hours) * f.perDay - f.dark) / f.dark) : [];
+  const error = errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : null;
+
+  // The shape of the use over the power bands, from the real nights, for the power advice
+  const shape = new Array(NIGHT_BINS).fill(0);
+  for (const [, n] of valid) (n.bins || []).forEach((v, i) => { shape[i] += v; });
+  const shapeTotal = shape.reduce((a, b) => a + b, 0);
+
+  const out = {};
+  const modelled = [];
+  for (const key of monthsToModel(nights, now)) {
+    const totals = monthReports[key];
+    if (!totals) continue;
+    const year = Number(key.slice(0, 4));
+    const month = Number(key.slice(5, 7));
+    const days = new Date(year, month, 0).getDate();
+    const perDay = totals.consumed / days;
+    const surplus = Math.max(0, totals.exported / days);
+    for (let d = 1; d <= days; d++) {
+      const date = `${key}-${String(d).padStart(2, '0')}`;
+      const known = nights[date];
+      if (known && !known.missing && !known.skipped) continue;
+      const hours = modelDarkHours(date, place, (totals.generated || 0) / days);
+      const dark = shareAt(hours) * perDay;
+      out[date] = {
+        dark: round(dark, 3),
+        hours: round(hours, 2),
+        peak: null,
+        bins: shapeTotal ? shape.map(v => round(v / shapeTotal * dark, 3)) : [],
+        surplus: round(surplus, 3),
+        step: null,
+        modelled: true,
+      };
+    }
+    modelled.push(key);
+  }
+  return { nights: out, fit: { months: fits.map(f => f.month), error, modelled } };
+}
+
+// The battery size block in three views, so the screen can leave estimates out: `measured`
+// (nights Homey measured), `export` (plus nights from an imported meter export, dark by the
+// sun) and `model` (plus modelled nights for months without readings, from Homey Energy's
+// month totals). A view that adds nothing to the one before it is null.
+function batteryViews(log, imported, monthReports, { place = null, now = new Date() } = {}) {
+  const measured = batteryAdvice(log, now);
+  const merged = mergeNights(log, imported || {});
+  const withExport = imported && Object.keys(imported).length ? batteryAdvice(merged.nights, now) : null;
+  const base = pruneNights(merged.nights, now);
+  const { nights: modelled, fit } = modelNights(base, monthReports || {}, { place, now });
+  const withModel = Object.keys(modelled).length ? batteryAdvice({ ...base, ...modelled }, now) : null;
+  return { views: { measured, export: withExport, model: withModel }, check: merged.check, fit };
+}
+
+// The months (YYYY-MM) of the last year whose Homey Energy totals the model may need: the
+// completed ones; a month's totals do not change once it is over
+function lastYearMonths(now = new Date()) {
+  const out = [];
+  for (let k = 12; k >= 1; k--) out.push(localDate(new Date(now.getFullYear(), now.getMonth() - k, 1)).slice(0, 7));
+  return out;
+}
+
 module.exports = {
+  batteryViews,
+  lastYearMonths,
+  monthTotals,
+  monthsToModel,
+  modelNights,
   importMeterExport,
   UploadParts,
   connectionMaxW,

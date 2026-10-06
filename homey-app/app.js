@@ -7,7 +7,7 @@ const {
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
   expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
-  mergeNights, connectionMaxW, importMeterExport, UploadParts,
+  mergeNights, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -523,13 +523,36 @@ class EnergyDashboardApp extends Homey.App {
         .catch(err => this.error(`Nights: ${err.message}`))
         .finally(() => { this.nightsPending = null; });
     }
-    const building = Boolean(this.nightsPending);
-    // Nights from an imported meter export fill in what Homey did not measure
+    // Homey Energy's month totals for the model, read once a day for months not kept yet
+    const months = this.homey.settings.get('monthTotals') || {};
+    if (lastYearMonths().some(key => !(key in months)) && !this.monthsPending && Date.now() - (this.monthsTried || 0) > NIGHTS_RETRY) {
+      this.monthsTried = Date.now();
+      this.monthsPending = this.readMonthTotals(months)
+        .catch(err => this.error(`Month totals: ${err.message}`))
+        .finally(() => { this.monthsPending = null; });
+    }
     const imported = this.homey.settings.get('nightImport');
-    const merged = mergeNights(log, imported?.nights || {});
-    const advice = batteryAdvice(merged.nights);
-    const extra = { building, check: merged.check, imported: imported ? { from: imported.from, to: imported.to, darkHeight: imported.darkHeight } : null };
-    return advice ? { ...advice, ...extra } : { nights: 0, ...extra };
+    const { views, check, fit } = batteryViews(log, imported?.nights, months, { place: this.getPlace() });
+    return {
+      views,
+      building: Boolean(this.nightsPending || this.monthsPending),
+      check,
+      fit,
+      imported: imported ? { from: imported.from, to: imported.to, darkHeight: imported.darkHeight } : null,
+    };
+  }
+
+  // The totals of the completed months of the last year from Homey Energy's month reports; a
+  // month without a report is kept as null, so it is not asked for again
+  async readMonthTotals(known) {
+    const months = { ...known };
+    const wanted = lastYearMonths();
+    for (const key of wanted) {
+      if (key in months) continue;
+      months[key] = monthTotals(await this.energyReport({ kind: 'month', yearMonth: key }).catch(() => null));
+    }
+    for (const key of Object.keys(months)) if (!wanted.includes(key)) delete months[key];
+    this.homey.settings.set('monthTotals', months);
   }
 
   // Where the Homey is, to know when the sun is down

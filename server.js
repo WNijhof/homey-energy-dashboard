@@ -8,6 +8,7 @@ const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, mergeNights, importMeterExport, UploadParts, connectionMaxW,
+  batteryViews, lastYearMonths, monthTotals,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
@@ -117,6 +118,7 @@ let nightsTried = 0;
 let nightsPending = null;
 // A meter export imported from the settings preview (see importMeterExport)
 let nightImport = null;
+let monthTotalsCache = {};
 const nightUpload = new UploadParts();
 const pinGuard = new PinGuard();
 
@@ -275,10 +277,22 @@ function getBatterySize(found) {
       .catch(err => console.error(`Nachten: ${err.message}`))
       .finally(() => { nightsPending = null; });
   }
-  const merged = mergeNights(nightLog.nights, nightImport?.nights || {});
-  const advice = batteryAdvice(merged.nights);
-  const extra = { building: Boolean(nightsPending), check: merged.check, imported: nightImport ? { from: nightImport.from, to: nightImport.to, darkHeight: nightImport.darkHeight } : null };
-  return advice ? { ...advice, ...extra } : { nights: 0, ...extra };
+  if (lastYearMonths().some(key => !(key in monthTotalsCache)) && !nightsPending) {
+    nightsPending = (async () => {
+      for (const key of lastYearMonths()) {
+        if (!(key in monthTotalsCache)) monthTotalsCache[key] = monthTotals(await client.energyReport({ kind: 'month', yearMonth: key }).catch(() => null));
+      }
+    })().finally(() => { nightsPending = null; });
+  }
+  const place = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null);
+  const { views, check, fit } = batteryViews(nightLog.nights, nightImport?.nights, monthTotalsCache, { place });
+  return {
+    views,
+    building: Boolean(nightsPending),
+    check,
+    fit,
+    imported: nightImport ? { from: nightImport.from, to: nightImport.to, darkHeight: nightImport.darkHeight } : null,
+  };
 }
 
 async function getHistory(period, { light = false } = {}) {
