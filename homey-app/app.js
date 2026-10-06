@@ -132,6 +132,11 @@ class EnergyDashboardApp extends Homey.App {
     this.homey.setInterval(() => this.updateGroupTokens().catch(err => this.error(`Group tags: ${err.message}`)), 30 * 1000);
     this.homey.setTimeout(() => this.updateGroupTokens().catch(err => this.error(`Group tags: ${err.message}`)), 10 * 1000);
 
+    // The log of nights for the battery size block grows also when no screen is open: Homey
+    // Energy keeps the day reports it is read from for only a month
+    this.homey.setInterval(() => this.keepNights().catch(err => this.error(`Nights: ${err.message}`)), 6 * 3600 * 1000);
+    this.homey.setTimeout(() => this.keepNights().catch(err => this.error(`Nights: ${err.message}`)), 2 * 60 * 1000);
+
     // New settings can change the port, the devices and the prices
     // Only the settings themselves; the app's own logs are kept in other keys
     this.homey.settings.on('set', key => {
@@ -522,6 +527,15 @@ class EnergyDashboardApp extends Homey.App {
     const building = Boolean(this.nightsPending);
     const advice = batteryAdvice(log);
     return advice ? { ...advice, building } : { nights: 0, building };
+  }
+
+  // Fills in the log of nights when the battery size block is in any layout
+  async keepNights() {
+    const cfg = this.getConfig();
+    const layouts = [cfg.layout, ...Object.values(cfg.layouts || {})].filter(Array.isArray);
+    if (!layouts.some(layout => layout.some(b => b && b.id === 'batterysize'))) return;
+    const devices = await this.getDevices();
+    this.getBatterySize(discover(devices, cfg.devices), cfg);
   }
 
   // ---------- Warnings ----------
