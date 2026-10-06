@@ -2312,6 +2312,7 @@ function batteryAdvice(log, now = new Date()) {
 }
 
 module.exports = {
+  meterCapabilities,
   nightRecords,
   collectNights,
   pruneNights,

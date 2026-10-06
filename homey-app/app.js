@@ -6,7 +6,7 @@ const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
   expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy,
-  collectNights, pruneNights, batteryAdvice, nightSource, lastNight,
+  collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -667,9 +667,14 @@ class EnergyDashboardApp extends Homey.App {
   // lengths, kinds of values; no values) of a Homey Energy day report of 100 days ago.
   async describeHistory(found) {
     const insights = {};
+    // The power, or else the kWh counter the power is calculated from
+    const logs = await this.getLogIds().catch(() => new Set());
+    const logged = cap => found.p1 && logs.has(`homey:device:${found.p1.id}:${cap}`);
+    const capability = ['measure_power', ...meterCapabilities(found.p1, 'import')].find(logged) || 'measure_power';
+    insights.capability = capability;
     if (found.p1) {
       for (const resolution of ['last24Hours', 'last7Days', 'last14Days', 'last31Days', 'last3Months', 'last6Months', 'lastYear', 'last2Years']) {
-        const entries = await this.getEntries(found.p1.id, 'measure_power', resolution).catch(err => ({ error: err.message }));
+        const entries = await this.getEntries(found.p1.id, capability, resolution).catch(err => ({ error: err.message }));
         if (!Array.isArray(entries)) { insights[resolution] = entries; continue; }
         const gaps = entries.slice(1).map((e, i) => e.t - entries[i].t).sort((a, b) => a - b);
         insights[resolution] = {
@@ -681,7 +686,11 @@ class EnergyDashboardApp extends Homey.App {
     }
     const day = new Date(Date.now() - 100 * 24 * 3600 * 1000);
     const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-    const report = await this.energyReport({ kind: 'day', date }).catch(err => ({ error: err.message }));
+    const yesterday = new Date(Date.now() - 24 * 3600 * 1000);
+    const yesterdayDate = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const fetchReport = d => this.energyReport({ kind: 'day', date: d }).catch(err => ({ failed: err.message || String(err) }));
+    const report = await fetchReport(date);
+    const recent = await fetchReport(yesterdayDate);
     // Keys that are ids are shown once, as <id>
     const shape = (v, depth = 0) => {
       if (Array.isArray(v)) return { array: v.length, first: v.length ? shape(v[0], depth + 1) : null };
@@ -700,7 +709,21 @@ class EnergyDashboardApp extends Homey.App {
       }
       return v === null ? 'null' : typeof v;
     };
-    return { insights, dayReport: { date, shape: shape(report) } };
+    // An error message is shown as it is
+    const describe = r => (r && r.failed ? { failed: r.failed } : shape(r));
+    // What Homey's energy manager offers, to find other sources of history
+    let energyMethods = null;
+    try {
+      const energy = (await this.getApi()).energy;
+      const names = new Set();
+      for (let o = energy; o && o !== Object.prototype; o = Object.getPrototypeOf(o)) {
+        for (const name of Object.getOwnPropertyNames(o)) if (typeof energy[name] === 'function' && /^(get|fetch)/.test(name)) names.add(name);
+      }
+      energyMethods = [...names].sort();
+    } catch (err) {
+      energyMethods = { failed: err.message };
+    }
+    return { insights, energyMethods, dayReport: { date, shape: describe(report) }, yesterdayReport: { date: yesterdayDate, shape: describe(recent) } };
   }
 
   // The report for "Share diagnosis" in the settings: anonymous, with the date it was made, and
