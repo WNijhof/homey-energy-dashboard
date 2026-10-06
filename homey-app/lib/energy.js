@@ -2476,7 +2476,9 @@ function parseMeterCsv(text) {
     const imported = sumOf(cells, importCols);
     if (!t || imported === null) continue;
     const exported = exportCols.length ? sumOf(cells, exportCols) : 0;
-    const maxW = maxCols.length ? sumOf(cells, maxCols) : null;
+    // Highest power per phase: the phases that have a value (one phase leaves L2 and L3 empty)
+    const phaseMax = maxCols.map(i => number(cells[i])).filter(v => v !== null);
+    const maxW = phaseMax.length ? phaseMax.reduce((a, b) => a + b, 0) : null;
     rows.push({ t, imported, exported: exported === null ? null : exported, maxW });
   }
   rows.sort((a, b) => a.t - b.t);
