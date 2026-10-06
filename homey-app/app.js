@@ -614,7 +614,11 @@ class EnergyDashboardApp extends Homey.App {
       // Where Homey keeps "Exclude from Energy" is not known yet: the energy settings of every
       // metered device, to find it
       metered: devices.filter(d => (d.capabilities || []).some(c => /^(measure_power|meter_power)/.test(c))).slice(0, 60)
-        .map(d => ({ name: label(d, 'device'), app: d.driverId, class: d.virtualClass || d.class, energyUser: d.energy, energySettings: d.energySettings })),
+        .map(d => ({ name: label(d, 'device'), app: d.driverId, class: d.virtualClass || d.class, capabilities: d.capabilities, energyUser: d.energy, energySettings: d.energySettings })),
+      // The groups in the fuse box as saved, without names
+      groups: (Array.isArray(cfg.groups) ? cfg.groups : []).map(g => ({ phases: g.phases, fuseAmps: g.fuseAmps, fixedWatts: g.fixedWatts, devices: (g.devices || []).length })),
+      groupsSolarPhases: cfg.groupsSolarPhases,
+      groupsBatteryPhases: cfg.groupsBatteryPhases,
       today: {
         error: today.error || null,
         p1PowerReadings: await count(found.p1, 'measure_power'),

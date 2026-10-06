@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const esbuild = require('esbuild');
 
 const root = path.join(__dirname, '..');
 
@@ -28,9 +29,20 @@ const copies = [
   ['public/apple-touch-icon.png', ['homey-app/web/apple-touch-icon.png']],
 ];
 
+// The page scripts are rewritten for older browsers (wall tablets, an iPad on iOS 12):
+// Safari 12 stops at syntax such as ?. and ??, and then the page shows no data at all.
+// Destructuring works there; esbuild only flags it for a rare Safari bug it cannot rewrite.
+const BROWSER_TARGET = 'safari12';
+const forBrowsers = from => from.startsWith('shared/') && from.endsWith('.js');
+
 for (const [from, destinations] of copies) {
+  const source = path.join(root, from);
+  const code = forBrowsers(from)
+    ? esbuild.transformSync(fs.readFileSync(source, 'utf8'), { target: BROWSER_TARGET, supported: { destructuring: true }, charset: 'utf8', sourcefile: from }).code
+    : null;
   for (const to of destinations) {
-    fs.copyFileSync(path.join(root, from), path.join(root, to));
+    if (code === null) fs.copyFileSync(source, path.join(root, to));
+    else fs.writeFileSync(path.join(root, to), code);
     console.log(`${from} -> ${to}`);
   }
 }

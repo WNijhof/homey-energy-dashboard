@@ -1977,14 +1977,18 @@
     if (!phases.length) {
       el.innerHTML = groups.map(row).join('');
     } else {
+      // A meter with only whole amps per phase gives rough phase values (see phaseUse)
+      const rough = phases.some(p => p.rough);
+      const about = rough ? '≈' : '';
       const sections = phases.map(p => {
-        const head = `<li class="group-phase"><span>L${p.phase}</span>${typeof p.watts === 'number' ? `<strong>${formatPower(p.watts)}</strong>` : ''}</li>`;
+        const head = `<li class="group-phase"><span>L${p.phase}</span>${typeof p.watts === 'number' ? `<strong>${about}${formatPower(p.watts)}</strong>` : ''}</li>`;
         const rest = typeof p.rest === 'number'
-          ? `<li class="group-rest"><div class="consumer-row"><span>Overig</span><strong>${formatPower(p.rest)}</strong></div></li>` : '';
+          ? `<li class="group-rest"><div class="consumer-row"><span>Overig</span><strong>${about}${formatPower(p.rest)}</strong></div></li>` : '';
         return head + groups.filter(g => g.phases.includes(p.phase)).map(row).join('') + rest;
       });
       const loose = groups.filter(g => !g.phases.length);
       if (loose.length) sections.push(`<li class="group-phase"><span>Zonder fase</span></li>${loose.map(row).join('')}`);
+      if (rough) sections.push(`<li class="group-rest"><small class="muted">Je slimme meter geeft per fase alleen hele ampères. Het totaal van de meter is daarom naar verhouding over de fasen verdeeld.</small></li>`);
       el.innerHTML = sections.join('');
     }
     renderGroupChart();

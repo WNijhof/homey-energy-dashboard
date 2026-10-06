@@ -287,6 +287,17 @@
       'La charge par circuit de ton tableau électrique : la puissance mesurée des appareils que tu as attribués au circuit dans les réglages de l\'app (sans compteur : la consommation réglée dans Homey), plus la consommation fixe saisie, sous forme de courant (puissance ÷ 230 V, répartie sur les phases du circuit) par rapport au disjoncteur. Autre correspond, par phase, à ce que mesure ton compteur (plus l\'énergie solaire sur cette phase, moins ce que la batterie domestique y charge) et que les circuits n\'expliquent pas. Les barres du bas montrent la charge de chaque circuit au fil de la journée.',
       'A carga por circuito no seu quadro elétrico: a potência medida dos aparelhos que atribuiu ao circuito nas definições da app (sem medidor: o consumo definido no Homey), mais o consumo fixo indicado, como corrente (potência ÷ 230 V, repartida pelas fases do circuito) face ao disjuntor. Outros é, por fase, o que o seu contador mede (mais a energia solar nessa fase, menos o que a bateria doméstica carrega nela) e que os circuitos não explicam. As barras em baixo mostram a carga de cada circuito ao longo do dia.',
       'La carga por circuito en tu cuadro eléctrico: la potencia medida de los aparatos que asignaste al circuito en los ajustes de la app (sin medidor: el consumo configurado en Homey), más el consumo fijo indicado, como corriente (potencia ÷ 230 V, repartida entre las fases del circuito) frente al magnetotérmico. Otros es, por fase, lo que mide tu contador (más la energía solar en esa fase, menos lo que la batería doméstica carga en ella) y que los circuitos no explican. Las barras de abajo muestran la carga de cada circuito a lo largo del día.'],
+    'Je slimme meter geeft per fase alleen hele ampères. Het totaal van de meter is daarom naar verhouding over de fasen verdeeld.': [
+      'Your smart meter gives only whole amps per phase. The meter total is therefore spread over the phases in proportion.',
+      'Dein Smart Meter liefert pro Phase nur ganze Ampere. Die Gesamtleistung des Zählers wird deshalb anteilig auf die Phasen verteilt.',
+      'Strømmåleren din gir bare hele ampere per fase. Målerens totale effekt er derfor fordelt forholdsmessig over fasene.',
+      'Din elmätare ger bara hela ampere per fas. Mätarens totala effekt fördelas därför proportionellt över faserna.',
+      'Din elmåler giver kun hele ampere pr. fase. Målerens samlede effekt er derfor fordelt forholdsmæssigt over faserne.',
+      'Il tuo contatore fornisce solo ampere interi per fase. Il totale del contatore è quindi ripartito in proporzione sulle fasi.',
+      'Ton compteur ne donne que des ampères entiers par phase. Le total du compteur est donc réparti proportionnellement sur les phases.',
+      'O seu contador dá apenas amperes inteiros por fase. O total do contador é por isso distribuído proporcionalmente pelas fases.',
+      'Tu contador solo da amperios enteros por fase. Por eso el total del contador se reparte proporcionalmente entre las fases.',
+    ],
     'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.': [
       'Current per phase from your smart meter compared with your main fuse; negative is export. The chart shows the phases through the day.',
       'Strom pro Phase aus deinem Smart Meter im Verhältnis zur Hauptsicherung; negativ ist Einspeisung. Die Grafik zeigt die Phasen über den Tag.',
