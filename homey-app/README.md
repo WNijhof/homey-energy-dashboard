@@ -256,7 +256,9 @@ Het blok rekent per nacht, van 12:00 tot 12:00 de volgende dag, wat het huis ver
 
 Een kort gat in het donker (een uur zonder meting, of een onmogelijk hoge waarde door een tellersprong) wordt aangevuld met het gemiddelde vermogen van die nacht. Wat een laadpaal gebruikt telt niet mee: een thuisbatterij is niet bedoeld om de auto te laden.
 
-De gegevens komen uit Homey Insights. Bij de eerste keer vult de app zo veel nachten aan als Homey met metingen per uur (of fijner) bewaart; daarna komt er elke dag een nacht bij, tot 365. Het vermogen is een gemiddelde per meetstap (vaak een uur), dus korte pieken zoals een waterkoker vallen weg: kies het vermogen van een batterij liever wat ruimer.
+De gegevens komen uit de dagrapporten van Homey Energy: daarin staat per 5 minuten wat de slimme meter en de zonnepanelen deden, zo ver terug als Homey Energy rapporten heeft. Elk dagrapport wordt eerst gecontroleerd: klopt de vermogenscurve niet met de kWh-totalen van dat rapport, dan telt die dag niet mee (*Vermogen klopt niet met kWh-totaal*). Wat de rapporten niet hebben, komt uit Homey Insights (alleen de laatste twee weken per uur). De eerste keer haalt de app alles in de achtergrond op; zolang staat er *wordt aangevuld* bij het aantal nachten. Daarna komt er elke dag een nacht bij, tot 365. Met een thuisbatterij gebruikt het blok alleen Insights, omdat de dagrapporten geen batterijvermogen bevatten.
+
+Het vermogen is een gemiddelde per 5 minuten (of per uur uit Insights), dus korte pieken zoals een waterkoker vallen weg: kies het vermogen van een batterij liever wat ruimer.
 
 ## Hoe de doucheminuten berekend worden
 

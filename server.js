@@ -263,12 +263,17 @@ function getBatterySize(found) {
     nightsTried = Date.now();
     const read = (device, capability, resolution) => client.getEntries(device.id, capability, resolution).catch(() => []);
     const place = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null);
-    nightsPending = collectNights(read, found, cfg, nightLog.nights, new Date(), { place })
+    nightsPending = collectNights(read, found, cfg, nightLog.nights, new Date(), {
+      place,
+      dayReport: date => client.energyReport({ kind: 'day', date }),
+      progress: fresh => { nightLog.nights = pruneNights({ ...nightLog.nights, ...fresh }); },
+    })
       .then(fresh => { nightLog.nights = pruneNights({ ...nightLog.nights, ...fresh }); })
       .catch(err => console.error(`Nachten: ${err.message}`))
       .finally(() => { nightsPending = null; });
   }
-  return batteryAdvice(nightLog.nights) || { nights: 0, building: Boolean(nightsPending) };
+  const advice = batteryAdvice(nightLog.nights);
+  return advice ? { ...advice, building: Boolean(nightsPending) } : { nights: 0, building: Boolean(nightsPending) };
 }
 
 async function getHistory(period, { light = false } = {}) {

@@ -1924,7 +1924,8 @@
       }
       return;
     }
-    setText('batterysize-basis', `${nf(0).format(data.nights)} nachten`);
+    // While the app is still reading Homey Energy's history, the number of nights grows
+    setText('batterysize-basis', data.building ? `${nf(0).format(data.nights)} nachten, wordt aangevuld` : `${nf(0).format(data.nights)} nachten`);
     setText('batterysize-dark', `${nf(1).format(data.avgDark)} kWh`);
     const fact = (label, value) => `<li><span>${label}</span><strong>${value}</strong></li>`;
     const facts = [
@@ -2647,7 +2648,7 @@
     solar: 'Opbrengst van je zonnepanelen met een streepje voor de verwachting van Forecast.Solar. Prestatie = opbrengst ÷ verwachting; per kWp gebruikt het vermogen van je dakvlakken.',
     gas: 'Gasverbruik van het hele huis uit je slimme meter. Per graaddag deelt het verbruik door de graaddagen (buitentemperatuur van Open-Meteo), zodat perioden met ander weer te vergelijken zijn.',
     water: 'Waterverbruik in liters uit je watermeter, en het huidige verbruik per minuut.',
-    batterysize: 'Hoe groot een thuisbatterij moet zijn: per nacht wat het huis verbruikt terwijl de zon minder dan 200 W geeft, van de middag tot de middag erna, over de afgelopen 365 dagen. Het verbruik is wat de slimme meter afneemt plus wat de zonnepanelen leveren. Onder nul staat het zonne-overschot van een dag: wat je teruglevert en dus in een batterij kunt laden. Een batterij van een bepaalde grootte levert per nacht hooguit zijn capaciteit, hooguit wat die nacht gebruikt wordt en hooguit wat de zon die dag over had. Het vermogen is gemiddeld per meetstap van Homey (vaak een uur), dus korte pieken zoals een waterkoker vallen weg. De app vult de nachten bij de eerste keer aan uit Insights, zo ver als Homey metingen per uur bewaart, en daarna elke dag met de afgelopen nacht. Nachten met ontbrekende of onlogische metingen tellen niet mee: een koppeling die uit lag, een meter die bleef hangen, teruglevering terwijl de panelen niets gaven, of veel minder verbruik dan normaal. Een kort gat in het donker wordt aangevuld met het gemiddelde van die nacht. Wat een laadpaal gebruikt telt niet mee.',
+    batterysize: 'Hoe groot een thuisbatterij moet zijn: per nacht wat het huis verbruikt terwijl de zon minder dan 200 W geeft, van de middag tot de middag erna, over de afgelopen 365 dagen. Het verbruik is wat de slimme meter afneemt plus wat de zonnepanelen leveren. Onder nul staat het zonne-overschot van een dag: wat je teruglevert en dus in een batterij kunt laden. Een batterij van een bepaalde grootte levert per nacht hooguit zijn capaciteit, hooguit wat die nacht gebruikt wordt en hooguit wat de zon die dag over had. Het vermogen is gemiddeld per meetstap van Homey (vaak een uur), dus korte pieken zoals een waterkoker vallen weg. De eerste keer haalt de app de nachten uit de dagrapporten van Homey Energy (vermogen per 5 minuten, zo ver terug als die gaan) en uit Insights, en daarna elke dag de afgelopen nacht. Elk dagrapport wordt gecontroleerd tegen zijn eigen kWh-totalen. Nachten met ontbrekende of onlogische metingen tellen niet mee: een koppeling die uit lag, een meter die bleef hangen, teruglevering terwijl de panelen niets gaven, of veel minder verbruik dan normaal. Een kort gat in het donker wordt aangevuld met het gemiddelde van die nacht. Wat een laadpaal gebruikt telt niet mee.',
     baseload: 'Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.',
     alerts: 'Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.',
     phases: 'Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.',
@@ -2755,7 +2756,7 @@
         fact('Meetstap', `${nf(0).format(b.step)} min`),
       ];
       if (typeof b.unlimited === 'number') rows.push(fact('Hoogst haalbaar met zon', `${nf(0).format(b.unlimited * 100)}%`));
-      const reasons = { gaps: 'Ontbrekende metingen', stuck: 'Meter bleef hangen', solar: 'Teruglevering zonder zon', zero: 'Bijna geen verbruik', low: 'Veel lager dan normaal' };
+      const reasons = { gaps: 'Ontbrekende metingen', stuck: 'Meter bleef hangen', solar: 'Teruglevering zonder zon', zero: 'Bijna geen verbruik', low: 'Veel lager dan normaal', mismatch: 'Vermogen klopt niet met kWh-totaal' };
       for (const [reason, count] of Object.entries(b.skipped || {})) rows.push(fact(reasons[reason] || reason, `${nf(0).format(count)}`));
       return `<ul class="facts">${rows.join('')}</ul>`;
     }

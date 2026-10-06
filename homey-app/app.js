@@ -22,6 +22,8 @@ const LOGS_CACHE_TTL = 10 * 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
 // How often the log of nights is read again while last night is still missing
 const NIGHTS_RETRY = 60 * 60 * 1000;
+// A log of an older version is filled in once more: version 2 reads Homey Energy's day reports
+const NIGHT_LOG_VERSION = 2;
 const ZONES_CACHE_TTL = 10 * 60 * 1000;
 const NETTING_CACHE_TTL = 60 * 60 * 1000;
 const ENERGY_LIVE_TTL = 5 * 1000;
@@ -498,19 +500,28 @@ class EnergyDashboardApp extends Homey.App {
     const source = nightSource(found);
     const stored = this.homey.settings.get('nightLog');
     const log = stored?.source === source ? stored.nights || {} : {};
-    if (found.p1 && !log[lastNight()] && !this.nightsPending && Date.now() - (this.nightsTried || 0) > NIGHTS_RETRY) {
+    const due = !log[lastNight()] || stored?.version !== NIGHT_LOG_VERSION;
+    if (found.p1 && due && !this.nightsPending && Date.now() - (this.nightsTried || 0) > NIGHTS_RETRY) {
       this.nightsTried = Date.now();
       const read = (device, capability, resolution) => this.getEntries(device.id, capability, resolution).catch(() => []);
       // Where the Homey is, to know when the sun is down (inverters log nothing at night)
       const lat = this.homey.geolocation.getLatitude();
       const lon = this.homey.geolocation.getLongitude();
       const place = typeof lat === 'number' && typeof lon === 'number' ? { lat, lon } : null;
-      this.nightsPending = collectNights(read, found, cfg, log, new Date(), { place })
-        .then(fresh => this.homey.settings.set('nightLog', { source, nights: pruneNights({ ...log, ...fresh }) }))
+      // Saved after every batch of day reports too, so a restart halfway loses little
+      const save = (fresh, version) => this.homey.settings.set('nightLog', { source, version, nights: pruneNights({ ...log, ...fresh }) });
+      this.nightsPending = collectNights(read, found, cfg, log, new Date(), {
+        place,
+        dayReport: date => this.energyReport({ kind: 'day', date }),
+        progress: fresh => save(fresh, stored?.version || 1),
+      })
+        .then(fresh => save(fresh, NIGHT_LOG_VERSION))
         .catch(err => this.error(`Nights: ${err.message}`))
         .finally(() => { this.nightsPending = null; });
     }
-    return batteryAdvice(log) || { nights: 0, building: Boolean(this.nightsPending) };
+    const building = Boolean(this.nightsPending);
+    const advice = batteryAdvice(log);
+    return advice ? { ...advice, building } : { nights: 0, building };
   }
 
   // ---------- Warnings ----------
