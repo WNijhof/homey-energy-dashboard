@@ -1574,6 +1574,7 @@
     if (typeof ((_a2 = data.advice) == null ? void 0 : _a2.kWh) === "number") facts.push(fact2("Capaciteit voor 4 van de 5 nachten", "± ".concat(nf(1).format(data.advice.kWh), " kWh")));
     if (typeof ((_b2 = data.advice) == null ? void 0 : _b2.watts) === "number") facts.push(fact2("Vermogen voor 90% van dat verbruik", "± ".concat(formatPower(data.advice.watts))));
     if (data.skippedCount) facts.push(fact2("Overgeslagen nachten", nf(0).format(data.skippedCount)));
+    if (data.estimated) facts.push(fact2("Geschat uit meterexport", nf(0).format(data.estimated)));
     $("batterysize-facts").innerHTML = facts.join("");
     const positive = [{ key: "dark", label: "Verbruik in het donker", color: css("--grid") }];
     const negative = [{ key: "surplus", label: "Zonne-overschot", color: css("--solar") }];
@@ -2291,6 +2292,8 @@
         fact("Meetstap", "".concat(nf(0).format(b.step), " min"))
       ];
       if (typeof b.unlimited === "number") rows.push(fact("Hoogst haalbaar met zon", "".concat(nf(0).format(b.unlimited * 100), "%")));
+      if (b.imported) rows.push(fact("Import", "".concat(b.imported.from, " – ").concat(b.imported.to, ", donker onder ").concat(nf(1).format(b.imported.darkHeight), "° zon")));
+      if (b.check) rows.push(fact("Schatting t.o.v. gemeten", "".concat(nf(0).format(b.check.nights), " nachten: ").concat(nf(1).format(b.check.estimated / b.check.nights), " / ").concat(nf(1).format(b.check.measured / b.check.nights), " kWh").concat(b.check.factor !== 1 ? ", ×".concat(nf(2).format(b.check.factor)) : "")));
       const reasons = { gaps: "Ontbrekende metingen", stuck: "Meter bleef hangen", solar: "Teruglevering zonder zon", zero: "Bijna geen verbruik", low: "Veel lager dan normaal", mismatch: "Vermogen klopt niet met kWh-totaal" };
       for (const [reason, count] of Object.entries(b.skipped || {})) rows.push(fact(reasons[reason] || reason, "".concat(nf(0).format(count))));
       return '<ul class="facts">'.concat(rows.join(""), "</ul>");

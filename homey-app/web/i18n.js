@@ -723,6 +723,9 @@
       "Las noches hasta ahora tenían mediciones que faltan o sin lógica. Cada noche se añade una."
     ],
     "Vermogen klopt niet met kWh-totaal": ["Power does not match the kWh total", "Leistung passt nicht zur kWh-Summe", "Effekt stemmer ikke med kWh-totalen", "Effekten stämmer inte med kWh-totalen", "Effekt passer ikke med kWh-totalen", "La potenza non corrisponde al totale in kWh", "La puissance ne correspond pas au total en kWh", "A potência não corresponde ao total em kWh", "La potencia no coincide con el total en kWh"],
+    "Geschat uit meterexport": ["Estimated from meter export", "Geschätzt aus Zählerexport", "Anslått fra måler-eksport", "Uppskattat från mätarexport", "Anslået fra måler-eksport", "Stimato dall'esportazione del contatore", "Estimé à partir de l'export du compteur", "Estimado a partir da exportação do contador", "Estimado a partir de la exportación del contador"],
+    "Schatting t.o.v. gemeten": ["Estimate vs measured", "Schätzung vs. gemessen", "Anslag mot målt", "Uppskattning mot uppmätt", "Skøn mod målt", "Stima vs misurato", "Estimation vs mesuré", "Estimativa vs medido", "Estimación vs medido"],
+    "Import": ["Import", "Import", "Import", "Import", "Import", "Importazione", "Import", "Importação", "Importación"],
     "Ontbrekende metingen": [
       "Missing readings",
       "Fehlende Messwerte",
@@ -1026,6 +1029,8 @@
   };
   const PERIOD = "(vandaag|gisteren|deze week|deze maand|dit jaar)";
   const PATTERNS = [
+    [/^(.+) – (.+), donker onder (.+)° zon$/, ["$1 – $2, dark below $3° sun", "$1 – $2, dunkel unter $3° Sonne", "$1 – $2, mørkt under $3° sol", "$1 – $2, mörkt under $3° sol", "$1 – $2, mørkt under $3° sol", "$1 – $2, buio sotto $3° di sole", "$1 – $2, nuit sous $3° de soleil", "$1 – $2, escuro abaixo de $3° de sol", "$1 – $2, oscuro por debajo de $3° de sol"]],
+    [/^(.+) nachten: (.+) \/ (.+) kWh(.*)$/, ["$1 nights: $2 / $3 kWh$4", "$1 Nächte: $2 / $3 kWh$4", "$1 netter: $2 / $3 kWh$4", "$1 nätter: $2 / $3 kWh$4", "$1 nætter: $2 / $3 kWh$4", "$1 notti: $2 / $3 kWh$4", "$1 nuits : $2 / $3 kWh$4", "$1 noites: $2 / $3 kWh$4", "$1 noches: $2 / $3 kWh$4"]],
     [/^(.+) nachten, wordt aangevuld$/, ["$1 nights, being filled in", "$1 Nächte, wird ergänzt", "$1 netter, fylles inn", "$1 nätter, fylls på", "$1 nætter, udfyldes", "$1 notti, in completamento", "$1 nuits, en cours de complétion", "$1 noites, a completar", "$1 noches, completándose"]],
     [/^(.+) nachten$/, ["$1 nights", "$1 Nächte", "$1 netter", "$1 nätter", "$1 nætter", "$1 notti", "$1 nuits", "$1 noites", "$1 noches"]],
     [/^vast (.+)$/, ["fixed $1", "fest $1", "fast $1", "fast $1", "fast $1", "fisso $1", "fixe $1", "fixo $1", "fijo $1"]],

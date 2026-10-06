@@ -7,6 +7,7 @@ const {
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
   expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
+  mergeNights, connectionMaxW, importMeterExport, UploadParts,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -510,9 +511,7 @@ class EnergyDashboardApp extends Homey.App {
       this.nightsTried = Date.now();
       const read = (device, capability, resolution) => this.getEntries(device.id, capability, resolution).catch(() => []);
       // Where the Homey is, to know when the sun is down (inverters log nothing at night)
-      const lat = this.homey.geolocation.getLatitude();
-      const lon = this.homey.geolocation.getLongitude();
-      const place = typeof lat === 'number' && typeof lon === 'number' ? { lat, lon } : null;
+      const place = this.getPlace();
       // Saved after every batch of day reports too, so a restart halfway loses little
       const save = (fresh, version) => this.homey.settings.set('nightLog', { source, version, nights: pruneNights({ ...log, ...fresh }) });
       this.nightsPending = collectNights(read, found, cfg, log, new Date(), {
@@ -525,8 +524,43 @@ class EnergyDashboardApp extends Homey.App {
         .finally(() => { this.nightsPending = null; });
     }
     const building = Boolean(this.nightsPending);
-    const advice = batteryAdvice(log);
-    return advice ? { ...advice, building } : { nights: 0, building };
+    // Nights from an imported meter export fill in what Homey did not measure
+    const imported = this.homey.settings.get('nightImport');
+    const merged = mergeNights(log, imported?.nights || {});
+    const advice = batteryAdvice(merged.nights);
+    const extra = { building, check: merged.check, imported: imported ? { from: imported.from, to: imported.to, darkHeight: imported.darkHeight } : null };
+    return advice ? { ...advice, ...extra } : { nights: 0, ...extra };
+  }
+
+  // Where the Homey is, to know when the sun is down
+  getPlace() {
+    const lat = this.homey.geolocation.getLatitude();
+    const lon = this.homey.geolocation.getLongitude();
+    return typeof lat === 'number' && typeof lon === 'number' ? { lat, lon } : null;
+  }
+
+  // A meter export from the settings page, in parts of text: kept until the last part is in,
+  // then turned into nights (dark by the height of the sun, matched to the measured nights) and
+  // saved as `nightImport`. Returns what was found, or the reason it could not be read.
+  async importNightsPart(body) {
+    this.nightUpload = this.nightUpload || new UploadParts();
+    const csv = this.nightUpload.add(body);
+    if (csv === null) return { received: Number(body.part) + 1, parts: Number(body.parts) };
+    const cfg = this.getConfig();
+    const found = discover(await this.getDevices(), cfg.devices);
+    const stored = this.homey.settings.get('nightLog');
+    const { record, summary } = importMeterExport(csv, {
+      log: stored?.source === nightSource(found) ? stored.nights : {},
+      place: this.getPlace(),
+      maxW: connectionMaxW(cfg),
+    });
+    this.homey.settings.set('nightImport', record);
+    return summary;
+  }
+
+  async clearNightImport() {
+    this.homey.settings.unset('nightImport');
+    return { cleared: true };
   }
 
   // Fills in the log of nights when the battery size block is in any layout

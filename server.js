@@ -7,7 +7,7 @@ const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy,
-  collectNights, pruneNights, batteryAdvice, nightSource, lastNight,
+  collectNights, pruneNights, batteryAdvice, nightSource, lastNight, mergeNights, importMeterExport, UploadParts, connectionMaxW,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
@@ -115,6 +115,9 @@ let baseloadLog = {};
 let nightLog = { source: null, nights: {} };
 let nightsTried = 0;
 let nightsPending = null;
+// A meter export imported from the settings preview (see importMeterExport)
+let nightImport = null;
+const nightUpload = new UploadParts();
 const pinGuard = new PinGuard();
 
 async function getDevices() {
@@ -272,8 +275,10 @@ function getBatterySize(found) {
       .catch(err => console.error(`Nachten: ${err.message}`))
       .finally(() => { nightsPending = null; });
   }
-  const advice = batteryAdvice(nightLog.nights);
-  return advice ? { ...advice, building: Boolean(nightsPending) } : { nights: 0, building: Boolean(nightsPending) };
+  const merged = mergeNights(nightLog.nights, nightImport?.nights || {});
+  const advice = batteryAdvice(merged.nights);
+  const extra = { building: Boolean(nightsPending), check: merged.check, imported: nightImport ? { from: nightImport.from, to: nightImport.to, darkHeight: nightImport.darkHeight } : null };
+  return advice ? { ...advice, ...extra } : { nights: 0, ...extra };
 }
 
 async function getHistory(period, { light = false } = {}) {
@@ -366,12 +371,13 @@ async function saveLayout({ layout, pin, name, remove }) {
   return getLayoutInfo(remove ? '' : target);
 }
 
-function readJson(req) {
+// `limit` in characters: small for settings, larger for the parts of an imported file
+function readJson(req, limit = 16 * 1024) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > 16 * 1024) {
+      if (body.length > limit) {
         // Too much: answer 413, and let the rest arrive without keeping it
         reject(Object.assign(new Error('Te veel gegevens'), { status: 413 }));
         req.removeAllListeners('data');
@@ -484,7 +490,8 @@ const FAKE_SETTINGS_HOMEY = `
   window.addEventListener('load', () => document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = __(el.dataset.i18n); }));
   window.addEventListener('load', () => onHomeyReady({
     __,
-    api: (method, path, body, cb) => fetch(path === '/settings-info' ? '/api/devices' : '/api' + path).then(r => r.json()).then(d => cb(null, d), cb),
+    api: (method, path, body, cb) => fetch(path === '/settings-info' ? '/api/devices' : '/api' + path, method === 'GET' ? {} : { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); return d; }).then(d => cb(null, d), cb),
     get: (key, cb) => cb(null, store[key]),
     set: (key, value, cb) => { store[key] = value; console.log('Homey.set', key, JSON.stringify(value)); cb(null); },
     ready: () => console.log('Homey.ready'),
@@ -550,6 +557,22 @@ function serveStatic(res, urlPath) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   try {
+    if (url.pathname === '/api/night-import' && req.method === 'POST') {
+      const csv = nightUpload.add(await readJson(req, 256 * 1024));
+      if (csv === null) return sendJson(res, 200, { received: true });
+      const place = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null) || (cfg.demo ? { lat: 52.1, lon: 5.1 } : null);
+      try {
+        const { record, summary } = importMeterExport(csv, { log: nightLog.nights, place, maxW: connectionMaxW(cfg) });
+        nightImport = record;
+        return sendJson(res, 200, summary);
+      } catch (err) {
+        return sendJson(res, 400, { error: err.message });
+      }
+    }
+    if (url.pathname === '/api/night-import/clear' && req.method === 'POST') {
+      nightImport = null;
+      return sendJson(res, 200, { cleared: true });
+    }
     if (url.pathname === '/api/layout') {
       if (req.method === 'POST') return sendJson(res, 200, await saveLayout(await readJson(req)));
       return sendJson(res, 200, await getLayoutInfo(url.searchParams.get('layout') || ''));

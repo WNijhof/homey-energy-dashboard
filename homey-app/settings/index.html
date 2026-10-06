@@ -171,6 +171,18 @@
     </div>
   </form>
 
+  <!-- A meter export (HomeWizard, per 15 minutes) for the battery size block -->
+  <section class="card">
+    <h2 data-i18n="settings.importTitle"></h2>
+    <p class="muted" data-i18n="settings.importHelp"></p>
+    <p class="muted" id="import-current"></p>
+    <div class="form-actions">
+      <input type="file" id="import-file" accept=".csv,text/csv,text/plain">
+      <button type="button" class="secondary" id="import-clear" data-i18n="settings.importClear" hidden></button>
+    </div>
+    <p class="muted" id="import-status"></p>
+  </section>
+
   <!-- Share a diagnosis by e-mail or on GitHub; optionally with a snapshot of the dashboard -->
   <section class="card">
     <h2 data-i18n="settings.shareTitle"></h2>

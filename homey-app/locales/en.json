@@ -168,7 +168,16 @@
     "groupsSolarHelp": "For Other per phase: your smart meter measures import minus export per phase, so the block adds the solar power on a phase back to it.",
     "groupEstimate": "estimate in Homey",
     "groupsBattery": "Home battery is connected to",
-    "groupsBatteryHelp": "For Other per phase: what the battery charges is taken off that phase, and what it delivers is added, like solar power. A plug-in battery is usually on one phase. Unknown? Leave it on all three."
+    "groupsBatteryHelp": "For Other per phase: what the battery charges is taken off that phase, and what it delivers is added, like solar power. A plug-in battery is usually on one phase. Unknown? Leave it on all three.",
+    "importTitle": "History for Choosing a battery",
+    "importHelp": "Homey keeps the use per quarter hour for only a month. If you have a HomeWizard P1 meter with Energy+, export a year per 15 minutes in the HomeWizard Energy app (Settings → Graphs → electricity → Export graph data) and choose that file here. When it was dark is calculated from the height of the sun, matched to the nights Homey measures itself. Measured nights always come first.",
+    "importCurrent": "Imported: __nights__ nights (__from__ – __to__).",
+    "importBusy": "Reading the file…",
+    "importSending": "Sending to Homey: part __part__ of __parts__…",
+    "importDone": "Done: __nights__ nights from __from__ to __to__ (__skipped__ skipped for missing or implausible readings).",
+    "importFailed": "Import failed: __error__",
+    "importClear": "Remove import",
+    "importCleared": "Import removed."
   },
   "blocks": {
     "alerts": "Warnings",

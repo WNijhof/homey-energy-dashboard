@@ -33,8 +33,8 @@ function onHomeyReady(Homey) {
     input.addEventListener('input', () => checkAmount(input));
   });
 
-  const call = (method, path) => new Promise((resolve, reject) => {
-    Homey.api(method, path, null, (err, result) => (err ? reject(err) : resolve(result)));
+  const call = (method, path, body = null) => new Promise((resolve, reject) => {
+    Homey.api(method, path, body, (err, result) => (err ? reject(err) : resolve(result)));
   });
   const getSetting = key => new Promise((resolve, reject) => {
     Homey.get(key, (err, value) => (err ? reject(err) : resolve(value)));
@@ -541,6 +541,57 @@ function onHomeyReady(Homey) {
     select.innerHTML = `<option value="">${escapeText(autoLabel)}</option>`
       + devices.map(d => `<option value="${d.id}" ${d.id === selected ? 'selected' : ''}>${escapeText(d.name)}</option>`).join('');
   }
+
+  // ---------- Meter export for the battery size block ----------
+
+  // The file is read here and sent to the app in parts of whole lines, so a year of quarters
+  // (a few MB) fits through Homey's settings API; the app turns it into nights.
+  const IMPORT_PART = 100 * 1000;
+  const importStatus = document.getElementById('import-status');
+  const importClear = document.getElementById('import-clear');
+  async function showImport() {
+    const current = await getSetting('nightImport').catch(() => null);
+    const nights = current?.nights ? Object.values(current.nights).filter(n => !n.skipped).length : 0;
+    document.getElementById('import-current').textContent = current
+      ? __('importCurrent', { nights, from: current.from, to: current.to })
+      : '';
+    importClear.hidden = !current;
+  }
+  document.getElementById('import-file').onchange = async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    importStatus.textContent = __('importBusy');
+    try {
+      const text = await file.text();
+      const parts = [];
+      let start = 0;
+      while (start < text.length) {
+        let end = Math.min(text.length, start + IMPORT_PART);
+        // Cut after a whole line, unless one line is longer than a part
+        const line = text.lastIndexOf('\n', end) + 1;
+        if (end < text.length && line > start) end = line;
+        parts.push(text.slice(start, end));
+        start = end;
+      }
+      const id = `${Date.now()}`;
+      let result = null;
+      for (let i = 0; i < parts.length; i++) {
+        importStatus.textContent = __('importSending', { part: i + 1, parts: parts.length });
+        result = await call('POST', '/night-import', { id, part: i, parts: parts.length, text: parts[i] });
+      }
+      importStatus.textContent = __('importDone', { nights: result.nights, from: result.from, to: result.to, skipped: result.skipped });
+    } catch (err) {
+      importStatus.textContent = __('importFailed', { error: err.message || err });
+    }
+    event.target.value = '';
+    showImport();
+  };
+  importClear.onclick = async () => {
+    await call('POST', '/night-import/clear', {}).catch(() => null);
+    importStatus.textContent = __('importCleared');
+    showImport();
+  };
+  showImport();
 
   // ---------- Share diagnosis ----------
 

@@ -168,7 +168,16 @@
     "groupsSolarHelp": "Voor Overig per fase: je slimme meter meet per fase afname min teruglevering, dus de zonnestroom op een fase telt het blok daar weer bij op.",
     "groupEstimate": "schatting in Homey",
     "groupsBattery": "Thuisbatterij zit op",
-    "groupsBatteryHelp": "Voor Overig per fase: wat de batterij laadt, gaat van die fase af, en wat hij levert telt erbij op, net als zonnestroom. Een stekkerbatterij zit meestal op één fase. Weet je het niet? Laat het op alle drie staan."
+    "groupsBatteryHelp": "Voor Overig per fase: wat de batterij laadt, gaat van die fase af, en wat hij levert telt erbij op, net als zonnestroom. Een stekkerbatterij zit meestal op één fase. Weet je het niet? Laat het op alle drie staan.",
+    "importTitle": "Geschiedenis voor Batterij kiezen",
+    "importHelp": "Homey bewaart het verbruik per kwartier maar een maand. Heb je een HomeWizard P1-meter met Energy+, exporteer dan in de HomeWizard Energy-app een jaar per 15 minuten (Instellingen → Grafieken → elektriciteit → Grafiekgegevens exporteren) en kies dat bestand hier. Wanneer het donker was, berekent de app uit de stand van de zon, geijkt op de nachten die Homey zelf meet. Gemeten nachten gaan altijd voor.",
+    "importCurrent": "Geïmporteerd: __nights__ nachten (__from__ – __to__).",
+    "importBusy": "Bestand lezen…",
+    "importSending": "Versturen naar Homey: deel __part__ van __parts__…",
+    "importDone": "Klaar: __nights__ nachten van __from__ tot __to__ (__skipped__ overgeslagen door ontbrekende of onlogische metingen).",
+    "importFailed": "Importeren mislukt: __error__",
+    "importClear": "Import verwijderen",
+    "importCleared": "Import verwijderd."
   },
   "blocks": {
     "alerts": "Meldingen",

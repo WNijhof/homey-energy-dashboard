@@ -10,4 +10,11 @@ module.exports = {
   async getDiagnosisReport({ homey, query }) {
     return homey.app.getDiagnosisReport({ snapshot: query?.snapshot === '1' });
   },
+  // A meter export (CSV) for the battery size block, sent in parts
+  async importNights({ homey, body }) {
+    return homey.app.importNightsPart(body || {});
+  },
+  async clearNightImport({ homey }) {
+    return homey.app.clearNightImport();
+  },
 };

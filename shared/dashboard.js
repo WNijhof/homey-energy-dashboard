@@ -1937,6 +1937,8 @@
     if (typeof data.advice?.watts === 'number') facts.push(fact('Vermogen voor 90% van dat verbruik', `± ${formatPower(data.advice.watts)}`));
     // Nights with missing or impossible readings (an app that was down, a meter that hung)
     if (data.skippedCount) facts.push(fact('Overgeslagen nachten', nf(0).format(data.skippedCount)));
+    // Nights from an imported meter export, dark by the height of the sun
+    if (data.estimated) facts.push(fact('Geschat uit meterexport', nf(0).format(data.estimated)));
     $('batterysize-facts').innerHTML = facts.join('');
 
     const positive = [{ key: 'dark', label: 'Verbruik in het donker', color: css('--grid') }];
@@ -2756,6 +2758,8 @@
         fact('Meetstap', `${nf(0).format(b.step)} min`),
       ];
       if (typeof b.unlimited === 'number') rows.push(fact('Hoogst haalbaar met zon', `${nf(0).format(b.unlimited * 100)}%`));
+      if (b.imported) rows.push(fact('Import', `${b.imported.from} – ${b.imported.to}, donker onder ${nf(1).format(b.imported.darkHeight)}° zon`));
+      if (b.check) rows.push(fact('Schatting t.o.v. gemeten', `${nf(0).format(b.check.nights)} nachten: ${nf(1).format(b.check.estimated / b.check.nights)} / ${nf(1).format(b.check.measured / b.check.nights)} kWh${b.check.factor !== 1 ? `, ×${nf(2).format(b.check.factor)}` : ''}`));
       const reasons = { gaps: 'Ontbrekende metingen', stuck: 'Meter bleef hangen', solar: 'Teruglevering zonder zon', zero: 'Bijna geen verbruik', low: 'Veel lager dan normaal', mismatch: 'Vermogen klopt niet met kWh-totaal' };
       for (const [reason, count] of Object.entries(b.skipped || {})) rows.push(fact(reasons[reason] || reason, `${nf(0).format(count)}`));
       return `<ul class="facts">${rows.join('')}</ul>`;

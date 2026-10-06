@@ -63,6 +63,14 @@
     "getDiagnosisReport": {
       "method": "GET",
       "path": "/diagnosis-report"
+    },
+    "importNights": {
+      "method": "POST",
+      "path": "/night-import"
+    },
+    "clearNightImport": {
+      "method": "POST",
+      "path": "/night-import/clear"
     }
   }
 }
