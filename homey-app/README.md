@@ -29,6 +29,7 @@ Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgord
 | **Gas** | Gasverbruik per uur of dag |
 | **Water** | Waterverbruik per uur of dag in liters, en het huidige verbruik |
 | **Sluipverbruik** | Wat er 's nachts altijd aan staat, en wat dat per jaar kost |
+| **Batterij kiezen** | Voor wie een thuisbatterij overweegt: je verbruik per avond en nacht (zon onder 200 W) over de afgelopen 365 dagen, het zonne-overschot per maand, en hoeveel van dat verbruik een batterij van 2,5 tot 15 kWh en 800 W tot 5 kW zou dekken (zie *Batterij kiezen*). Staat niet standaard op het dashboard; voeg het toe via het potlood |
 | **Meldingen** | Apparaten die blijven aanstaan, stijgend sluipverbruik, een meter die niet reageert, een negatieve prijs terwijl je teruglevert (zie *Meldingen*) |
 | **Fasebelasting** | Stroom per fase ten opzichte van je hoofdzekering, en L1, L2 en L3 door de dag heen in één grafiek |
 | **Groepen** | De belasting per groep in je meterkast ten opzichte van de zekering, per fase, met de apparaten die het meest gebruiken en per fase wat de groepen niet verklaren (Overig). Daaronder per groep een balk door de dag. Je maakt de groepen aan in de instellingen van de app |
@@ -237,6 +238,16 @@ De ▲/▼ in de tegels vergelijkt met de vorige periode tot hetzelfde moment: v
 ## Sluipverbruik
 
 Het sluipverbruik is het laagste verbruik van je huis tussen 1:00 en 5:00 afgelopen nacht, als alleen de apparaten aan staan die altijd aan staan (koelkast, router, standby). De app neemt daarvoor een lage waarde uit die nacht, niet het absolute minimum, zodat één afwijkende meting niet telt. Een thuisbatterij die 's nachts ontlaadt wordt meegerekend.
+
+## Batterij kiezen
+
+Het blok rekent per nacht, van 12:00 tot 12:00 de volgende dag, wat het huis verbruikt terwijl de zonnepanelen minder dan 200 W leveren. Het verbruik is wat de slimme meter afneemt plus wat de panelen leveren (min wat een eventuele thuisbatterij laadt). Het zonne-overschot is wat je die dag teruglevert: wat je in een batterij had kunnen laden.
+
+- **Capaciteit voor 4 van de 5 nachten**: de batterijgrootte die in 80% van de nachten genoeg is, rekening houdend met het overschot van die dag.
+- **Vermogen voor 90% van dat verbruik**: het vermogen waarmee een batterij 90% van het verbruik in het donker kan leveren.
+- **Dekt**: per batterijgrootte het deel van je verbruik in het donker dat de batterij zou leveren, als je hem alleen met je eigen zonnestroom laadt. Laden van het net met een dynamisch contract telt niet mee.
+
+De gegevens komen uit Homey Insights. Bij de eerste keer vult de app zo veel nachten aan als Homey met metingen per uur (of fijner) bewaart; daarna komt er elke dag een nacht bij, tot 365. Het vermogen is een gemiddelde per meetstap (vaak een uur), dus korte pieken zoals een waterkoker vallen weg: kies het vermogen van een batterij liever wat ruimer.
 
 ## Hoe de doucheminuten berekend worden
 

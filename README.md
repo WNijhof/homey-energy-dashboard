@@ -12,7 +12,7 @@ Een energiedashboard in de stijl van de Homey-app, met hetzelfde soort overzicht
 - **Energiestromen**: een Sankey-grafiek van de bronnen via het huis naar de individuele verbruikers, live of voor de gekozen periode
 - **Apparaten nu** en **Verbruik per apparaat**
 - **Warm water**, **Verwarming**, **Laadpaal**, **Thuisbatterij** en **Batterijgebruik**, zodra je zo'n apparaat hebt
-- **Kosten** en **Stroomprijs** met je eigen contract, **Einde salderen**, **Sluipverbruik**, **Fasebelasting**, **Groepen** (belasting per groep in de meterkast), **Maandpiek** en **Meldingen**
+- **Kosten** en **Stroomprijs** met je eigen contract, **Einde salderen**, **Sluipverbruik**, **Batterij kiezen** (hoe groot een thuisbatterij moet zijn), **Fasebelasting**, **Groepen** (belasting per groep in de meterkast), **Maandpiek** en **Meldingen**
 - **Terugkijken**: sleep bij Vandaag of Gisteren naar een eerder tijdstip en zie het dashboard van dat moment
 
 Alle blokken staan uitgelegd in [`homey-app/README.md`](homey-app/README.md). Het werkt automatisch in licht en donker, en ook op telefoon of tablet. Rechtsboven kies je de taal: Nederlands, Engels, Duits, Noors, Zweeds, Deens, Italiaans, Frans, Portugees of Spaans.

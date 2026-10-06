@@ -1,4 +1,8 @@
 {
+  "0.2.11": {
+    "en": "New block Choosing a battery: your use per evening and night (sun below 200 W) over the last 365 days, the solar surplus per month, and how much of that use a home battery of each size and power would cover. Add it to the dashboard with the pencil.",
+    "nl": "Nieuw blok Batterij kiezen: je verbruik per avond en nacht (zon onder 200 W) over de afgelopen 365 dagen, het zonne-overschot per maand, en hoeveel van dat verbruik een thuisbatterij van elke grootte en elk vermogen zou dekken. Voeg het toe via het potlood."
+  },
   "0.2.10": {
     "en": "Circuits: the device list no longer offers the summary devices of Power by the Hour (Σ), so nothing is counted twice.",
     "nl": "Groepen: de apparatenlijst toont de overzichtsapparaten van Power by the Hour (Σ) niet meer, zodat niets dubbel telt."

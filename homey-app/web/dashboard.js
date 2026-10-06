@@ -1551,6 +1551,38 @@
     if (typeof ((_b2 = live == null ? void 0 : live.water) == null ? void 0 : _b2.flow) === "number") parts.push("nu ".concat(nf(1).format(live.water.flow), " L/min"));
     setText("water-total", parts.join(" · "));
   }
+  function renderBatterySize(data) {
+    var _a2, _b2;
+    if (!$("batterysize-dark")) return;
+    const ok = Boolean(data && data.nights > 0);
+    toggleEmpty("batterysize", ok);
+    if (!ok) {
+      const empty = $("batterysize-empty");
+      if (empty) {
+        empty.textContent = data === void 0 ? "Verschijnt na het opslaan van de indeling" : !data || data.building ? "Wordt berekend uit de metingen in Homey…" : "Nog geen nachten gevonden met metingen per uur of fijner. Elke nacht komt er een bij.";
+      }
+      return;
+    }
+    setText("batterysize-basis", "".concat(nf(0).format(data.nights), " nachten"));
+    setText("batterysize-dark", "".concat(nf(1).format(data.avgDark), " kWh"));
+    const fact2 = (label, value) => "<li><span>".concat(label, "</span><strong>").concat(value, "</strong></li>");
+    const facts = [
+      fact2("Uren in het donker per nacht", "".concat(nf(1).format(data.avgHours), " h")),
+      fact2("Verbruik in het donker per jaar", "± ".concat(nf(0).format(data.yearDark), " kWh")),
+      fact2("Hoogste vermogen in het donker", formatPower(data.peak))
+    ];
+    if (typeof ((_a2 = data.advice) == null ? void 0 : _a2.kWh) === "number") facts.push(fact2("Capaciteit voor 4 van de 5 nachten", "± ".concat(nf(1).format(data.advice.kWh), " kWh")));
+    if (typeof ((_b2 = data.advice) == null ? void 0 : _b2.watts) === "number") facts.push(fact2("Vermogen voor 90% van dat verbruik", "± ".concat(formatPower(data.advice.watts))));
+    $("batterysize-facts").innerHTML = facts.join("");
+    const positive = [{ key: "dark", label: "Verbruik in het donker", color: css("--grid") }];
+    const negative = [{ key: "surplus", label: "Zonne-overschot", color: css("--solar") }];
+    const legend = $("batterysize-legend");
+    if (legend) legend.innerHTML = [...positive, ...negative].map((x) => '<span><i style="background:'.concat(x.color, '"></i>').concat(x.label, "</span>")).join("");
+    renderBars("batterysize-chart", data.months, { positive, negative, unit: "kWh", digits: 1, bucket: "month" });
+    const share = (v) => typeof v === "number" ? "".concat(nf(0).format(v * 100), "%") : "–";
+    $("batterysize-sizes").innerHTML = '<tr><td>Capaciteit</td><td class="muted">dekt</td><td>per jaar</td></tr>' + data.sizes.map((s) => "<tr><td>".concat(nf(1).format(s.kWh), ' kWh</td><td class="muted">').concat(share(s.share), "</td><td>").concat(typeof s.perYear === "number" ? "".concat(nf(0).format(s.perYear), " kWh") : "–", "</td></tr>")).join("");
+    $("batterysize-powers").innerHTML = "<tr><td>Vermogen</td><td>dekt</td></tr>" + data.powers.map((p) => "<tr><td>".concat(formatPower(p.watts), "</td><td>").concat(share(p.share), "</td></tr>")).join("");
+  }
   function renderBaseload(baseload) {
     if (!$("baseload-watts")) return;
     toggleEmpty("baseload", Boolean(baseload));
@@ -1840,6 +1872,7 @@
       renderConsumers(state.live);
       renderPrices(state.live.prices);
       renderBaseload(state.live.baseload);
+      renderBatterySize(state.live.batterysize);
       renderPhases(state.live.phases);
       renderGroups(state.live.groups);
       renderPeak(state.live.peak);
@@ -2160,6 +2193,7 @@
     solar: "Opbrengst van je zonnepanelen met een streepje voor de verwachting van Forecast.Solar. Prestatie = opbrengst ÷ verwachting; per kWp gebruikt het vermogen van je dakvlakken.",
     gas: "Gasverbruik van het hele huis uit je slimme meter. Per graaddag deelt het verbruik door de graaddagen (buitentemperatuur van Open-Meteo), zodat perioden met ander weer te vergelijken zijn.",
     water: "Waterverbruik in liters uit je watermeter, en het huidige verbruik per minuut.",
+    batterysize: "Hoe groot een thuisbatterij moet zijn: per nacht wat het huis verbruikt terwijl de zon minder dan 200 W geeft, van de middag tot de middag erna, over de afgelopen 365 dagen. Het verbruik is wat de slimme meter afneemt plus wat de zonnepanelen leveren. Onder nul staat het zonne-overschot van een dag: wat je teruglevert en dus in een batterij kunt laden. Een batterij van een bepaalde grootte levert per nacht hooguit zijn capaciteit, hooguit wat die nacht gebruikt wordt en hooguit wat de zon die dag over had. Het vermogen is gemiddeld per meetstap van Homey (vaak een uur), dus korte pieken zoals een waterkoker vallen weg. De app vult de nachten bij de eerste keer aan uit Insights, zo ver als Homey metingen per uur bewaart, en daarna elke dag met de afgelopen nacht.",
     baseload: "Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.",
     alerts: "Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.",
     phases: "Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.",
@@ -2197,7 +2231,7 @@
     return out;
   }
   function infoDetails(id) {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i;
     const t = (_a2 = state.history) == null ? void 0 : _a2.totals;
     const tf = (_b2 = state.live) == null ? void 0 : _b2.tariff;
     if (id === "costs" && (t == null ? void 0 : t.costs)) {
@@ -2247,15 +2281,26 @@
       if (out !== null && inn !== null) rows.push(fact("Opbrengst", "".concat(money(out), " − ").concat(money(inn), " ≈ ").concat(money(out - inn))));
       return rows.length ? '<ul class="facts">'.concat(rows.join(""), "</ul>") : "";
     }
+    if (id === "batterysize") {
+      const b = (_g = state.live) == null ? void 0 : _g.batterysize;
+      if (!b || !b.nights) return "";
+      const rows = [
+        fact("Nachten", "".concat(nf(0).format(b.nights), " (").concat(b.from, " – ").concat(b.to, ")")),
+        fact("Per jaar", "".concat(nf(2).format(b.avgDark), " kWh × 365 = ").concat(nf(0).format(b.yearDark), " kWh")),
+        fact("Meetstap", "".concat(nf(0).format(b.step), " min"))
+      ];
+      if (typeof b.unlimited === "number") rows.push(fact("Hoogst haalbaar met zon", "".concat(nf(0).format(b.unlimited * 100), "%")));
+      return '<ul class="facts">'.concat(rows.join(""), "</ul>");
+    }
     if (id === "baseload") {
-      const b = (_g = state.live) == null ? void 0 : _g.baseload;
+      const b = (_h = state.live) == null ? void 0 : _h.baseload;
       if (!b) return "";
       const rows = [fact("Per jaar", "".concat(formatPower(b.watts), " × 8.760 h = ").concat(nf(0).format(b.yearKWh), " kWh"))];
       if (typeof b.yearCost === "number" && b.yearKWh > 0) rows.push(fact("Kost per jaar", times(nf(0).format(b.yearKWh), "kWh", b.yearCost / b.yearKWh, b.yearCost)));
       return '<ul class="facts">'.concat(rows.join(""), "</ul>");
     }
     if (id === "peak") {
-      const p = (_h = state.live) == null ? void 0 : _h.peak;
+      const p = (_i = state.live) == null ? void 0 : _i.peak;
       if (!p || typeof p.peakW !== "number") return "";
       const counted = Math.max(p.peakW / 1e3, p.minKw || 0);
       const rows = [fact("Telt deze maand", "max(".concat(nf(2).format(p.peakW / 1e3), "; ").concat(nf(1).format(p.minKw || 0), ") = ").concat(nf(2).format(counted), " kW"))];
@@ -2576,6 +2621,7 @@
       renderConsumers(live);
       renderPrices(live.prices);
       renderBaseload(live.baseload);
+      renderBatterySize(live.batterysize);
       renderPhases(live.phases);
       renderGroups(live.groups);
       renderPeak(live.peak);

@@ -1000,3 +1000,7 @@ body.editing #blocks { padding-bottom: 160px; }
 html.motion-off :is(.node-pulse, .node-spin, .sankey-link.grow, .power-reveal, .power-now, .battery-charging) { animation: none; stroke-dashoffset: 0; }
 html.motion-off .node-pulse { display: none; }
 html.motion-off { transition: none; }
+
+/* Battery size: room between the facts, the month chart and the two tables */
+[data-batterysize] .legend { margin-top: 12px; }
+[data-batterysize] .costs { margin-top: 10px; }

@@ -191,6 +191,7 @@
     "gas": "Gas",
     "water": "Water",
     "baseload": "Sluipverbruik",
+    "batterysize": "Batterij kiezen",
     "phases": "Fasebelasting",
     "groups": "Groepen",
     "batteryhistory": "Batterijgebruik",

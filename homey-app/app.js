@@ -6,6 +6,7 @@ const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
   expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy,
+  collectNights, pruneNights, batteryAdvice, nightSource, lastNight,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -19,6 +20,8 @@ const DEVICES_CACHE_TTL = 5 * 1000;
 const HISTORY_CACHE_TTL = 60 * 1000;
 const LOGS_CACHE_TTL = 10 * 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
+// How often the log of nights is read again while last night is still missing
+const NIGHTS_RETRY = 60 * 60 * 1000;
 const ZONES_CACHE_TTL = 10 * 60 * 1000;
 const NETTING_CACHE_TTL = 60 * 60 * 1000;
 const ENERGY_LIVE_TTL = 5 * 1000;
@@ -444,6 +447,7 @@ class EnergyDashboardApp extends Homey.App {
       live.today = todayTotals(today?.totals);
     }
     if (shown.has('baseload')) live.baseload = await this.getBaseload(found, cfg).catch(() => null);
+    if (shown.has('batterysize')) live.batterysize = this.getBatterySize(found, cfg);
     if (shown.has('netting')) live.netting = await this.getNetting().catch(() => null);
     if (shown.has('peak')) live.peak = this.getPeak(found, cfg);
     // The contract, for the explanation of the amounts in the cost blocks
@@ -485,6 +489,24 @@ class EnergyDashboardApp extends Homey.App {
       this.homey.settings.set('baseloadLog', recordBaseload(log, this.baseloadCache.data?.watts));
     }
     return this.baseloadCache.data;
+  }
+
+  // Battery size: the use while dark per night, kept in the settings for a year. Nights that are
+  // missing are read in the background (the first time from as far back as Homey has readings per
+  // hour); the block shows what the log holds so far.
+  getBatterySize(found, cfg) {
+    const source = nightSource(found);
+    const stored = this.homey.settings.get('nightLog');
+    const log = stored?.source === source ? stored.nights || {} : {};
+    if (found.p1 && !log[lastNight()] && !this.nightsPending && Date.now() - (this.nightsTried || 0) > NIGHTS_RETRY) {
+      this.nightsTried = Date.now();
+      const read = (device, capability, resolution) => this.getEntries(device.id, capability, resolution).catch(() => []);
+      this.nightsPending = collectNights(read, found, cfg, log)
+        .then(fresh => this.homey.settings.set('nightLog', { source, nights: pruneNights({ ...log, ...fresh }) }))
+        .catch(err => this.error(`Nights: ${err.message}`))
+        .finally(() => { this.nightsPending = null; });
+    }
+    return batteryAdvice(log) || { nights: 0, building: Boolean(this.nightsPending) };
   }
 
   // ---------- Warnings ----------

@@ -191,6 +191,7 @@
     "gas": "Gas",
     "water": "Water",
     "baseload": "Standby use",
+    "batterysize": "Choosing a battery",
     "phases": "Phase load",
     "groups": "Circuits",
     "batteryhistory": "Battery use",

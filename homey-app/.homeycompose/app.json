@@ -1,6 +1,6 @@
 {
   "id": "com.drpeppers.energydashboard",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",

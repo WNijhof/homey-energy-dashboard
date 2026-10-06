@@ -7,6 +7,7 @@ const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy,
+  collectNights, pruneNights, batteryAdvice, nightSource, lastNight,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
@@ -110,6 +111,10 @@ let forecastLog = {};
 const weather = new WeatherService();
 const alertMonitor = new AlertMonitor();
 let baseloadLog = {};
+// The use while dark per night, for the battery size block; kept in memory while the server runs
+let nightLog = { source: null, nights: {} };
+let nightsTried = 0;
+let nightsPending = null;
 const pinGuard = new PinGuard();
 
 async function getDevices() {
@@ -186,6 +191,7 @@ async function getLive(name = '', at = null) {
     live = buildLive(devices, found, view, { estimated: await getEstimated(devices, found) });
     live.currency = await prices.currency().catch(() => null);
     if (live.layout.some(b => b.id === 'baseload')) live.baseload = await getBaseload(found).catch(() => null);
+    if (live.layout.some(b => b.id === 'batterysize')) live.batterysize = getBatterySize(found);
     if (live.layout.some(b => b.id === 'peak') || live.layout.some(b => b.id === 'alerts')) {
       live.peak = peakSummary({ tracker: peakTracker, p1: found.p1, grid: cfg.grid });
     }
@@ -247,6 +253,21 @@ async function getBaseload(found) {
     baseloadLog = recordBaseload(baseloadLog, baseloadCache.data?.watts);
   }
   return baseloadCache.data;
+}
+
+// Like the Homey app: missing nights are read in the background, the block shows the log so far
+function getBatterySize(found) {
+  const source = nightSource(found);
+  if (nightLog.source !== source) nightLog = { source, nights: {} };
+  if (found.p1 && !nightLog.nights[lastNight()] && !nightsPending && Date.now() - nightsTried > 60 * 60 * 1000) {
+    nightsTried = Date.now();
+    const read = (device, capability, resolution) => client.getEntries(device.id, capability, resolution).catch(() => []);
+    nightsPending = collectNights(read, found, cfg, nightLog.nights)
+      .then(fresh => { nightLog.nights = pruneNights({ ...nightLog.nights, ...fresh }); })
+      .catch(err => console.error(`Nachten: ${err.message}`))
+      .finally(() => { nightsPending = null; });
+  }
+  return batteryAdvice(nightLog.nights) || { nights: 0, building: Boolean(nightsPending) };
 }
 
 async function getHistory(period, { light = false } = {}) {

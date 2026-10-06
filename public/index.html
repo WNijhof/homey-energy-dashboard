@@ -333,6 +333,28 @@
     </section>
   </template>
 
+  <template id="block-batterysize">
+    <section class="card">
+      <div class="card-head">
+        <h2>Batterij kiezen</h2>
+        <span class="muted" id="batterysize-basis"></span>
+      </div>
+      <p class="block-empty" id="batterysize-empty" hidden></p>
+      <div data-batterysize>
+        <div class="big-fact">
+          <span class="big-number" id="batterysize-dark">–</span>
+          <span class="big-unit">per avond en nacht, als de zon minder dan 200 W geeft</span>
+        </div>
+        <ul class="facts" id="batterysize-facts"></ul>
+        <div class="legend" id="batterysize-legend"></div>
+        <div class="chart" id="batterysize-chart" data-height="150"></div>
+        <table class="costs" id="batterysize-sizes"></table>
+        <table class="costs" id="batterysize-powers"></table>
+        <p class="note">Dekt: welk deel van je verbruik in het donker een batterij van die grootte zou leveren, als je hem alleen met je eigen zonne-overschot van die dag laadt.</p>
+      </div>
+    </section>
+  </template>
+
   <template id="block-baseload">
     <section class="card">
       <div class="card-head">
