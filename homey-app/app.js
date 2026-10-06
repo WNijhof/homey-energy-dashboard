@@ -623,6 +623,7 @@ class EnergyDashboardApp extends Homey.App {
       && (d.capabilities || []).some(c => /^(measure_power|meter_power)/.test(c)));
     const estimated = await this.getEstimated(devices, found).catch(err => [{ error: err.message }]);
     const alerts = await this.getAlerts(found, cfg, 'nl').catch(err => [{ error: err.message }]);
+    const history = await this.describeHistory(found).catch(err => ({ error: err.message }));
     return {
       version: this.homey.manifest.version,
       homey: { language: this.homey.i18n.getLanguage(), timezone: this.homey.clock.getTimezone() },
@@ -657,7 +658,49 @@ class EnergyDashboardApp extends Homey.App {
       estimated: estimated.slice(0, 10).map(d => (anonymous ? { watts: d.watts, estimated: d.estimated, error: d.error } : d)),
       // Warning texts hold device names; the anonymous report keeps only which warnings there are
       alerts: anonymous ? alerts.map(a => ({ id: a.id?.replace(/-[\w-]{8,}$/, ''), level: a.level })) : alerts,
+      history,
     };
+  }
+
+  // How far back Homey keeps readings, for the battery size block: per Insights resolution the
+  // number of P1 power readings, their usual step and the first one, and the shape (keys, array
+  // lengths, kinds of values; no values) of a Homey Energy day report of 100 days ago.
+  async describeHistory(found) {
+    const insights = {};
+    if (found.p1) {
+      for (const resolution of ['last24Hours', 'last7Days', 'last14Days', 'last31Days', 'last3Months', 'last6Months', 'lastYear', 'last2Years']) {
+        const entries = await this.getEntries(found.p1.id, 'measure_power', resolution).catch(err => ({ error: err.message }));
+        if (!Array.isArray(entries)) { insights[resolution] = entries; continue; }
+        const gaps = entries.slice(1).map((e, i) => e.t - entries[i].t).sort((a, b) => a - b);
+        insights[resolution] = {
+          entries: entries.length,
+          stepMinutes: gaps.length ? Math.round(gaps[Math.floor(gaps.length / 2)] / 60000) : null,
+          from: entries[0]?.t?.toISOString() || null,
+        };
+      }
+    }
+    const day = new Date(Date.now() - 100 * 24 * 3600 * 1000);
+    const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    const report = await this.energyReport({ kind: 'day', date }).catch(err => ({ error: err.message }));
+    // Keys that are ids are shown once, as <id>
+    const shape = (v, depth = 0) => {
+      if (Array.isArray(v)) return { array: v.length, first: v.length ? shape(v[0], depth + 1) : null };
+      if (v && typeof v === 'object') {
+        if (depth > 5) return 'object';
+        const out = {};
+        let ids = 0;
+        for (const [key, item] of Object.entries(v)) {
+          const isId = /^[0-9a-f-]{20,}$/i.test(key);
+          if (isId && ids++) continue;
+          out[isId ? '<id>' : key] = shape(item, depth + 1);
+          if (Object.keys(out).length >= 40) break;
+        }
+        if (ids > 1) out['<ids>'] = ids;
+        return out;
+      }
+      return v === null ? 'null' : typeof v;
+    };
+    return { insights, dayReport: { date, shape: shape(report) } };
   }
 
   // The report for "Share diagnosis" in the settings: anonymous, with the date it was made, and
