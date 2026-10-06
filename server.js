@@ -6,7 +6,7 @@ const path = require('path');
 const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
-  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate,
+  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
@@ -421,6 +421,7 @@ async function getDeviceList() {
       capabilities: d.capabilities,
       power: (d.capabilities || []).includes('measure_power'),
       estimate: hasUsageEstimate(d),
+      copy: isCopy(d),
     })),
   };
 }

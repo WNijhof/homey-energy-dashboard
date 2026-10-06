@@ -303,7 +303,10 @@ function onHomeyReady(Homey) {
   }
 
   function fillGroups(saved, devices, solarOn, batteryOn) {
-    groupDevices = devices.filter(d => d.power || d.estimate);
+    // Summaries of Power by the Hour (Σ) copy other meters; one already in a group stays listed
+    // so it can be taken out
+    const assigned = new Set(saved.flatMap(g => g.devices || []));
+    groupDevices = devices.filter(d => (d.power || d.estimate) && (!d.copy || assigned.has(d.id)));
     groups = saved.map(g => ({ id: String(g.id || g.name), name: g.name || '', fuseAmps: g.fuseAmps ?? 16, phases: g.phases === 3 ? [1, 2, 3] : phasesFrom(g.phases), fixedWatts: g.fixedWatts || 0, devices: [...(g.devices || [])] }));
     form.groupsSolarPhases.innerHTML = phaseOptions(phasesFrom(solarOn), __('allPhases'));
     form.groupsBatteryPhases.innerHTML = phaseOptions(phasesFrom(batteryOn), __('allPhases'));

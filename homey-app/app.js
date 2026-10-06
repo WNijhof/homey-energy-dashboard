@@ -5,7 +5,7 @@ const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
-  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate,
+  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -742,6 +742,8 @@ class EnergyDashboardApp extends Homey.App {
           class: d.virtualClass || d.class,
           power: (d.capabilities || []).includes('measure_power'),
           estimate: hasUsageEstimate(d) || estimatedIds.has(d.id),
+          // A summary of Power by the Hour (Σ): it copies another meter, so it is no group device
+          copy: isCopy(d),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     };
