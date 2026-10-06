@@ -11,14 +11,18 @@ const WEB_DIR = path.join(__dirname, '..', 'web');
 const ACCESS_COOKIE = 'energy_dashboard_access';
 
 const MAX_BODY = 16 * 1024;
+// A part of an imported meter export, sent from the settings page
+const MAX_UPLOAD_BODY = 256 * 1024;
+const SETTINGS_DIR = path.join(__dirname, '..', 'settings');
+const LOCALES_DIR = path.join(__dirname, '..', 'locales');
 
-function readBody(req) {
+function readBody(req, limit = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.setEncoding('utf8');
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > MAX_BODY) {
+      if (body.length > limit) {
         reject(Object.assign(new Error('Te veel gegevens'), { status: 413 }));
         // Stop keeping the rest, but let it arrive, so the answer (413) still reaches the sender
         req.removeAllListeners('data');
@@ -30,9 +34,9 @@ function readBody(req) {
   });
 }
 
-async function readJson(req) {
+async function readJson(req, limit = MAX_BODY) {
   try {
-    return JSON.parse((await readBody(req)) || '{}');
+    return JSON.parse((await readBody(req, limit)) || '{}');
   } catch (err) {
     throw err.status ? err : Object.assign(new Error('Ongeldige gegevens'), { status: 400 });
   }
@@ -201,6 +205,8 @@ class WebServer {
     const url = new URL(req.url, 'http://localhost');
     try {
       if (!(await this.checkAccess(req, res, url))) return;
+      if (url.pathname === '/instellingen' || url.pathname.startsWith('/instellingen/')) return this.serveSettings(res, url.pathname);
+      if (url.pathname.startsWith('/api/settings/')) return await this.handleSettings(req, res, url);
       if (url.pathname === '/api/layout') {
         if (req.method === 'GET') return sendJson(res, 200, await this.app.getLayoutInfo(url.searchParams.get('layout') || ''));
         if (req.method === 'POST') return sendJson(res, 200, await this.app.saveLayout(await readJson(req)));
@@ -240,6 +246,47 @@ class WebServer {
       if (!err.status) this.error(`${url.pathname}: ${err.message}`);
       return sendJson(res, err.status || 500, { error: err.message });
     }
+  }
+
+  // The settings page of the Homey app, also on this web page: the same files, with a stand-in
+  // for the Homey object (settings-web.js) instead of Homey's own script
+  serveSettings(res, pathname) {
+    const file = pathname.replace(/^\/instellingen\/?/, '') || 'index.html';
+    if (!/^(index\.html|settings\.css|settings\.js)$/.test(file)) {
+      res.writeHead(404).end();
+      return undefined;
+    }
+    let content = fs.readFileSync(path.join(SETTINGS_DIR, file), 'utf8');
+    if (file === 'index.html') {
+      if (!/\/instellingen\//.test(pathname)) {
+        res.writeHead(301, { Location: '/instellingen/' }).end();
+        return undefined;
+      }
+      content = content.replace(/<script[^>]*src="\/homey\.js"[^>]*><\/script>/, '<script src="/settings-web.js"></script>');
+    }
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)], 'Cache-Control': 'no-store' });
+    res.end(content);
+    return undefined;
+  }
+
+  // The API of the settings page on the web: texts freely, everything else only with a token
+  // that the edit PIN gives (see the app's unlockSettings)
+  async handleSettings(req, res, url) {
+    const name = url.pathname.slice('/api/settings/'.length);
+    if (name === 'texts' && req.method === 'GET') {
+      const lang = this.app.homey?.i18n?.getLanguage?.() === 'nl' ? 'nl' : 'en';
+      return sendJson(res, 200, { lang, texts: JSON.parse(fs.readFileSync(path.join(LOCALES_DIR, `${lang}.json`), 'utf8')) });
+    }
+    if (name === 'unlock' && req.method === 'POST') return sendJson(res, 200, this.app.unlockSettings((await readJson(req)).pin));
+    this.app.checkSettingsToken(req.headers['x-settings-token']);
+    if (name === 'check' && req.method === 'GET') return sendJson(res, 200, { ok: true });
+    if (name === 'value' && req.method === 'GET') return sendJson(res, 200, { value: this.app.webSettingValue(url.searchParams.get('key')) });
+    if (name === 'value' && req.method === 'POST') {
+      const { key, value } = await readJson(req);
+      return sendJson(res, 200, await this.app.setWebSetting(key, value));
+    }
+    if (name === 'call' && req.method === 'POST') return sendJson(res, 200, await this.app.webSettingsCall(await readJson(req, MAX_UPLOAD_BODY)));
+    return sendJson(res, 404, { error: 'Onbekend' });
   }
 
   async start(port) {

@@ -96,6 +96,8 @@ In de Homey-app: *Meer → Apps → Energie Dashboard → Instellingen*. Bovenaa
 
 Op dezelfde instellingenpagina. Elke wijziging wordt meteen bewaard; het vinkje bovenin Homey sluit alleen de pagina.
 
+Dezelfde instellingen staan ook op de webpagina van het dashboard: tik op het **tandwiel** rechtsboven, of open `/instellingen/` achter het adres. Dat werkt alleen als je in Homey een **pincode voor bewerken** hebt ingesteld: de pagina vraagt die eerst. Poort, toegangscode en pincode wijzig je alleen in de Homey-app, zodat niemand via de webpagina het dashboard kan openzetten of jou kan buitensluiten. Na 5 foute pincodes is de pagina een minuut geblokkeerd, en elke volgende keer twee keer zo lang (tot een dag).
+
 - **Poort**: standaard 8686 (wie de app al voor versie 0.2.4 had, houdt 8080). Wijzig die als die poort al door iets anders gebruikt wordt.
 - **Toegangscode voor het dashboard**: als je die invult, vraagt een browser er één keer om en onthoudt hem daarna. Voor een tablet aan de muur kun je ook het adres openen met `?code=…` erachter.
 - **Pincode voor bewerken**: als je die invult, vraagt het dashboard erom bij het opslaan van een nieuwe indeling.
@@ -184,7 +186,7 @@ De app heeft twee widgets voor de Dashboards in de Homey-app. **Energie nu** too
 
 ## Veiligheid
 
-De webpagina is alleen bereikbaar binnen je thuisnetwerk, niet vanaf internet (tenzij je zelf poorten doorstuurt in je router, doe dat niet). Zonder toegangscode kan iedereen op je wifi het dashboard bekijken; stel er een in bij de instellingen als je dat niet wilt (na 5 foute pogingen is inloggen een minuut geblokkeerd). De pagina kan niets bedienen. Het enige dat je er kunt wijzigen is de indeling. Wil je niet dat iedereen op je wifi dat kan, stel dan een pincode in (na 5 foute pogingen is bewerken een minuut geblokkeerd). Apparaten, tarieven en andere instellingen wijzig je alleen via de Homey-app.
+De webpagina is alleen bereikbaar binnen je thuisnetwerk, niet vanaf internet (tenzij je zelf poorten doorstuurt in je router, doe dat niet). Zonder toegangscode kan iedereen op je wifi het dashboard bekijken; stel er een in bij de instellingen als je dat niet wilt (na 5 foute pogingen is inloggen een minuut geblokkeerd). De pagina kan niets bedienen. Zonder pincode kun je er alleen de indeling wijzigen. Met een pincode kun je op de webpagina ook de instellingen van de app wijzigen (apparaten, tarieven, groepen), maar alleen na het invullen van die pincode; kies daarom een pincode van minstens 6 cijfers. Poort, toegangscode en pincode wijzig je alleen via de Homey-app.
 
 Maak je het dashboard via een tunnel of doorverwijzing bereikbaar vanaf internet, **stel dan altijd een toegangscode in**: anders kan iedereen die het adres vindt je verbruik zien, en daarmee ook wanneer je thuis bent.
 

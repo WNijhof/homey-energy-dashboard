@@ -715,6 +715,7 @@
     '+ export': ['+ export', '+ Export', '+ eksport', '+ export', '+ eksport', '+ esportazione', '+ export', '+ exportação', '+ exportación'],
     '+ model': ['+ model', '+ Modell', '+ modell', '+ modell', '+ model', '+ modello', '+ modèle', '+ modelo', '+ modelo'],
     'Verbruik in het donker (model)': ['Use in the dark (model)', 'Verbrauch im Dunkeln (Modell)', 'Forbruk i mørket (modell)', 'Förbrukning i mörker (modell)', 'Forbrug i mørke (model)', 'Consumo al buio (modello)', 'Consommation dans le noir (modèle)', 'Consumo no escuro (modelo)', 'Consumo a oscuras (modelo)'],
+    'Instellingen': ['Settings', 'Einstellungen', 'Innstillinger', 'Inställningar', 'Indstillinger', 'Impostazioni', 'Réglages', 'Definições', 'Ajustes'],
     'Gemodelleerd uit maandtotalen': ['Modelled from month totals', 'Aus Monatssummen modelliert', 'Modellert fra månedstotaler', 'Modellerat från månadstotaler', 'Modelleret ud fra månedstotaler', 'Modellato dai totali mensili', 'Modélisé à partir des totaux mensuels', 'Modelado a partir dos totais mensais', 'Modelado a partir de los totales mensuales'],
     'Model': ['Model', 'Modell', 'Modell', 'Modell', 'Model', 'Modello', 'Modèle', 'Modelo', 'Modelo'],
     'Lichtere balken zijn gemodelleerd uit de maandtotalen van Homey Energy, niet gemeten. Kies Gemeten of + export om ze weg te laten.': [

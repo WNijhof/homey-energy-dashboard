@@ -20,13 +20,17 @@
     <h2 data-i18n="settings.settings"></h2>
 
     <h3 data-i18n="settings.webPage"></h3>
-    <label><span data-i18n="settings.port"></span> <input name="port" type="number" min="1024" max="65535" step="1"></label>
+    <!-- Port, access code and PIN: in Homey only, not on the web page (see settings-web.js) -->
+    <div id="homey-only">
+      <label><span data-i18n="settings.port"></span> <input name="port" type="number" min="1024" max="65535" step="1"></label>
 
-    <label><span data-i18n="settings.accessCode"></span> <input name="accessCode" type="password" autocomplete="new-password"></label>
-    <p class="muted" data-i18n="settings.accessCodeHelp"></p>
+      <label><span data-i18n="settings.accessCode"></span> <input name="accessCode" type="password" autocomplete="new-password"></label>
+      <p class="muted" data-i18n="settings.accessCodeHelp"></p>
 
-    <label><span data-i18n="settings.editPin"></span> <input name="editPin" type="password" inputmode="numeric" autocomplete="off"></label>
-    <p class="muted" data-i18n="settings.editPinHelp"></p>
+      <label><span data-i18n="settings.editPin"></span> <input name="editPin" type="password" inputmode="numeric" autocomplete="off"></label>
+      <p class="muted" data-i18n="settings.editPinHelp"></p>
+    </div>
+    <p class="muted" id="homey-only-note" data-i18n="settings.homeyOnly" hidden></p>
 
     <h3 data-i18n="settings.layout"></h3>
     <p class="muted" data-i18n="settings.layoutHelp"></p>

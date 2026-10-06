@@ -177,7 +177,11 @@
     "importDone": "Done: __nights__ nights from __from__ to __to__ (__skipped__ skipped for missing or implausible readings).",
     "importFailed": "Import failed: __error__",
     "importClear": "Remove import",
-    "importCleared": "Import removed."
+    "importCleared": "Import removed.",
+    "webTitle": "Energy Dashboard settings",
+    "webPinHelp": "Enter the edit PIN you set for Energy Dashboard in the Homey app. Without a PIN the settings can only be changed in Homey.",
+    "webUnlock": "Open",
+    "homeyOnly": "The port, access code and edit PIN can only be changed in the Homey app, not on this web page."
   },
   "blocks": {
     "alerts": "Warnings",

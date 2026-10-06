@@ -177,7 +177,11 @@
     "importDone": "Klaar: __nights__ nachten van __from__ tot __to__ (__skipped__ overgeslagen door ontbrekende of onlogische metingen).",
     "importFailed": "Importeren mislukt: __error__",
     "importClear": "Import verwijderen",
-    "importCleared": "Import verwijderd."
+    "importCleared": "Import verwijderd.",
+    "webTitle": "Instellingen Energie Dashboard",
+    "webPinHelp": "Vul de bewerkpincode in die je in de Homey-app bij Energie Dashboard instelde. Zonder pincode kun je de instellingen alleen in Homey wijzigen.",
+    "webUnlock": "Openen",
+    "homeyOnly": "Poort, toegangscode en bewerkpincode wijzig je alleen in de Homey-app, niet op deze webpagina."
   },
   "blocks": {
     "alerts": "Meldingen",

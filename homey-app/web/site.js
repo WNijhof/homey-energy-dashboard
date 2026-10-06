@@ -21,4 +21,6 @@ EnergyDashboard.start({
     return data;
   },
   missingHint: 'Kies ze in de Homey-app bij <em>Apps → Energie Dashboard → Instellingen</em>.',
+  // The settings of the app on this web page too (with the edit PIN)
+  settingsUrl: '/instellingen/',
 });

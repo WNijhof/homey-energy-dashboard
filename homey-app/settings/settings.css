@@ -187,3 +187,7 @@ button.link {
 #groups .plane { padding: 8px 0; border-top: 1px solid rgba(128, 128, 128, 0.25); }
 #groups .plane:first-child { border-top: 0; }
 .group-devices { margin-top: 12px; }
+
+/* On the dashboard's own web page (settings-web.js): not wider than reads well */
+body.web { max-width: 760px; margin-left: auto; margin-right: auto; }
+.web-back { margin: 4px 4px 12px; }

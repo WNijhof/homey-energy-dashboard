@@ -1,5 +1,7 @@
 'use strict';
 
+const crypto = require('crypto');
+
 const Homey = require('homey');
 const { HomeyAPI } = require('homey-api');
 const {
@@ -21,6 +23,9 @@ const DEVICES_CACHE_TTL = 5 * 1000;
 const HISTORY_CACHE_TTL = 60 * 1000;
 const LOGS_CACHE_TTL = 10 * 60 * 1000;
 const BASELOAD_CACHE_TTL = 60 * 60 * 1000;
+// The settings page on the web: how long a right PIN lasts, and what it can never change
+const SETTINGS_TOKEN_TTL = 12 * 3600 * 1000;
+const WEB_HIDDEN_SETTINGS = ['port', 'accessCode', 'editPin'];
 // How often the log of nights is read again while last night is still missing
 const NIGHTS_RETRY = 60 * 60 * 1000;
 // A log of an older version is filled in once more: version 2 reads Homey Energy's day reports
@@ -593,6 +598,82 @@ class EnergyDashboardApp extends Homey.App {
     if (!layouts.some(layout => layout.some(b => b && b.id === 'batterysize'))) return;
     const devices = await this.getDevices();
     this.getBatterySize(discover(devices, cfg.devices), cfg);
+  }
+
+  // ---------- Settings on the web page ----------
+
+  // The settings page also works on the dashboard's own web page (/instellingen), which can be
+  // reachable from the internet. It always needs the edit PIN: a right PIN gives a token for 12
+  // hours. Wrong PINs lock it for a minute, doubling each time up to a day. The port, access code
+  // and PIN can only be changed in Homey, so no one can open up or lock out the dashboard from
+  // the web page.
+  unlockSettings(pin) {
+    const cfg = this.getConfig();
+    if (!cfg.editPin) {
+      throw Object.assign(new Error('Stel eerst een bewerkpincode in bij de instellingen van de app in Homey.'), { status: 403 });
+    }
+    const guard = this.settingsGuard || (this.settingsGuard = { failures: 0, lockedUntil: 0, locks: 0 });
+    if (Date.now() < guard.lockedUntil) {
+      const minutes = Math.ceil((guard.lockedUntil - Date.now()) / 60000);
+      throw Object.assign(new Error(`Te veel verkeerde pincodes. Probeer het over ${minutes} min opnieuw.`), { status: 429 });
+    }
+    if (String(pin ?? '') !== String(cfg.editPin)) {
+      guard.failures++;
+      if (guard.failures >= 5) {
+        guard.failures = 0;
+        guard.lockedUntil = Date.now() + Math.min(24 * 60, 2 ** guard.locks) * 60 * 1000;
+        guard.locks++;
+      }
+      throw Object.assign(new Error('Verkeerde pincode'), { status: 403 });
+    }
+    guard.failures = 0;
+    guard.locks = 0;
+    const token = crypto.randomBytes(24).toString('hex');
+    this.settingsTokens = this.settingsTokens || new Map();
+    this.settingsTokens.set(token, Date.now() + SETTINGS_TOKEN_TTL);
+    return { token };
+  }
+
+  checkSettingsToken(token) {
+    const tokens = this.settingsTokens || new Map();
+    for (const [key, until] of tokens) if (until < Date.now()) tokens.delete(key);
+    // A new PIN in Homey ends every session on the web page
+    if (!this.getConfig().editPin) tokens.clear();
+    if (!token || !tokens.has(String(token))) throw Object.assign(new Error('Pincode nodig'), { status: 401 });
+  }
+
+  webSettingValue(key) {
+    if (key === 'config') {
+      const config = { ...(this.homey.settings.get('config') || {}) };
+      for (const hidden of WEB_HIDDEN_SETTINGS) delete config[hidden];
+      return config;
+    }
+    if (key === 'nightImport') return this.homey.settings.get('nightImport') || null;
+    throw Object.assign(new Error('Onbekende instelling'), { status: 404 });
+  }
+
+  async setWebSetting(key, value) {
+    if (key !== 'config' || !value || typeof value !== 'object' || Array.isArray(value)) {
+      throw Object.assign(new Error('Onbekende instelling'), { status: 400 });
+    }
+    const saved = this.homey.settings.get('config') || {};
+    const next = { ...value };
+    for (const hidden of WEB_HIDDEN_SETTINGS) {
+      if (hidden in saved) next[hidden] = saved[hidden];
+      else delete next[hidden];
+    }
+    this.homey.settings.set('config', next);
+    return { saved: true };
+  }
+
+  // The calls of the settings page, as its Homey.api would make them
+  async webSettingsCall({ method, path, body } = {}) {
+    const [route, query = ''] = String(path || '').split('?');
+    if (method === 'GET' && route === '/settings-info') return this.getSettingsInfo();
+    if (method === 'GET' && route === '/diagnosis-report') return this.getDiagnosisReport({ snapshot: /(^|&)snapshot=1(&|$)/.test(query) });
+    if (method === 'POST' && route === '/night-import') return this.importNightsPart(body || {});
+    if (method === 'POST' && route === '/night-import/clear') return this.clearNightImport();
+    throw Object.assign(new Error('Onbekend'), { status: 404 });
   }
 
   // ---------- Warnings ----------

@@ -10,6 +10,12 @@ function onHomeyReady(Homey) {
   // Texts in the language of Homey, from /locales
   const __ = (key, tokens) => Homey.__(`settings.${key}`, tokens);
   const blockTitle = block => Homey.__(`blocks.${block.id}`) || block.title;
+  // On the dashboard's own web page the port, access code and PIN are not shown: they can only
+  // be changed in Homey
+  if (Homey.web) {
+    document.getElementById('homey-only').hidden = true;
+    document.getElementById('homey-only-note').hidden = false;
+  }
   form.editPin.placeholder = __('none');
   form.accessCode.placeholder = __('none');
 
