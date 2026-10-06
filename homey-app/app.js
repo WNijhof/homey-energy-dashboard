@@ -734,7 +734,49 @@ class EnergyDashboardApp extends Homey.App {
     } catch (err) {
       energyMethods = { failed: err.message };
     }
-    return { insights, energyMethods, dayReport: { date, shape: describe(report) }, yesterdayReport: { date: yesterdayDate, shape: describe(recent) } };
+    // Which reports exist, and what a week and a month report of a few months ago hold: the
+    // curves in them with their number of points and step (no values)
+    const available = await (await this.getApi()).energy.getReportsAvailable().catch(err => ({ failed: err.message }));
+    const curves = r => {
+      if (!r || r.failed) return r || null;
+      const out = {};
+      const walk = (v, path) => {
+        if (Array.isArray(v) && v.length && v[0] && typeof v[0] === 'object' && 't' in v[0]) {
+          const times = v.map(p => Date.parse(p.t)).filter(Number.isFinite);
+          out[path] = { points: v.length, stepMinutes: times.length > 1 ? Math.round((times[1] - times[0]) / 60000) : null, from: v[0].t, to: v[v.length - 1].t };
+        } else if (v && typeof v === 'object' && !Array.isArray(v)) {
+          for (const [k, item] of Object.entries(v)) if (!/^[0-9a-f-]{20,}$/i.test(k)) walk(item, path ? `${path}.${k}` : k);
+        }
+      };
+      walk(r, '');
+      return out;
+    };
+    const months = new Date(Date.now() - 100 * 24 * 3600 * 1000);
+    const yearMonth = `${months.getFullYear()}-${String(months.getMonth() + 1).padStart(2, '0')}`;
+    const monthReport = await this.energyReport({ kind: 'month', yearMonth }).catch(err => ({ failed: err.message }));
+    const lastMonth = new Date(Date.now() - 35 * 24 * 3600 * 1000);
+    const lastYearMonth = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+    const recentMonth = await this.energyReport({ kind: 'month', yearMonth: lastYearMonth }).catch(err => ({ failed: err.message }));
+    const weekDay = new Date(Date.now() - 60 * 24 * 3600 * 1000);
+    const isoWeek = (() => {
+      const d = new Date(Date.UTC(weekDay.getFullYear(), weekDay.getMonth(), weekDay.getDate()));
+      const day = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return `${d.getUTCFullYear()}-W${String(Math.ceil(((d - yearStart) / 86400000 + 1) / 7)).padStart(2, '0')}`;
+    })();
+    const weekReport = await this.energyReport({ kind: 'week', isoWeek }).catch(err => ({ failed: err.message }));
+    const availableText = JSON.stringify(available);
+    return {
+      insights,
+      energyMethods,
+      dayReport: { date, shape: describe(report) },
+      yesterdayReport: { date: yesterdayDate, shape: describe(recent), curves: curves(recent) },
+      reportsAvailable: availableText && availableText.length > 3000 ? `${availableText.slice(0, 3000)}…` : available,
+      monthReport: { yearMonth, curves: curves(monthReport) },
+      recentMonthReport: { yearMonth: lastYearMonth, curves: curves(recentMonth) },
+      weekReport: { isoWeek, curves: curves(weekReport) },
+    };
   }
 
   // The report for "Share diagnosis" in the settings: anonymous, with the date it was made, and
