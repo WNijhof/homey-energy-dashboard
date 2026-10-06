@@ -501,7 +501,11 @@ class EnergyDashboardApp extends Homey.App {
     if (found.p1 && !log[lastNight()] && !this.nightsPending && Date.now() - (this.nightsTried || 0) > NIGHTS_RETRY) {
       this.nightsTried = Date.now();
       const read = (device, capability, resolution) => this.getEntries(device.id, capability, resolution).catch(() => []);
-      this.nightsPending = collectNights(read, found, cfg, log)
+      // Where the Homey is, to know when the sun is down (inverters log nothing at night)
+      const lat = this.homey.geolocation.getLatitude();
+      const lon = this.homey.geolocation.getLongitude();
+      const place = typeof lat === 'number' && typeof lon === 'number' ? { lat, lon } : null;
+      this.nightsPending = collectNights(read, found, cfg, log, new Date(), { place })
         .then(fresh => this.homey.settings.set('nightLog', { source, nights: pruneNights({ ...log, ...fresh }) }))
         .catch(err => this.error(`Nights: ${err.message}`))
         .finally(() => { this.nightsPending = null; });

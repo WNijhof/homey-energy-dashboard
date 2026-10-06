@@ -1987,7 +1987,8 @@ async function buildBaseload(client, found, cfg, marketAverage = null, homey = n
 // What a home battery would have to deliver: per night the use of the house while the sun gives
 // less than DARK_SOLAR_W. A night runs from noon to noon, so an evening and the next morning are
 // one night, the stretch a battery charged by that day's sun has to cover. The log keeps one
-// record per night (keyed by the date of the evening), for a year.
+// record per night (keyed by the date of the evening), for a year. A night with missing or
+// impossible readings is kept as { skipped: reason }, so it is not read again and can be counted.
 const DARK_SOLAR_W = 200;
 const NIGHT_BIN_W = 250;
 const NIGHT_BINS = 24; // the last one holds everything from 5750 W up
@@ -1998,9 +1999,45 @@ const NIGHT_RESOLUTIONS = [['last7Days', 7], ['last31Days', 31], ['last3Months',
 const NIGHT_MAX_STEP = 65 * 60 * 1000;
 const NIGHT_COVERAGE = 0.9;
 const DAY_MS = 24 * 3600 * 1000;
+// Checks for readings that cannot be right
+const STUCK_MS = 6 * 3600 * 1000; // the meter gives exactly the same power for 6 hours
+const MIN_DARK_W = 25; // a house uses more than this on average (fridge, router, standby)
+const EXPORT_WITHOUT_SUN_W = 100; // exporting this much while the panels say they give nothing
+const EXPORT_WITHOUT_SUN_MS = 3600 * 1000;
+const LOW_NIGHT_SHARE = 0.2; // a night far below the usual one: the meter stopped counting
 
 const localDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const round = (v, digits) => Math.round(v * 10 ** digits) / 10 ** digits;
+
+// Height of the sun in degrees (the same approximation as the screen settings use)
+function sunHeight(lat, lon, date) {
+  const rad = Math.PI / 180;
+  const d = (date.getTime() - 946728000000) / 86400000;
+  const g = (357.529 + 0.98560028 * d) * rad;
+  const q = 280.459 + 0.98564736 * d;
+  const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+  const e = (23.439 - 0.00000036 * d) * rad;
+  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
+  const dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const hourAngle = (18.697374558 + 24.06570982441908 * d) * 15 * rad + lon * rad - ra;
+  return Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(hourAngle)) / rad;
+}
+
+// How high the sun gets during a step (degrees), or null without a location
+function stepSunHeight(t, step, place) {
+  if (!place || typeof place.lat !== 'number' || typeof place.lon !== 'number') return null;
+  return Math.max(sunHeight(place.lat, place.lon, t), sunHeight(place.lat, place.lon, new Date(t.getTime() + step)));
+}
+
+// Whether panels that log nothing during a step give 0 W. Many inverters stop logging at dusk,
+// so that counts while the sun is lower than 10° (it gives little then). While it is higher a
+// missing reading is unknown: the app may be down. Without a location the hours stand in.
+function quietPanel(t, step, place) {
+  const height = stepSunHeight(t, step, place);
+  if (height !== null) return height < 10;
+  const h = t.getHours();
+  return h >= 21 || h < 6;
+}
 
 // The usual time between two readings (the median), or null with too few readings
 function typicalStep(entries) {
@@ -2011,56 +2048,91 @@ function typicalStep(entries) {
   return gaps[Math.floor(gaps.length / 2)] || null;
 }
 
-// The average of `entries` per step from `start`. Homey logs a power that does not change less
-// often, so a step without readings keeps the last value for up to an hour.
+// The average of `entries` per step from `start`, and whether the step had readings of its own.
+// Homey logs a power that does not change less often, so a step without readings keeps the last
+// value for up to an hour; after that it is unknown (null).
 function stepAverages(entries, start, step, count) {
   const sums = new Array(count).fill(0);
   const counts = new Array(count).fill(0);
   for (const e of entries) {
     const i = Math.floor((e.t - start) / step);
-    if (i >= 0 && i < count && typeof e.v === 'number') { sums[i] += e.v; counts[i]++; }
+    if (i >= 0 && i < count && typeof e.v === 'number' && Number.isFinite(e.v)) { sums[i] += e.v; counts[i]++; }
   }
   const hold = Math.max(1, Math.round(3600000 / step));
-  const out = [];
+  const values = [];
   let last = null;
   let lastAt = -Infinity;
   for (let i = 0; i < count; i++) {
     if (counts[i]) { last = sums[i] / counts[i]; lastAt = i; }
-    out.push(i - lastAt <= hold ? last : null);
+    values.push(i - lastAt <= hold ? last : null);
   }
-  return out;
+  return { values, fresh: counts.map(c => c > 0) };
 }
 
-// Night records from power readings: `grid` (W, negative while exporting), `solar` and
-// `batteries` (W, a battery positive while charging) as lists of readings per device, all with
-// steps of `step` ms. Only nights (and days, for the surplus) with readings for most of their
-// steps are returned.
-function nightRecords({ grid, solar = [], batteries = [], step }) {
+// Night records from power readings: `grid` (W, negative while exporting), `solar`, `batteries`
+// (W, positive while charging) and `chargers` (EV chargers, W) as lists of readings per device,
+// all with steps of `step` ms. `place` ({ lat, lon }) tells when the sun is down; `maxW` is the
+// most the connection can carry, so a higher value is a jump of a counter, not power.
+// Returns per night either the record or { skipped: reason }: 'gaps' (too few readings),
+// 'stuck' (the meter repeats one value), 'solar' (export while the panels give nothing) or
+// 'zero' (hardly any use while dark). Nights at the edges, without enough readings, are left out.
+function nightRecords({ grid, solar = [], batteries = [], chargers = [], step, place = null, maxW = 25000 }) {
   if (!grid.length || !step) return {};
   const start = grid[0].t.getTime();
   const count = Math.ceil((grid[grid.length - 1].t.getTime() + step - start) / step);
   const g = stepAverages(grid, start, step, count);
-  const panels = solar.filter(list => list.length).map(list => stepAverages(list, start, step, count));
-  const stores = batteries.filter(list => list.length).map(list => stepAverages(list, start, step, count));
+  const panels = solar.map(list => stepAverages(list, start, step, count));
+  const stores = batteries.filter(list => list.length).map(list => stepAverages(list, start, step, count).values);
+  const cars = chargers.filter(list => list.length).map(list => stepAverages(list, start, step, count).values);
   const hours = step / 3600000;
   const perDay = Math.round(DAY_MS / step);
   const nights = {};
   const days = {};
+  const nightOf = t => {
+    const key = localDate(new Date(t.getTime() - DAY_MS / 2));
+    return nights[key] || (nights[key] = {
+      steps: 0, known: 0, dark: 0, hours: 0, peak: 0, bins: new Array(NIGHT_BINS).fill(0),
+      noSun: 0, run: 0, longestRun: 0, last: null, missingDark: 0,
+    });
+  };
   for (let i = 0; i < count; i++) {
-    if (g[i] === null) continue;
-    const sun = panels.reduce((sum, p) => (sum === null || p[i] === null ? null : sum + Math.abs(p[i])), 0);
-    if (sun === null) continue;
-    const charge = stores.reduce((sum, b) => sum + (b[i] || 0), 0);
     const t = new Date(start + i * step);
-    const dayKey = localDate(t);
-    const day = days[dayKey] || (days[dayKey] = { steps: 0, surplus: 0 });
-    day.steps++;
-    day.surplus += Math.max(0, -g[i]) * hours / 1000;
-    const nightKey = localDate(new Date(t.getTime() - DAY_MS / 2));
-    const night = nights[nightKey] || (nights[nightKey] = { steps: 0, dark: 0, hours: 0, peak: 0, bins: new Array(NIGHT_BINS).fill(0) });
+    const night = nightOf(t);
     night.steps++;
+    const gw = g.values[i];
+    if (gw === null || Math.abs(gw) > maxW) {
+      night.run = 0;
+      night.last = null;
+      // A short gap while it was dark is filled in below with the average power of that night
+      if (panels.every(p => p.values[i] === null ? quietPanel(t, step, place) : Math.abs(p.values[i]) < DARK_SOLAR_W)) night.missingDark += hours;
+      continue;
+    }
+
+    // The same power to the watt in step after step, with readings of its own: a meter that hangs
+    if (g.fresh[i] && night.last !== null && Math.abs(gw - night.last) < 0.5) night.run++;
+    else night.run = 0;
+    night.longestRun = Math.max(night.longestRun, night.run);
+    if (g.fresh[i]) night.last = gw;
+
+    // Panels without a reading give nothing when the sun is down or low (see quietPanel)
+    let sun = 0;
+    let known = true;
+    for (const p of panels) {
+      if (p.values[i] !== null) sun += Math.abs(p.values[i]);
+      else if (!quietPanel(t, step, place)) known = false;
+    }
+    const charge = stores.reduce((sum, b) => sum + (b[i] || 0), 0);
+    const day = days[localDate(t)] || (days[localDate(t)] = { steps: 0, surplus: 0 });
+    day.steps++;
+    day.surplus += Math.max(0, -gw) * hours / 1000;
+    if (!known) continue;
+    night.known++;
     if (sun >= DARK_SOLAR_W) continue;
-    const home = Math.max(0, g[i] + sun - charge);
+    // Exporting while the panels give (almost) nothing and no battery discharges: the solar
+    // readings are missing or wrong, so this was not really dark
+    if (gw < -EXPORT_WITHOUT_SUN_W && charge > -EXPORT_WITHOUT_SUN_W) { night.noSun += step; continue; }
+    const car = cars.reduce((sum, c) => sum + Math.max(0, c[i] || 0), 0);
+    const home = Math.max(0, gw + sun - charge - car);
     const kWh = home * hours / 1000;
     night.dark += kWh;
     night.hours += hours;
@@ -2068,8 +2140,20 @@ function nightRecords({ grid, solar = [], batteries = [], step }) {
     night.bins[Math.min(NIGHT_BINS - 1, Math.floor(home / NIGHT_BIN_W))] += kWh;
   }
   const out = {};
+  const minutes = Math.round(step / 60000);
   for (const [date, n] of Object.entries(nights)) {
+    // A night cut off by the start or end of the readings is not judged at all
     if (n.steps < perDay * NIGHT_COVERAGE) continue;
+    let skipped = null;
+    if (n.known < perDay * NIGHT_COVERAGE) skipped = 'gaps';
+    else if ((n.longestRun + 1) * step >= STUCK_MS) skipped = 'stuck';
+    else if (n.noSun >= EXPORT_WITHOUT_SUN_MS) skipped = 'solar';
+    else if (n.hours > 0 && n.dark * 1000 / n.hours < MIN_DARK_W) skipped = 'zero';
+    if (skipped) { out[date] = { skipped, step: minutes }; continue; }
+    if (n.missingDark && n.hours) {
+      n.dark += n.dark / n.hours * n.missingDark;
+      n.hours += n.missingDark;
+    }
     const day = days[date];
     const bins = n.bins.map(v => round(v, 3));
     while (bins.length && !bins[bins.length - 1]) bins.pop();
@@ -2079,7 +2163,7 @@ function nightRecords({ grid, solar = [], batteries = [], step }) {
       peak: Math.round(n.peak),
       bins,
       surplus: day && day.steps >= perDay * NIGHT_COVERAGE ? round(day.surplus, 3) : null,
-      step: Math.round(step / 60000),
+      step: minutes,
     };
   }
   return out;
@@ -2093,20 +2177,28 @@ function nightSource(found) {
 // The last night that has ended (at noon) at `now`
 const lastNight = (now = new Date()) => localDate(new Date(now.getTime() - 1.5 * DAY_MS));
 
+// The most power the connection can carry (W), with room to spare: above it a reading is a jump
+// of a counter after an outage, not power
+function connectionMaxW(cfg = {}) {
+  const amps = Number(cfg.grid?.fuseAmps) > 0 ? Number(cfg.grid.fuseAmps) : 25;
+  return Math.max(15000, amps * 230 * 3 * 1.5);
+}
+
 // Reads the nights that `known` does not hold yet, from fine to coarse Insights. A resolution
-// whose nights are all known is not read, so after the first time only the last week is read.
-// `read(device, capability, resolution)` returns readings, [] when there are none.
-async function collectNights(read, found, cfg = {}, known = {}, now = new Date()) {
+// whose nights are all known is not read. A night a fine resolution had to skip can still come
+// from a coarser one. `read(device, capability, resolution)` returns readings, [] when none.
+async function collectNights(read, found, cfg = {}, known = {}, now = new Date(), { place = null } = {}) {
   if (!found.p1) return {};
   const out = {};
   const until = lastNight(now);
+  const has_ = date => (known[date] && !known[date].skipped) || (out[date] && !out[date].skipped);
   for (const [resolution, span] of NIGHT_RESOLUTIONS) {
     const wanted = [];
     for (let d = 1; d <= Math.min(span, NIGHT_DAYS); d++) {
       const date = localDate(new Date(now.getTime() - (d + 0.5) * DAY_MS));
       if (date <= until) wanted.push(date);
     }
-    if (wanted.every(date => known[date] || out[date])) continue;
+    if (wanted.every(date => has_(date) || known[date] || out[date])) continue;
     const r = (device, capability) => read(device, capability, resolution);
     const grid = await gridPower(found.p1, r);
     const step = typicalStep(grid);
@@ -2117,12 +2209,15 @@ async function collectNights(read, found, cfg = {}, known = {}, now = new Date()
       if (!entries.length && meter) entries = powerFromMeter(await r(panel, meter));
       return entries;
     }));
-    // Panels without any readings at this resolution would make every step unknown
+    // Panels without any readings at this resolution would make every day look dark
     if (found.solar.length && solar.every(list => !list.length)) continue;
     const batteries = await Promise.all(found.batteries.map(b => batteryPowerEntries(b, r, cfg.battery)));
-    const nights = nightRecords({ grid, solar, batteries, step });
+    // Charging the car is not something a home battery is meant for
+    const chargers = await Promise.all((found.evChargers || []).filter(d => has(d, 'measure_power')).map(d => r(d, 'measure_power')));
+    const nights = nightRecords({ grid, solar, batteries, chargers, step, place, maxW: connectionMaxW(cfg) });
     for (const [date, night] of Object.entries(nights)) {
-      if (date <= until && !known[date] && !out[date]) out[date] = night;
+      if (date > until || has_(date)) continue;
+      if (!out[date] || !night.skipped) out[date] = night;
     }
   }
   return out;
@@ -2139,10 +2234,18 @@ const BATTERY_POWERS = [800, 1200, 2400, 3600, 5000];
 
 // What the nights of the last year say about a battery: the use while dark per night and per
 // month, the sun's surplus to charge it with, how much of the dark use each size and each power
-// could cover, and a size and power that cover most nights.
+// could cover, and a size and power that cover most nights. Skipped nights are counted per
+// reason; a night far below the usual one ('low') is left out as well.
 function batteryAdvice(log, now = new Date()) {
-  const nights = Object.entries(pruneNights(log, now)).sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, n]) => ({ date, ...n }));
-  if (!nights.length) return null;
+  const all = Object.entries(pruneNights(log, now)).sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, n]) => ({ date, ...n }));
+  const measured = all.filter(n => !n.skipped && typeof n.dark === 'number');
+  const usual = measured.map(n => n.dark).sort((a, b) => a - b)[Math.floor(measured.length / 2)] || 0;
+  const nights = measured.filter(n => measured.length < 7 || n.dark >= usual * LOW_NIGHT_SHARE);
+  const skipped = {};
+  for (const n of all) if (n.skipped) skipped[n.skipped] = (skipped[n.skipped] || 0) + 1;
+  if (measured.length > nights.length) skipped.low = measured.length - nights.length;
+  const skippedCount = Object.values(skipped).reduce((a, b) => a + b, 0);
+  if (!nights.length) return all.length ? { nights: 0, skipped, skippedCount } : null;
   const sum = (list, f) => list.reduce((s, n) => s + f(n), 0);
   const avgDark = sum(nights, n => n.dark) / nights.length;
 
@@ -2190,6 +2293,8 @@ function batteryAdvice(log, now = new Date()) {
 
   return {
     nights: nights.length,
+    skipped,
+    skippedCount,
     from: nights[0].date,
     to: nights[nights.length - 1].date,
     step: Math.max(...nights.map(n => n.step || 0)),

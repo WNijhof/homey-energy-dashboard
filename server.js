@@ -262,7 +262,8 @@ function getBatterySize(found) {
   if (found.p1 && !nightLog.nights[lastNight()] && !nightsPending && Date.now() - nightsTried > 60 * 60 * 1000) {
     nightsTried = Date.now();
     const read = (device, capability, resolution) => client.getEntries(device.id, capability, resolution).catch(() => []);
-    nightsPending = collectNights(read, found, cfg, nightLog.nights)
+    const place = cfg.location || (cfg.forecast?.lat ? { lat: cfg.forecast.lat, lon: cfg.forecast.lon } : null);
+    nightsPending = collectNights(read, found, cfg, nightLog.nights, new Date(), { place })
       .then(fresh => { nightLog.nights = pruneNights({ ...nightLog.nights, ...fresh }); })
       .catch(err => console.error(`Nachten: ${err.message}`))
       .finally(() => { nightsPending = null; });

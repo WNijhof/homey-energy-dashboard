@@ -247,6 +247,15 @@ Het blok rekent per nacht, van 12:00 tot 12:00 de volgende dag, wat het huis ver
 - **Vermogen voor 90% van dat verbruik**: het vermogen waarmee een batterij 90% van het verbruik in het donker kan leveren.
 - **Dekt**: per batterijgrootte het deel van je verbruik in het donker dat de batterij zou leveren, als je hem alleen met je eigen zonnestroom laadt. Laden van het net met een dynamisch contract telt niet mee.
 
+**Onlogische of ontbrekende gegevens.** Een nacht telt niet mee als de metingen niet kloppen, en het blok toont hoeveel nachten zijn overgeslagen (de reden staat bij de (i)):
+
+- *Ontbrekende metingen*: de slimme meter of de zonnepanelen-koppeling gaf te lang niets door (meer dan 10% van de nacht, of de panelen ontbraken terwijl de zon hoger dan 10° stond). Dat de omvormer 's nachts niets logt is normaal en telt als 0 W.
+- *Meter bleef hangen*: de meter gaf zes uur lang precies hetzelfde vermogen, of bleef op 0 staan.
+- *Teruglevering zonder zon*: je leverde terug terwijl de panelen niets zouden leveren, dus de zonnedata klopte niet.
+- *Bijna geen verbruik* of *Veel lager dan normaal*: gemiddeld minder dan 25 W in het donker, of minder dan een vijfde van een gewone nacht.
+
+Een kort gat in het donker (een uur zonder meting, of een onmogelijk hoge waarde door een tellersprong) wordt aangevuld met het gemiddelde vermogen van die nacht. Wat een laadpaal gebruikt telt niet mee: een thuisbatterij is niet bedoeld om de auto te laden.
+
 De gegevens komen uit Homey Insights. Bij de eerste keer vult de app zo veel nachten aan als Homey met metingen per uur (of fijner) bewaart; daarna komt er elke dag een nacht bij, tot 365. Het vermogen is een gemiddelde per meetstap (vaak een uur), dus korte pieken zoals een waterkoker vallen weg: kies het vermogen van een batterij liever wat ruimer.
 
 ## Hoe de doucheminuten berekend worden

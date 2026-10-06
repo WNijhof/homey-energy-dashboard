@@ -1559,7 +1559,7 @@
     if (!ok) {
       const empty = $("batterysize-empty");
       if (empty) {
-        empty.textContent = data === void 0 ? "Verschijnt na het opslaan van de indeling" : !data || data.building ? "Wordt berekend uit de metingen in Homey…" : "Nog geen nachten gevonden met metingen per uur of fijner. Elke nacht komt er een bij.";
+        empty.textContent = data === void 0 ? "Verschijnt na het opslaan van de indeling" : !data || data.building ? "Wordt berekend uit de metingen in Homey…" : data.skippedCount ? "De nachten tot nu toe hadden ontbrekende of onlogische metingen. Elke nacht komt er een bij." : "Nog geen nachten gevonden met metingen per uur of fijner. Elke nacht komt er een bij.";
       }
       return;
     }
@@ -1573,6 +1573,7 @@
     ];
     if (typeof ((_a2 = data.advice) == null ? void 0 : _a2.kWh) === "number") facts.push(fact2("Capaciteit voor 4 van de 5 nachten", "± ".concat(nf(1).format(data.advice.kWh), " kWh")));
     if (typeof ((_b2 = data.advice) == null ? void 0 : _b2.watts) === "number") facts.push(fact2("Vermogen voor 90% van dat verbruik", "± ".concat(formatPower(data.advice.watts))));
+    if (data.skippedCount) facts.push(fact2("Overgeslagen nachten", nf(0).format(data.skippedCount)));
     $("batterysize-facts").innerHTML = facts.join("");
     const positive = [{ key: "dark", label: "Verbruik in het donker", color: css("--grid") }];
     const negative = [{ key: "surplus", label: "Zonne-overschot", color: css("--solar") }];
@@ -2193,7 +2194,7 @@
     solar: "Opbrengst van je zonnepanelen met een streepje voor de verwachting van Forecast.Solar. Prestatie = opbrengst ÷ verwachting; per kWp gebruikt het vermogen van je dakvlakken.",
     gas: "Gasverbruik van het hele huis uit je slimme meter. Per graaddag deelt het verbruik door de graaddagen (buitentemperatuur van Open-Meteo), zodat perioden met ander weer te vergelijken zijn.",
     water: "Waterverbruik in liters uit je watermeter, en het huidige verbruik per minuut.",
-    batterysize: "Hoe groot een thuisbatterij moet zijn: per nacht wat het huis verbruikt terwijl de zon minder dan 200 W geeft, van de middag tot de middag erna, over de afgelopen 365 dagen. Het verbruik is wat de slimme meter afneemt plus wat de zonnepanelen leveren. Onder nul staat het zonne-overschot van een dag: wat je teruglevert en dus in een batterij kunt laden. Een batterij van een bepaalde grootte levert per nacht hooguit zijn capaciteit, hooguit wat die nacht gebruikt wordt en hooguit wat de zon die dag over had. Het vermogen is gemiddeld per meetstap van Homey (vaak een uur), dus korte pieken zoals een waterkoker vallen weg. De app vult de nachten bij de eerste keer aan uit Insights, zo ver als Homey metingen per uur bewaart, en daarna elke dag met de afgelopen nacht.",
+    batterysize: "Hoe groot een thuisbatterij moet zijn: per nacht wat het huis verbruikt terwijl de zon minder dan 200 W geeft, van de middag tot de middag erna, over de afgelopen 365 dagen. Het verbruik is wat de slimme meter afneemt plus wat de zonnepanelen leveren. Onder nul staat het zonne-overschot van een dag: wat je teruglevert en dus in een batterij kunt laden. Een batterij van een bepaalde grootte levert per nacht hooguit zijn capaciteit, hooguit wat die nacht gebruikt wordt en hooguit wat de zon die dag over had. Het vermogen is gemiddeld per meetstap van Homey (vaak een uur), dus korte pieken zoals een waterkoker vallen weg. De app vult de nachten bij de eerste keer aan uit Insights, zo ver als Homey metingen per uur bewaart, en daarna elke dag met de afgelopen nacht. Nachten met ontbrekende of onlogische metingen tellen niet mee: een koppeling die uit lag, een meter die bleef hangen, teruglevering terwijl de panelen niets gaven, of veel minder verbruik dan normaal. Een kort gat in het donker wordt aangevuld met het gemiddelde van die nacht. Wat een laadpaal gebruikt telt niet mee.",
     baseload: "Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.",
     alerts: "Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.",
     phases: "Stroom per fase van je slimme meter ten opzichte van je hoofdzekering; negatief is teruglevering. De grafiek toont de fasen door de dag.",
@@ -2290,6 +2291,8 @@
         fact("Meetstap", "".concat(nf(0).format(b.step), " min"))
       ];
       if (typeof b.unlimited === "number") rows.push(fact("Hoogst haalbaar met zon", "".concat(nf(0).format(b.unlimited * 100), "%")));
+      const reasons = { gaps: "Ontbrekende metingen", stuck: "Meter bleef hangen", solar: "Teruglevering zonder zon", zero: "Bijna geen verbruik", low: "Veel lager dan normaal" };
+      for (const [reason, count] of Object.entries(b.skipped || {})) rows.push(fact(reasons[reason] || reason, "".concat(nf(0).format(count))));
       return '<ul class="facts">'.concat(rows.join(""), "</ul>");
     }
     if (id === "baseload") {
