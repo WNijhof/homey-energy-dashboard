@@ -1,6 +1,6 @@
 "use strict";
 (function() {
-  var _a, _b;
+  var _a;
   const LIVE_INTERVAL = 10 * 1e3;
   const HISTORY_INTERVAL = 60 * 1e3;
   const PERIOD_KEY = "energy-dashboard-period";
@@ -173,6 +173,10 @@
     el.className = "banner ".concat(kind);
     el.innerHTML = html || "";
   }
+  const onMediaChange = (query, fn) => {
+    if (query.addEventListener) query.addEventListener("change", fn);
+    else if (query.addListener) query.addListener(fn);
+  };
   const systemReduced = matchMedia("(prefers-reduced-motion: reduce)");
   const reducedMotion = {
     get matches() {
@@ -272,7 +276,7 @@
     flowFrame = flowItems.length && !flowsStill() ? requestAnimationFrame(flowStep) : 0;
   }
   window.addEventListener("energy-motion", syncFlows);
-  if (!window.EnergyScreen) (_b = systemReduced.addEventListener) == null ? void 0 : _b.call(systemReduced, "change", syncFlows);
+  if (!window.EnergyScreen) onMediaChange(systemReduced, syncFlows);
   const shownValues = /* @__PURE__ */ new Map();
   function tweenValues(root) {
     root.querySelectorAll("[data-tween]").forEach((el) => {
@@ -320,13 +324,13 @@
     }).join("");
   }
   function renderFlow(live) {
-    var _a2, _b2, _c;
+    var _a2, _b, _c;
     const el = $("flow");
     if (!el) return;
     const hasSolar = typeof live.solarW === "number";
     const hasBattery = Boolean(live.battery);
     const grid = (_a2 = live.gridW) != null ? _a2 : 0;
-    const solar = (_b2 = live.solarW) != null ? _b2 : 0;
+    const solar = (_b = live.solarW) != null ? _b : 0;
     const home = (_c = live.homeW) != null ? _c : 0;
     const f = live.flows || {};
     const colors = {
@@ -460,7 +464,7 @@
     renderBoilerHistory((_a2 = state.history) == null ? void 0 : _a2.boilerTemperature, a);
   }
   function renderHeating(heating) {
-    var _a2, _b2, _c;
+    var _a2, _b, _c;
     if (!$("room-temp")) return;
     toggleEmpty("heating", Boolean(heating));
     if (!heating) return;
@@ -471,7 +475,7 @@
     const history = state.history;
     const period = (PERIOD_LABELS[state.period] || "").toLowerCase();
     const facts = heating.devices.map((d) => "\n      <li><span>".concat(escapeHtml(d.name), "</span><strong>").concat(formatPower(d.watts), "</strong></li>"));
-    if ((_b2 = history == null ? void 0 : history.available) == null ? void 0 : _b2.heating) {
+    if ((_b = history == null ? void 0 : history.available) == null ? void 0 : _b.heating) {
       facts.push("<li><span>Stroom ".concat(period, "</span><strong>").concat(formatEnergy(history.totals.heating), " kWh</strong></li>"));
     }
     if ((_c = history == null ? void 0 : history.available) == null ? void 0 : _c.gas) {
@@ -482,7 +486,7 @@
     $("heating-facts").innerHTML = facts.join("");
   }
   function renderEv(ev) {
-    var _a2, _b2, _c, _d, _e;
+    var _a2, _b, _c, _d, _e;
     if (!$("ev-power")) return;
     toggleEmpty("ev", Boolean(ev));
     if (!ev) return;
@@ -499,7 +503,7 @@
     if ((_a2 = history == null ? void 0 : history.available) == null ? void 0 : _a2.ev) {
       facts.push("<li><span>Geladen ".concat(period, "</span><strong>").concat(formatEnergy(history.totals.ev), " kWh</strong></li>"));
     }
-    const soc = (_d = (_b2 = ev.car) == null ? void 0 : _b2.soc) != null ? _d : (_c = chargers.find((c) => typeof c.soc === "number")) == null ? void 0 : _c.soc;
+    const soc = (_d = (_b = ev.car) == null ? void 0 : _b.soc) != null ? _d : (_c = chargers.find((c) => typeof c.soc === "number")) == null ? void 0 : _c.soc;
     if (typeof soc === "number") {
       facts.push("<li><span>Accu ".concat(escapeHtml(((_e = ev.car) == null ? void 0 : _e.name) || "auto"), "</span><strong>").concat(nf(0).format(soc), "%</strong></li>"));
     }
@@ -518,7 +522,7 @@
     return "".concat(text).concat(deltaBadge(value, p.gas / p.degreeDays, true));
   }
   function renderSolarPerf(history) {
-    var _a2, _b2;
+    var _a2, _b;
     if (!$("solar-chart")) return;
     const t = history.totals;
     const rows = history.rows;
@@ -535,7 +539,7 @@
       });
     }
     let label = "Verwacht";
-    if (state.period === "today" && ((_b2 = (_a2 = history.forecast) == null ? void 0 : _a2.watts) == null ? void 0 : _b2.length)) {
+    if (state.period === "today" && ((_b = (_a2 = history.forecast) == null ? void 0 : _a2.watts) == null ? void 0 : _b.length)) {
       const now = Date.now();
       const dayStart = (/* @__PURE__ */ new Date()).setHours(0, 0, 0, 0);
       wanted = history.forecast.watts.filter((p) => p.t >= dayStart && p.t < now).reduce((sum, p) => sum + p.w * 0.25 / 1e3, 0);
@@ -629,8 +633,8 @@
       pill.id = "alert-pill";
       pill.className = "alert-pill";
       pill.addEventListener("click", () => {
-        var _a2, _b2;
-        return (_b2 = (_a2 = $("alerts")) == null ? void 0 : _a2.closest(".block, .card")) == null ? void 0 : _b2.scrollIntoView({ behavior: "smooth", block: "center" });
+        var _a2, _b;
+        return (_b = (_a2 = $("alerts")) == null ? void 0 : _a2.closest(".block, .card")) == null ? void 0 : _b.scrollIntoView({ behavior: "smooth", block: "center" });
       });
       status.after(pill);
     }
@@ -762,7 +766,7 @@
     return '\n      <div class="tile">\n        <div class="tile-head"><span class="tile-icon" style="background:'.concat(color, '">').concat(icon(iconName, 16), '</span><span class="tile-label">').concat(label, '</span></div>\n        <div class="tile-value">').concat(value, "<small>").concat(unit, "</small>").concat(delta, "</div>\n        ").concat(typeof bar === "number" ? '<div class="bar"><i style="width:'.concat(Math.round(bar * 100), "%;background:").concat(color, '"></i></div>') : "", "\n      </div>");
   }
   function renderTiles(history) {
-    var _a2, _b2;
+    var _a2, _b;
     const el = $("tiles");
     if (!el) return;
     const t = history.totals;
@@ -796,7 +800,7 @@
       );
     }
     if (!compact && hasSolar) {
-      tiles.push({ iconName: "cycle", color: "var(--solar)", label: "Eigen zon gebruikt", value: formatPercent(t.selfConsumption), unit: "%", bar: (_b2 = t.selfConsumption) != null ? _b2 : 0 });
+      tiles.push({ iconName: "cycle", color: "var(--solar)", label: "Eigen zon gebruikt", value: formatPercent(t.selfConsumption), unit: "%", bar: (_b = t.selfConsumption) != null ? _b : 0 });
     }
     if (!compact) {
       if (typeof t.cost === "number") {
@@ -999,10 +1003,10 @@
     });
   }
   function renderSankeyBlock() {
-    var _a2, _b2;
+    var _a2, _b;
     if (!$("sankey")) return;
     const live = state.sankeyMode === "live";
-    renderSankey(live ? (_a2 = state.live) == null ? void 0 : _a2.sankey : (_b2 = state.history) == null ? void 0 : _b2.sankey, live);
+    renderSankey(live ? (_a2 = state.live) == null ? void 0 : _a2.sankey : (_b = state.history) == null ? void 0 : _b.sankey, live);
   }
   function layoutSankey(data, width, narrow, baseHeight) {
     const nodeW = 12;
@@ -1200,7 +1204,7 @@
     return d;
   }
   function renderPower() {
-    var _a2, _b2, _c, _d;
+    var _a2, _b, _c, _d;
     const el = $("power-chart");
     if (!el) return;
     charts.set("power-chart", renderPower);
@@ -1214,7 +1218,7 @@
       return;
     }
     const hasBattery = Boolean(history.hasBattery);
-    const hasSolar = ((_b2 = history.available) == null ? void 0 : _b2.solar) !== false;
+    const hasSolar = ((_b = history.available) == null ? void 0 : _b.solar) !== false;
     const colors = {
       solar: css("--solar"),
       grid: css("--grid"),
@@ -1414,7 +1418,7 @@
     return css("--hot");
   }
   function renderPrices(prices) {
-    var _a2, _b2;
+    var _a2, _b;
     if (!$("price-now")) return;
     const ok = Boolean(prices && !prices.error && ((_a2 = prices.today) == null ? void 0 : _a2.length));
     toggleEmpty("prices", ok);
@@ -1430,7 +1434,7 @@
       "<li><span>Hoogste vandaag</span><strong>".concat(euro(prices.max, 3), "</strong></li>"),
       "<li><span>Gemiddeld vandaag</span><strong>".concat(euro(prices.avg, 3), "</strong></li>")
     ];
-    const gridW = (_b2 = state.live) == null ? void 0 : _b2.gridW;
+    const gridW = (_b = state.live) == null ? void 0 : _b.gridW;
     if (prices.allIn && typeof prices.current === "number" && typeof gridW === "number" && Math.abs(gridW) > 5) {
       facts.unshift("<li><span>".concat(gridW > 0 ? "Afname kost nu" : "Teruglevering levert nu", "</span><strong>").concat(euro(Math.abs(gridW) / 1e3 * prices.current), " per uur</strong></li>"));
     }
@@ -1541,14 +1545,14 @@
     el.innerHTML = rows.map(([label, amount, cost]) => "\n        <tr><td>".concat(label, '</td><td class="muted">').concat(amount, "</td><td>").concat(euro(cost), "</td></tr>")).join("") + '<tr class="total"><td>Totaal</td><td class="muted">'.concat(typeof previous === "number" ? "vorige periode ".concat(euro(previous)) : "", "</td><td>").concat(euro(t.cost), "</td></tr>");
   }
   function renderWater(live, history) {
-    var _a2, _b2;
+    var _a2, _b;
     if (!$("water-chart")) return;
     const hasWater = Boolean((live == null ? void 0 : live.water) || ((_a2 = history == null ? void 0 : history.available) == null ? void 0 : _a2.water));
     toggleEmpty("water", hasWater);
     if (!hasWater) return;
     const parts = [];
     if (history) parts.push("".concat(nf(0).format(history.totals.water), " L"));
-    if (typeof ((_b2 = live == null ? void 0 : live.water) == null ? void 0 : _b2.flow) === "number") parts.push("nu ".concat(nf(1).format(live.water.flow), " L/min"));
+    if (typeof ((_b = live == null ? void 0 : live.water) == null ? void 0 : _b.flow) === "number") parts.push("nu ".concat(nf(1).format(live.water.flow), " L/min"));
     setText("water-total", parts.join(" · "));
   }
   const BATTERY_VIEW_KEY = "energy-dashboard-battery-view";
@@ -1569,7 +1573,7 @@
   }
   const lighter = (color) => /^#[0-9a-f]{6}$/i.test(color) ? "".concat(color, "66") : color;
   function renderBatterySize(input) {
-    var _a2, _b2;
+    var _a2, _b;
     if (!$("batterysize-dark")) return;
     const { key, view: data, views } = batteryView(input);
     const nav = $("batterysize-view");
@@ -1611,7 +1615,7 @@
       fact2("Hoogste vermogen in het donker", formatPower(data.peak))
     ];
     if (typeof ((_a2 = data.advice) == null ? void 0 : _a2.kWh) === "number") facts.push(fact2("Capaciteit voor 4 van de 5 nachten", "± ".concat(nf(1).format(data.advice.kWh), " kWh")));
-    if (typeof ((_b2 = data.advice) == null ? void 0 : _b2.watts) === "number") facts.push(fact2("Vermogen voor 90% van dat verbruik", "± ".concat(formatPower(data.advice.watts))));
+    if (typeof ((_b = data.advice) == null ? void 0 : _b.watts) === "number") facts.push(fact2("Vermogen voor 90% van dat verbruik", "± ".concat(formatPower(data.advice.watts))));
     if (data.skippedCount) facts.push(fact2("Overgeslagen nachten", nf(0).format(data.skippedCount)));
     if (data.estimated) facts.push(fact2("Geschat uit meterexport", nf(0).format(data.estimated)));
     if (data.modelled) facts.push(fact2("Gemodelleerd uit maandtotalen", nf(0).format(data.modelled)));
@@ -1642,11 +1646,11 @@
     $("baseload-facts").innerHTML = facts.join("");
   }
   function renderPhases(data) {
-    var _a2, _b2;
+    var _a2, _b;
     const el = $("phases");
     if (!el) return;
     toggleEmpty("phases", Boolean((_a2 = data == null ? void 0 : data.phases) == null ? void 0 : _a2.length));
-    if (!((_b2 = data == null ? void 0 : data.phases) == null ? void 0 : _b2.length)) return;
+    if (!((_b = data == null ? void 0 : data.phases) == null ? void 0 : _b.length)) return;
     setText("phases-fuse", "hoofdzekering ".concat(data.fuseAmps, " A"));
     el.innerHTML = data.phases.map((p) => {
       const amps = typeof p.amps === "number" ? Math.abs(p.amps) : typeof p.watts === "number" ? Math.abs(p.watts) / (p.volts || 230) : null;
@@ -1724,13 +1728,13 @@
   }
   const PHASE_COLORS = ["#5e8cff", "#ff9f0a", "#a55eea"];
   function renderPhaseChart() {
-    var _a2, _b2, _c;
+    var _a2, _b, _c;
     const el = $("phases-chart");
     if (!el) return;
     charts.set("phases-chart", renderPhaseChart);
     const history = POWER_DAYS[state.period] ? state.history : state.powerToday;
     const data = history == null ? void 0 : history.phaseHistory;
-    const fuse = (_b2 = (_a2 = state.live) == null ? void 0 : _a2.phases) == null ? void 0 : _b2.fuseAmps;
+    const fuse = (_b = (_a2 = state.live) == null ? void 0 : _a2.phases) == null ? void 0 : _b.fuseAmps;
     if (!((_c = data == null ? void 0 : data.phases) == null ? void 0 : _c.length)) {
       el.innerHTML = "";
       return;
@@ -1946,8 +1950,8 @@
     el.querySelectorAll(".block-tools, .resize-handle, .height-handle").forEach((x) => x.remove());
   }
   function blockTitle(id) {
-    var _a2, _b2;
-    return ((_b2 = (_a2 = edit.info) == null ? void 0 : _a2.blocks.find((b) => b.id === id)) == null ? void 0 : _b2.title) || id;
+    var _a2, _b;
+    return ((_b = (_a2 = edit.info) == null ? void 0 : _a2.blocks.find((b) => b.id === id)) == null ? void 0 : _b.title) || id;
   }
   function renderHiddenBlocks() {
     const shown = new Set(currentLayout().map((b) => b.id));
@@ -2277,9 +2281,9 @@
     return out;
   }
   function infoDetails(id) {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
     const t = (_a2 = state.history) == null ? void 0 : _a2.totals;
-    const tf = (_b2 = state.live) == null ? void 0 : _b2.tariff;
+    const tf = (_b = state.live) == null ? void 0 : _b.tariff;
     if (id === "costs" && (t == null ? void 0 : t.costs)) {
       const rows = [];
       const line = (label, qty, unit, cost, digits = 2) => {
@@ -2447,8 +2451,8 @@
     area.remove();
   }
   function subjectOf(report) {
-    var _a2, _b2, _c;
-    const apps = [...new Set([...((_a2 = report.found) == null ? void 0 : _a2.batteries) || [], ...((_b2 = report.found) == null ? void 0 : _b2.solar) || [], ...report.batteryLike || [], (_c = report.found) == null ? void 0 : _c.p1].map((d) => {
+    var _a2, _b, _c;
+    const apps = [...new Set([...((_a2 = report.found) == null ? void 0 : _a2.batteries) || [], ...((_b = report.found) == null ? void 0 : _b.solar) || [], ...report.batteryLike || [], (_c = report.found) == null ? void 0 : _c.p1].map((d) => {
       var _a3;
       return (_a3 = /^homey:app:([^:]+)/.exec((d == null ? void 0 : d.app) || "")) == null ? void 0 : _a3[1];
     }).filter(Boolean))];
@@ -2508,8 +2512,8 @@
       box.hidden = false;
       await copyText(pretty);
       const tr = (text) => {
-        var _a3, _b2;
-        return (_b2 = (_a3 = window.EnergyI18n) == null ? void 0 : _a3.translate(text)) != null ? _b2 : text;
+        var _a3, _b;
+        return (_b = (_a3 = window.EnergyI18n) == null ? void 0 : _a3.translate(text)) != null ? _b : text;
       };
       const intro = tr("Wat werkt er niet goed? (bijvoorbeeld: mijn batterij wordt niet gevonden)");
       const paste = tr("(Plak hier het rapport; het staat op je klembord.)");
@@ -2605,10 +2609,10 @@
     renderTimelineSpark(start2, today);
   }
   function renderTimelineSpark(start2, today) {
-    var _a2, _b2;
+    var _a2, _b;
     const el = $("timeline-spark");
     const power = (_a2 = state.history) == null ? void 0 : _a2.power;
-    const key = "".concat(power == null ? void 0 : power.start, "|").concat((_b2 = power == null ? void 0 : power.points) == null ? void 0 : _b2.length, "|").concat(css("--muted"));
+    const key = "".concat(power == null ? void 0 : power.start, "|").concat((_b = power == null ? void 0 : power.points) == null ? void 0 : _b.length, "|").concat(css("--muted"));
     if (!el || el.dataset.key === key) return;
     el.dataset.key = key;
     const points = Date.parse(power == null ? void 0 : power.start) === start2 ? power.points : [];
@@ -2658,7 +2662,7 @@
     $("timeline-now").addEventListener("click", () => setMoment(null));
   }
   async function loadLive() {
-    var _a2, _b2;
+    var _a2, _b;
     if (state.liveBusy) return;
     state.liveBusy = true;
     const at = state.at;
@@ -2686,7 +2690,7 @@
       renderAlerts(live.alerts);
       renderAlertPill(live.alerts);
       setMood(live);
-      (_b2 = (_a2 = window.EnergyScreen) == null ? void 0 : _a2.setPlace) == null ? void 0 : _b2.call(_a2, live.place);
+      (_b = (_a2 = window.EnergyScreen) == null ? void 0 : _a2.setPlace) == null ? void 0 : _b.call(_a2, live.place);
       renderConsumers(live);
       renderPrices(live.prices);
       renderBaseload(live.baseload);
@@ -2787,7 +2791,7 @@
     changed();
   }
   function start(options) {
-    var _a2, _b2, _c;
+    var _a2, _b, _c;
     state.options = options;
     const params = new URLSearchParams(location.search);
     const fromAddress = (_a2 = params.get("indeling")) != null ? _a2 : params.get("layout");
@@ -2797,7 +2801,7 @@
     } catch {
     }
     chooseLayout(fromAddress !== null ? fromAddress.toLowerCase() : remembered);
-    (_b2 = window.EnergyI18n) == null ? void 0 : _b2.start();
+    (_b = window.EnergyI18n) == null ? void 0 : _b.start();
     setText("today-label", (/* @__PURE__ */ new Date()).toLocaleDateString(LOCALE, { weekday: "long", day: "numeric", month: "long" }));
     let period = options.period;
     const periods = $("periods");
@@ -2823,7 +2827,7 @@
       onScroll();
     }
     window.addEventListener("resize", redrawSoon);
-    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+    onMediaChange(matchMedia("(prefers-color-scheme: dark)"), redraw);
     window.addEventListener("energy-theme", redraw);
     initEditMode();
     initTimeline();

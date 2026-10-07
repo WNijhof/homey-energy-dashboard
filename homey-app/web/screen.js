@@ -181,7 +181,6 @@
     actions.insertBefore(wrap, actions.querySelector("#edit-toggle"));
   }
   function start({ wake } = {}) {
-    var _a;
     onWake = wake;
     overlay = document.createElement("div");
     overlay.className = "night-overlay";
@@ -195,7 +194,8 @@
     applyMotion();
     applyTheme();
     applyMood();
-    (_a = systemReduced.addEventListener) == null ? void 0 : _a.call(systemReduced, "change", applyMotion);
+    if (systemReduced.addEventListener) systemReduced.addEventListener("change", applyMotion);
+    else if (systemReduced.addListener) systemReduced.addListener(applyMotion);
     update();
     applyKeepOn();
     shiftPixels();

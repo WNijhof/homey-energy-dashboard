@@ -225,6 +225,12 @@
   // to the start, and a change in power speeds them up or slows them down gradually.
 
   // Less motion when the system asks for it, unless the screen menu (screen.js) says otherwise
+  // A media query that changes (dark mode, reduced motion). Safari before 14 (an iPad on iOS 12)
+  // only knows addListener: calling addEventListener there stopped the whole page.
+  const onMediaChange = (query, fn) => {
+    if (query.addEventListener) query.addEventListener('change', fn);
+    else if (query.addListener) query.addListener(fn);
+  };
   const systemReduced = matchMedia('(prefers-reduced-motion: reduce)');
   const reducedMotion = {
     get matches() { return window.EnergyScreen?.reducedMotion ? window.EnergyScreen.reducedMotion() : systemReduced.matches; },
@@ -331,7 +337,7 @@
   }
 
   window.addEventListener('energy-motion', syncFlows);
-  if (!window.EnergyScreen) systemReduced.addEventListener?.('change', syncFlows);
+  if (!window.EnergyScreen) onMediaChange(systemReduced, syncFlows);
 
   // Numbers count smoothly to their new value instead of jumping
   const shownValues = new Map();
@@ -3353,7 +3359,7 @@
 
     // Colors come from CSS, so redraw when the theme switches between light and dark, by the
     // system or by the screen menu
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+    onMediaChange(matchMedia('(prefers-color-scheme: dark)'), redraw);
     window.addEventListener('energy-theme', redraw);
 
     initEditMode();

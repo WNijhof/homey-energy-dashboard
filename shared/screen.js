@@ -254,7 +254,9 @@
     applyMotion();
     applyTheme();
     applyMood();
-    systemReduced.addEventListener?.('change', applyMotion);
+    // Safari before 14 only knows addListener
+    if (systemReduced.addEventListener) systemReduced.addEventListener('change', applyMotion);
+    else if (systemReduced.addListener) systemReduced.addListener(applyMotion);
     update();
     applyKeepOn();
     shiftPixels();
