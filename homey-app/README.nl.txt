@@ -15,7 +15,7 @@ Het dashboard bestaat uit blokken die je zelf indeelt:
 
 Nieuw: terugkijken naar elk moment van vandaag of gisteren, om te zien welk apparaat wat gebruikte; wat het einde van salderen in 2027 jou kost, berekend met je eigen metingen; wat je thuisbatterij oplevert; zonprestatie tegenover de verwachting; gas per graaddag; meldingen bij apparaten die blijven aanstaan en stijgend sluipverbruik; prijzen per kwartier; een indeling per scherm; CSV-export; op je beginscherm te zetten.
 
-Twee widgets voor Homey Dashboards: "Energie nu" met de live stroom tussen zon, net, huis en batterij, en "Energiestromen" van je bronnen via je ruimtes naar de apparaten die het meeste gebruiken.
+Drie widgets voor Homey Dashboards: "Energie nu" met de live stroom tussen zon, net, huis en batterij, "Energiestromen" van je bronnen via je ruimtes naar de apparaten die het meeste gebruiken, en "Groepen" met de belasting van elke groep in de meterkast.
 
 Voor een tablet aan de muur: volledig scherm, scherm aan houden, en een nachtstand die het scherm dimt of zwart maakt.
 

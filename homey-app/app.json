@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.drpeppers.energydashboard",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -169,6 +169,41 @@
         }
       },
       "id": "energy-now"
+    },
+    "groups": {
+      "name": {
+        "en": "Circuits",
+        "nl": "Groepen"
+      },
+      "height": 240,
+      "transparent": false,
+      "settings": [
+        {
+          "id": "perPhase",
+          "type": "checkbox",
+          "title": {
+            "en": "Per phase, with Other",
+            "nl": "Per fase, met Overig"
+          },
+          "value": true
+        },
+        {
+          "id": "devices",
+          "type": "checkbox",
+          "title": {
+            "en": "Devices that use the most",
+            "nl": "Apparaten die het meest gebruiken"
+          },
+          "value": false
+        }
+      ],
+      "api": {
+        "getGroups": {
+          "method": "GET",
+          "path": "/groups"
+        }
+      },
+      "id": "groups"
     }
   }
 }

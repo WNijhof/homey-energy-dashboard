@@ -205,6 +205,7 @@ class EnergyDashboardApp extends Homey.App {
       groups: Array.isArray(saved.groups) ? saved.groups : [],
       groupsSolarPhases: Array.isArray(saved.groupsSolarPhases) ? saved.groupsSolarPhases : [],
       groupsBatteryPhases: Array.isArray(saved.groupsBatteryPhases) ? saved.groupsBatteryPhases : [],
+      groupsExtra: Array.isArray(saved.groupsExtra) ? saved.groupsExtra : [],
     };
   }
 
@@ -381,6 +382,15 @@ class EnergyDashboardApp extends Homey.App {
       flows: live.flows,
       today: todayTotals(today?.totals),
     };
+  }
+
+  // The load per group in the fuse box, per phase with the rest, for the Groups widget
+  async getWidgetGroups() {
+    const cfg = this.getConfig();
+    const devices = await this.getDevices();
+    const found = discover(devices, cfg.devices);
+    const live = buildLive(devices, found, cfg, { estimated: await this.getEstimated(devices, found).catch(() => []) });
+    return live.groups || { groups: [], phases: [] };
   }
 
   // The live flow from sources through rooms to devices, for the Energy flows widget
@@ -816,6 +826,10 @@ class EnergyDashboardApp extends Homey.App {
       batteryDirection: { invertPower: Boolean(cfg.battery?.invertPower), batteries: found.batteries.map(d => ({ name: label(d, 'battery-dir'), ...batteryDirection(d, cfg.battery) })) },
       groupsSolarPhases: cfg.groupsSolarPhases,
       groupsBatteryPhases: cfg.groupsBatteryPhases,
+      // Devices not in Homey: only their use, and in how many groups each device is
+      groupsExtra: cfg.groupsExtra.map(x => ({ watts: x.watts })),
+      groupsShared: (Array.isArray(cfg.groups) ? cfg.groups : []).flatMap(g => g.devices || [])
+        .filter((id, i, all) => all.indexOf(id) !== i).length,
       today: {
         error: today.error || null,
         p1PowerReadings: await count(found.p1, 'measure_power'),

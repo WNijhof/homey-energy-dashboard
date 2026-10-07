@@ -160,7 +160,7 @@
     "groupFuse": "Fuse (A)",
     "groupPhases": "Phase",
     "removeGroup": "Remove circuit",
-    "groupDevicesHelp": "Which circuit is each device on?",
+    "groupDevicesHelp": "Which circuit is each device on? Is a device on more circuits, such as a Perilex hob on two, choose the second circuit too: its power then counts half on each circuit.",
     "groupFixed": "Fixed use (W)",
     "groupFixedHelp": "Optional. For what hangs on this circuit without a meter of its own, such as a router or fridge: enter your estimate in watts. A device without a meter that has a use set in Homey (Advanced settings, Energy) can also be given this circuit below; it then counts with that use. It is added to the measured power. Nothing like that? Leave it empty.",
     "allPhases": "All three phases",
@@ -181,7 +181,14 @@
     "webTitle": "Energy Dashboard settings",
     "webPinHelp": "Enter the edit PIN you set for Energy Dashboard in the Homey app. Without a PIN the settings can only be changed in Homey.",
     "webUnlock": "Open",
-    "homeyOnly": "The port, access code and edit PIN can only be changed in the Homey app, not on this web page."
+    "homeyOnly": "The port, access code and edit PIN can only be changed in the Homey app, not on this web page.",
+    "groupExtras": "Devices that are not in Homey",
+    "groupExtrasHelp": "Optional. For a device that is not connected to Homey, such as a fridge or a freezer: give it a name and an average use in watts, and choose its circuit below. It always counts with that use (with ≈ in the block). A device that switches on and off is better added to Homey with a use when on and off, for example as a virtual device.",
+    "addExtra": "Add device",
+    "removeExtra": "Remove device",
+    "groupExtraWatts": "Use (W)",
+    "groupExtraPlaceholder": "Fridge",
+    "groupExtraUse": "not in Homey, __watts__ W"
   },
   "blocks": {
     "alerts": "Warnings",
@@ -232,6 +239,12 @@
     "noP1": "No P1 meter found. Choose one in the app settings.",
     "today": "today",
     "kwhToday": "kWh today"
+  },
+  "widgetGroups": {
+    "name": "Circuits",
+    "none": "No circuits yet. Add them in the app settings, under Circuits in the fuse box.",
+    "other": "Other",
+    "noPhase": "No phase"
   },
   "tokens": {
     "groupLoad": "__name__: load (%)",

@@ -1,4 +1,8 @@
 {
+  "0.2.13": {
+    "en": "New widget Circuits: the load of each circuit in the fuse box, per phase with Other. A device can now be on more circuits, such as a Perilex hob on two: its power counts evenly on each. Devices that are not in Homey (a fridge, a freezer) can be added with a name and their use, and given a circuit.",
+    "nl": "Nieuwe widget Groepen: de belasting van elke groep in de meterkast, per fase met Overig. Een apparaat kan nu op meer groepen zitten, zoals een Perilex-kookplaat op twee: zijn vermogen telt dan gelijk verdeeld op elke groep. Apparaten die niet in Homey staan (een koelkast, een vriezer) voeg je toe met een naam en hun verbruik, en geef je een groep."
+  },
   "0.2.12": {
     "en": "The EV charger block shows the battery level of every car in Homey, not only the first; a car that is charging gets a lightning icon (when its app reports that).",
     "nl": "Het laadpaalblok toont de accu van elke auto in Homey, niet alleen de eerste; een auto die laadt krijgt een bliksemschicht (als zijn app dat doorgeeft)."

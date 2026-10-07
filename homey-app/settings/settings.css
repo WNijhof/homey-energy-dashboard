@@ -187,6 +187,11 @@ button.link {
 #groups .plane { padding: 8px 0; border-top: 1px solid rgba(128, 128, 128, 0.25); }
 #groups .plane:first-child { border-top: 0; }
 .group-devices { margin-top: 12px; }
+#group-extras .plane { padding: 8px 0; border-top: 1px solid rgba(128, 128, 128, 0.25); }
+#group-extras .plane:first-child { border-top: 0; }
+/* A device on more groups: its choices under each other */
+.group-choice { display: flex; flex-direction: column; gap: 4px; width: 180px; max-width: 55%; }
+.group-choice select { width: 100%; max-width: none; }
 
 /* On the dashboard's own web page (settings-web.js): not wider than reads well */
 body.web { max-width: 760px; margin-left: auto; margin-right: auto; }

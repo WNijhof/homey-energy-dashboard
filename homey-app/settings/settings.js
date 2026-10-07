@@ -94,7 +94,7 @@ function onHomeyReady(Homey) {
         d => d.class === 'evcharger' || /laadpa|charger|wallbox|easee|zaptec|alfen/i.test(d.name),
         __('noEv'));
       initLayout(list);
-      fillGroups(config.groups || [], list.devices, config.groupsSolarPhases, config.groupsBatteryPhases);
+      fillGroups(config.groups || [], list.devices, config.groupsSolarPhases, config.groupsBatteryPhases, config.groupsExtra);
       document.getElementById('group-battery').hidden = !list.found.batteries.length;
 
       fillChecks('solar-list', 'solar', list.devices, devices.solar || [],
@@ -139,6 +139,7 @@ function onHomeyReady(Homey) {
         alerts: { hours: number('alertHours') ?? 4, notify: form.alertNotify.checked },
         layout: layoutToSave(),
         groups: groupsToSave(),
+        groupsExtra: extrasToSave(),
         groupsSolarPhases: phasesFrom(form.groupsSolarPhases.value),
         groupsBatteryPhases: phasesFrom(form.groupsBatteryPhases.value),
         battery: { invertPower: form.invertPower.checked },
@@ -256,10 +257,14 @@ function onHomeyReady(Homey) {
   // ---------- Groups ----------
 
   // Groups in the fuse box with their fuse, and per device with a power meter (or an estimate in
-  // Homey) the group it is on. A device is on one group at most; groups without a name are not saved.
+  // Homey) the groups it is on: usually one, a Perilex hob two (its power is split evenly).
+  // Devices that are not in Homey get a name and a use, and are given groups the same way.
+  // Groups without a name are not saved.
   const MAX_GROUPS = 40;
+  const MAX_EXTRAS = 40;
   let groups = [];
   let groupDevices = [];
+  let extras = [];
   let newGroup = 0;
 
   function renderGroups() {
@@ -278,18 +283,44 @@ function onHomeyReady(Homey) {
     renderGroupDevices();
   }
 
-  // One list of devices with a choice of group each: easier than a list of devices per group
+  // One list of devices with a choice of group each: easier than a list of devices per group.
+  // A device in a group gets one more empty choice, for a second group.
   function renderGroupDevices() {
     const box = document.getElementById('group-devices');
     const named = groups.filter(g => g.name);
     if (!named.length) { box.innerHTML = ''; return; }
-    const options = selected => `<option value="">–</option>${named.map(g => `<option value="${escapeText(g.id)}" ${g.id === selected ? 'selected' : ''}>${escapeText(g.name)}</option>`).join('')}`;
+    const options = (selected, taken) => `<option value="">–</option>${named
+      .filter(g => g.id === selected || !taken.includes(g.id))
+      .map(g => `<option value="${escapeText(g.id)}" ${g.id === selected ? 'selected' : ''}>${escapeText(g.name)}</option>`).join('')}`;
+    const own = extras.filter(x => x.name && x.watts > 0)
+      .map(x => ({ id: x.id, name: `${x.name} (${__('groupExtraUse', { watts: x.watts })})` }));
+    const list = groupDevices.map(d => ({ id: d.id, name: d.power ? d.name : `${d.name} (${__('groupEstimate')})` })).concat(own);
     box.innerHTML = `<p class="muted">${escapeText(__('groupDevicesHelp'))}</p>`
-      + groupDevices.map(d => {
-        const on = groups.find(g => g.devices.includes(d.id));
-        const name = d.power ? d.name : `${d.name} (${__('groupEstimate')})`;
-        return `<label><span>${escapeText(name)}</span> <select data-group-device="${d.id}">${options(on?.id)}</select></label>`;
+      + list.map(d => {
+        const on = named.filter(g => g.devices.includes(d.id)).map(g => g.id);
+        const choices = on.length < named.length ? [...on, ''] : on;
+        const selects = choices.map(id => `<select data-group-device="${escapeText(d.id)}">${options(id, on)}</select>`).join('');
+        return `<label><span>${escapeText(d.name)}</span> <span class="group-choice">${selects}</span></label>`;
       }).join('');
+  }
+
+  // Devices that are not in Homey: a name and a use in watts each
+  function renderExtras() {
+    document.getElementById('group-extras').innerHTML = extras.map((x, i) => `
+      <div class="plane" data-extra="${i}">
+        <label><span>${escapeText(__('groupName'))}</span> <input data-extra-field="name" type="text" maxlength="40" value="${escapeText(x.name || '')}" placeholder="${escapeText(__('groupExtraPlaceholder'))}"></label>
+        <label><span>${escapeText(__('groupExtraWatts'))}</span> <input data-extra-field="watts" type="number" min="1" max="20000" step="1" value="${x.watts || ''}"></label>
+        <p><span></span><button type="button" class="link" data-remove-extra="${i}">${escapeText(__('removeExtra'))}</button></p>
+      </div>`).join('');
+    document.getElementById('group-extra-add').hidden = extras.length >= MAX_EXTRAS;
+  }
+
+  function readExtras() {
+    document.querySelectorAll('#group-extras [data-extra]').forEach(el => {
+      const x = extras[Number(el.dataset.extra)];
+      x.name = el.querySelector('[data-extra-field="name"]').value.trim();
+      x.watts = Math.round(Number(el.querySelector('[data-extra-field="watts"]').value)) || 0;
+    });
   }
 
   function readGroups() {
@@ -300,20 +331,32 @@ function onHomeyReady(Homey) {
         g[field] = field === 'name' ? input.value.trim() : field === 'phases' ? phasesFrom(input.value) : Number(input.value) || undefined;
       });
     });
+    readExtras();
+    const chosen = new Map();
     document.querySelectorAll('#group-devices [data-group-device]').forEach(select => {
       const id = select.dataset.groupDevice;
-      groups.forEach(g => { g.devices = g.devices.filter(x => x !== id); });
-      const g = groups.find(x => x.id === select.value);
-      if (g) g.devices.push(id);
+      if (!chosen.has(id)) chosen.set(id, new Set());
+      if (select.value) chosen.get(id).add(select.value);
     });
+    for (const [id, on] of chosen) {
+      groups.forEach(g => {
+        g.devices = g.devices.filter(x => x !== id);
+        if (on.has(g.id)) g.devices.push(id);
+      });
+    }
+    // A device not in Homey that was removed leaves its groups too
+    const known = new Set(extras.map(x => x.id));
+    groups.forEach(g => { g.devices = g.devices.filter(id => !id.startsWith('extra-') || known.has(id)); });
   }
 
-  function fillGroups(saved, devices, solarOn, batteryOn) {
+  function fillGroups(saved, devices, solarOn, batteryOn, savedExtras = []) {
     // Summaries of Power by the Hour (Σ) copy other meters; one already in a group stays listed
     // so it can be taken out
     const assigned = new Set(saved.flatMap(g => g.devices || []));
     groupDevices = devices.filter(d => (d.power || d.estimate) && (!d.copy || assigned.has(d.id)));
     groups = saved.map(g => ({ id: String(g.id || g.name), name: g.name || '', fuseAmps: g.fuseAmps ?? 16, phases: g.phases === 3 ? [1, 2, 3] : phasesFrom(g.phases), fixedWatts: g.fixedWatts || 0, devices: [...(g.devices || [])] }));
+    extras = (Array.isArray(savedExtras) ? savedExtras : []).map(x => ({ id: String(x.id), name: x.name || '', watts: Number(x.watts) || 0 }));
+    renderExtras();
     form.groupsSolarPhases.innerHTML = phaseOptions(phasesFrom(solarOn), __('allPhases'));
     form.groupsBatteryPhases.innerHTML = phaseOptions(phasesFrom(batteryOn), __('allPhases'));
     renderGroups();
@@ -333,6 +376,25 @@ function onHomeyReady(Homey) {
     };
     // A new or renamed group shows up in the device choices
     document.getElementById('groups').addEventListener('change', () => { readGroups(); renderGroupDevices(); });
+    // A group chosen for a device adds a choice for another; a device not in Homey shows up in the list
+    document.getElementById('group-devices').addEventListener('change', () => { readGroups(); renderGroupDevices(); });
+    document.getElementById('group-extras').addEventListener('change', () => { readGroups(); renderGroupDevices(); });
+    document.getElementById('group-extra-add').onclick = () => {
+      readGroups();
+      if (extras.length < MAX_EXTRAS) extras.push({ id: `extra-${Date.now().toString(36)}${newGroup++}`, name: '', watts: 0 });
+      renderExtras();
+      document.querySelector(`#group-extras [data-extra="${extras.length - 1}"] input`)?.focus();
+    };
+    document.getElementById('group-extras').onclick = event => {
+      const remove = event.target.closest('[data-remove-extra]');
+      if (!remove) return;
+      readGroups();
+      extras.splice(Number(remove.dataset.removeExtra), 1);
+      renderExtras();
+      readGroups();
+      renderGroupDevices();
+      autosave();
+    };
   }
 
   function groupsToSave() {
@@ -340,6 +402,11 @@ function onHomeyReady(Homey) {
     return groups
       .filter(g => g.name)
       .map(g => ({ id: g.id, name: g.name, fuseAmps: g.fuseAmps || 16, phases: g.phases, fixedWatts: g.fixedWatts || 0, devices: g.devices }));
+  }
+
+  function extrasToSave() {
+    readExtras();
+    return extras.filter(x => x.name && x.watts > 0).map(x => ({ id: x.id, name: x.name, watts: x.watts }));
   }
 
   // The phases of a group as a choice: unknown, one phase, or two or three together

@@ -15,7 +15,7 @@ The dashboard is built from blocks you arrange yourself:
 
 New: look back at any moment of today or yesterday to see which device used what; what the end of net metering (salderen) in 2027 costs you, based on your own data; what your home battery earns; solar performance against the forecast; gas per degree day; warnings for devices left on and rising standby use; prices per quarter hour; a layout per screen; CSV export; install on your home screen.
 
-Two widgets for Homey Dashboards: "Energy now" with the live flow between solar, grid, home and battery, and "Energy flows" from your sources through your rooms to the devices using the most power.
+Three widgets for Homey Dashboards: "Energy now" with the live flow between solar, grid, home and battery, "Energy flows" from your sources through your rooms to the devices using the most power, and "Circuits" with the load of each circuit in the fuse box.
 
 For a tablet on the wall: full screen, keep the screen on, and a night mode that dims the screen or turns it black.
 

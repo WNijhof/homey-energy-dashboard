@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* The load per group against its fuse, like the Groups block on the dashboard */
+    body { margin: 0; color: var(--homey-text-color, #1c1c1e); font-size: var(--homey-font-size-small, 14px); }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { margin: 0 0 7px; }
+    .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row strong { white-space: nowrap; font-weight: 600; }
+    .muted { color: var(--homey-text-color-light, #8a8a8e); font-size: 11px; }
+    .bar { height: 6px; border-radius: 3px; background: var(--homey-line-color, rgba(128, 128, 128, 0.2)); overflow: hidden; margin-top: 3px; }
+    .bar i { display: block; height: 100%; border-radius: 3px; }
+    .phase { display: flex; justify-content: space-between; font-weight: 700; margin: 10px 0 5px; }
+    .phase:first-child { margin-top: 0; }
+    .rest { color: var(--homey-text-color-light, #8a8a8e); }
+    .devices { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty { color: var(--homey-text-color-light, #8a8a8e); text-align: center; padding: 24px 0; }
+  </style>
+</head>
+<body class="homey-widget">
+  <ul id="groups"></ul>
+  <div id="empty" class="empty" hidden></div>
+
+  <script>
+    'use strict';
+
+    function onHomeyReady(Homey) {
+      const settings = Homey.getSettings() || {};
+      const list = document.getElementById('groups');
+      const empty = document.getElementById('empty');
+      const locale = (navigator.language || 'nl').startsWith('nl') ? 'nl-NL' : 'en-GB';
+      const nf = digits => new Intl.NumberFormat(locale, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+      const power = w => (w >= 1000 ? `${nf(w >= 10000 ? 1 : 2).format(w / 1000)} kW` : `${nf(0).format(w || 0)} W`);
+      const text = key => Homey.__(`widgetGroups.${key}`) || key;
+      const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      // Green up to half the fuse, then yellow, orange from 70% and red from 90% (as on the dashboard)
+      const color = share => (share > 0.9 ? '#ff453a' : share > 0.7 ? '#ff9f0a' : share > 0.5 ? '#ffd60a' : '#20c07c');
+      const perPhase = settings.perPhase !== false;
+      let busy = false;
+      let height = 0;
+      let ready = false;
+
+      const row = g => {
+        const share = g.amps / g.fuseAmps;
+        const tag = g.phases.length > 1 ? ` <small class="muted">${g.phases.map(n => `L${n}`).join('+')}</small>` : '';
+        const on = settings.devices
+          ? g.on.map(d => `${escape(d.name)} ${d.estimated ? '≈' : ''}${power(d.watts)}`).join(' · ')
+          : '';
+        return `<li>
+          <div class="row"><span>${escape(g.name)}${tag}</span><strong>${nf(1).format(g.amps)} A <small class="muted">/ ${g.fuseAmps} A</small></strong></div>
+          <div class="bar"><i style="width:${Math.min(100, Math.max(2, share * 100))}%;background:${color(share)}"></i></div>
+          ${on ? `<small class="muted devices">${on}</small>` : ''}
+        </li>`;
+      };
+
+      function draw(data) {
+        const groups = data?.groups || [];
+        if (!groups.length) {
+          list.innerHTML = '';
+          empty.hidden = false;
+          empty.textContent = text('none');
+          return;
+        }
+        empty.hidden = true;
+        const phases = perPhase ? data.phases || [] : [];
+        if (!phases.length) {
+          list.innerHTML = groups.map(row).join('');
+          return;
+        }
+        // A meter with only whole amps per phase gives rough phase values
+        const about = phases.some(p => p.rough) ? '≈' : '';
+        const sections = phases.map(p => {
+          const head = `<li class="phase"><span>L${p.phase}</span>${typeof p.watts === 'number' ? `<span>${about}${power(p.watts)}</span>` : ''}</li>`;
+          const rest = typeof p.rest === 'number'
+            ? `<li class="row rest"><span>${escape(text('other'))}</span><span>${about}${power(p.rest)}</span></li>` : '';
+          return head + groups.filter(g => g.phases.includes(p.phase)).map(row).join('') + rest;
+        });
+        const loose = groups.filter(g => !g.phases.length);
+        if (loose.length) sections.push(`<li class="phase"><span>${escape(text('noPhase'))}</span></li>${loose.map(row).join('')}`);
+        list.innerHTML = sections.join('');
+      }
+
+      // The widget grows with its groups
+      function fit() {
+        const h = Math.ceil(document.body.scrollHeight);
+        if (ready && h && h !== height) {
+          height = h;
+          Homey.setHeight(h);
+        }
+      }
+
+      async function update() {
+        if (busy || document.hidden) return;
+        busy = true;
+        try {
+          draw(await Homey.api('GET', '/groups'));
+        } catch (err) {
+          list.innerHTML = '';
+          empty.hidden = false;
+          empty.textContent = err.message || String(err);
+        } finally {
+          busy = false;
+        }
+        fit();
+      }
+
+      update().finally(() => {
+        height = Math.ceil(document.body.scrollHeight) || 200;
+        Homey.ready({ height });
+        ready = true;
+      });
+      setInterval(update, 10 * 1000);
+      document.addEventListener('visibilitychange', update);
+    }
+  </script>
+</body>
+</html>

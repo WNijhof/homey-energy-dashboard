@@ -160,7 +160,7 @@
     "groupFuse": "Zekering (A)",
     "groupPhases": "Fase",
     "removeGroup": "Groep verwijderen",
-    "groupDevicesHelp": "Op welke groep zit elk apparaat?",
+    "groupDevicesHelp": "Op welke groep zit elk apparaat? Zit een apparaat op meer groepen, zoals een Perilex-kookplaat op twee groepen, kies dan ook de tweede groep: het vermogen telt dan voor de helft op elke groep.",
     "groupFixed": "Vast verbruik (W)",
     "groupFixedHelp": "Optioneel. Voor wat op deze groep hangt zonder eigen meting, zoals een router of koelkast: vul je schatting in watt in. Een apparaat zonder meter met een verbruik ingesteld in Homey (Geavanceerde instellingen, Energie) kun je hieronder ook aan deze groep geven; het telt dan met dat verbruik. Dit wordt bij het gemeten vermogen opgeteld. Niets van dien aard? Laat het leeg.",
     "allPhases": "Alle drie de fasen",
@@ -181,7 +181,14 @@
     "webTitle": "Instellingen Energie Dashboard",
     "webPinHelp": "Vul de bewerkpincode in die je in de Homey-app bij Energie Dashboard instelde. Zonder pincode kun je de instellingen alleen in Homey wijzigen.",
     "webUnlock": "Openen",
-    "homeyOnly": "Poort, toegangscode en bewerkpincode wijzig je alleen in de Homey-app, niet op deze webpagina."
+    "homeyOnly": "Poort, toegangscode en bewerkpincode wijzig je alleen in de Homey-app, niet op deze webpagina.",
+    "groupExtras": "Apparaten die niet in Homey staan",
+    "groupExtrasHelp": "Optioneel. Voor een apparaat zonder koppeling met Homey, zoals een koelkast of een vriezer: geef het een naam en een gemiddeld verbruik in watt, en kies hieronder zijn groep. Het telt altijd met dat verbruik (met ≈ in het blok). Een apparaat dat aan en uit gaat, komt beter in Homey met een verbruik bij aan en uit, bijvoorbeeld als virtueel apparaat.",
+    "addExtra": "Apparaat toevoegen",
+    "removeExtra": "Apparaat verwijderen",
+    "groupExtraWatts": "Verbruik (W)",
+    "groupExtraPlaceholder": "Koelkast",
+    "groupExtraUse": "niet in Homey, __watts__ W"
   },
   "blocks": {
     "alerts": "Meldingen",
@@ -232,6 +239,12 @@
     "noP1": "Geen P1-meter gevonden. Kies er een in de instellingen van de app.",
     "today": "vandaag",
     "kwhToday": "kWh vandaag"
+  },
+  "widgetGroups": {
+    "name": "Groepen",
+    "none": "Nog geen groepen. Maak ze aan in de instellingen van de app, onder Groepen in de meterkast.",
+    "other": "Overig",
+    "noPhase": "Zonder fase"
   },
   "tokens": {
     "groupLoad": "__name__: belasting (%)",
