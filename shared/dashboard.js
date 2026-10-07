@@ -658,9 +658,12 @@
     if (history?.available?.ev) {
       facts.push(`<li><span>Geladen ${period}</span><strong>${formatEnergy(history.totals.ev)} kWh</strong></li>`);
     }
-    const soc = ev.car?.soc ?? chargers.find(c => typeof c.soc === 'number')?.soc;
-    if (typeof soc === 'number') {
-      facts.push(`<li><span>Accu ${escapeHtml(ev.car?.name || 'auto')}</span><strong>${nf(0).format(soc)}%</strong></li>`);
+    // Every car with its battery level; ⚡ marks the one that is charging, when its app says so
+    const cars = (ev.cars || (ev.car ? [ev.car] : [])).filter(c => typeof c.soc === 'number');
+    cars.forEach(c => facts.push(`<li><span>Accu ${escapeHtml(c.name || 'auto')}</span><strong>${c.charging ? '⚡ ' : ''}${nf(0).format(c.soc)}%</strong></li>`));
+    const chargerSoc = chargers.find(c => typeof c.soc === 'number')?.soc;
+    if (!cars.length && typeof chargerSoc === 'number') {
+      facts.push(`<li><span>Accu auto</span><strong>${nf(0).format(chargerSoc)}%</strong></li>`);
     }
     if (chargers.length > 1) {
       chargers.forEach(c => facts.push(`<li><span>${escapeHtml(c.name)}</span><strong>${formatPower(c.watts)}</strong></li>`));

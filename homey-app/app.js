@@ -9,7 +9,7 @@ const {
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
   expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
-  mergeNights, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals,
+  mergeNights, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals, batteryDirection,
 } = require('./lib/energy');
 const { PriceService } = require('./lib/prices');
 const { ForecastService, recordForecast, totalKwp } = require('./lib/forecast');
@@ -801,6 +801,7 @@ class EnergyDashboardApp extends Homey.App {
         boiler: describeAs('boiler')(found.boiler),
         heating: found.heating.map(describeAs('heating')),
         evChargers: found.evChargers.map(describeAs('evcharger')),
+        cars: (found.cars || []).map(describeAs('car')),
         water: describeAs('water')(found.water),
       },
       batteryLike: batteryLike.slice(0, 10).map(describeAs('battery-like')),
@@ -810,6 +811,9 @@ class EnergyDashboardApp extends Homey.App {
         .map(d => ({ name: label(d, 'device'), app: d.driverId, class: d.virtualClass || d.class, capabilities: d.capabilities, energyUser: d.energy, energySettings: d.energySettings })),
       // The groups in the fuse box as saved, without names
       groups: (Array.isArray(cfg.groups) ? cfg.groups : []).map(g => ({ phases: g.phases, fuseAmps: g.fuseAmps, fixedWatts: g.fixedWatts, devices: (g.devices || []).length })),
+      // Which way round each battery's power is read: the setting, and what the app learned from
+      // the charging state (votes: below 0 as reported, above 0 turned round)
+      batteryDirection: { invertPower: Boolean(cfg.battery?.invertPower), batteries: found.batteries.map(d => ({ name: label(d, 'battery-dir'), ...batteryDirection(d, cfg.battery) })) },
       groupsSolarPhases: cfg.groupsSolarPhases,
       groupsBatteryPhases: cfg.groupsBatteryPhases,
       today: {

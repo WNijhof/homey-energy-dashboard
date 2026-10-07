@@ -1,4 +1,8 @@
 {
+  "0.2.12": {
+    "en": "The EV charger block shows the battery level of every car in Homey, not only the first; a car that is charging gets a lightning icon (when its app reports that).",
+    "nl": "Het laadpaalblok toont de accu van elke auto in Homey, niet alleen de eerste; een auto die laadt krijgt een bliksemschicht (als zijn app dat doorgeeft)."
+  },
   "0.2.11": {
     "en": "New block Choosing a battery: your use per evening and night (sun below 200 W) over the last year, the solar surplus per month, and how much of that use a home battery of each size and power would cover. It reads a month of Homey Energy's day reports, can import a year of HomeWizard P1 data (per 15 minutes), and can model months without readings from Homey's month totals; you choose per screen whether estimates count. Nights with missing or implausible readings are left out. The app settings are now also on the dashboard's web page (gear icon), behind the edit PIN. The dashboard now really loads on older iPads (iOS 12), which stayed on Connecting.",
     "nl": "Nieuw blok Batterij kiezen: je verbruik per avond en nacht (zon onder 200 W) over het afgelopen jaar, het zonne-overschot per maand, en hoeveel van dat verbruik een thuisbatterij van elke grootte en elk vermogen zou dekken. Het leest een maand dagrapporten van Homey Energy, kan een jaar HomeWizard P1-gegevens (per 15 minuten) importeren, en kan maanden zonder metingen modelleren uit de maandtotalen van Homey; per scherm kies je of schattingen meetellen. Nachten met ontbrekende of onlogische metingen tellen niet mee. De instellingen van de app staan nu ook op de webpagina van het dashboard (tandwiel), achter de bewerkpincode. Het dashboard laadt nu echt op oudere iPads (iOS 12), die bleven hangen op Verbinden."

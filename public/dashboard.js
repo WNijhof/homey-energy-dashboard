@@ -486,7 +486,7 @@
     $("heating-facts").innerHTML = facts.join("");
   }
   function renderEv(ev) {
-    var _a2, _b, _c, _d, _e;
+    var _a2, _b;
     if (!$("ev-power")) return;
     toggleEmpty("ev", Boolean(ev));
     if (!ev) return;
@@ -503,9 +503,11 @@
     if ((_a2 = history == null ? void 0 : history.available) == null ? void 0 : _a2.ev) {
       facts.push("<li><span>Geladen ".concat(period, "</span><strong>").concat(formatEnergy(history.totals.ev), " kWh</strong></li>"));
     }
-    const soc = (_d = (_b = ev.car) == null ? void 0 : _b.soc) != null ? _d : (_c = chargers.find((c) => typeof c.soc === "number")) == null ? void 0 : _c.soc;
-    if (typeof soc === "number") {
-      facts.push("<li><span>Accu ".concat(escapeHtml(((_e = ev.car) == null ? void 0 : _e.name) || "auto"), "</span><strong>").concat(nf(0).format(soc), "%</strong></li>"));
+    const cars = (ev.cars || (ev.car ? [ev.car] : [])).filter((c) => typeof c.soc === "number");
+    cars.forEach((c) => facts.push("<li><span>Accu ".concat(escapeHtml(c.name || "auto"), "</span><strong>").concat(c.charging ? "⚡ " : "").concat(nf(0).format(c.soc), "%</strong></li>")));
+    const chargerSoc = (_b = chargers.find((c) => typeof c.soc === "number")) == null ? void 0 : _b.soc;
+    if (!cars.length && typeof chargerSoc === "number") {
+      facts.push("<li><span>Accu auto</span><strong>".concat(nf(0).format(chargerSoc), "%</strong></li>"));
     }
     if (chargers.length > 1) {
       chargers.forEach((c) => facts.push("<li><span>".concat(escapeHtml(c.name), "</span><strong>").concat(formatPower(c.watts), "</strong></li>")));
