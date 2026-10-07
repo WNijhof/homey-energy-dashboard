@@ -529,7 +529,10 @@ class EnergyDashboardApp extends Homey.App {
         .finally(() => { this.nightsPending = null; });
     }
     // Homey Energy's month totals for the model, read once a day for months not kept yet
-    const months = this.homey.settings.get('monthTotals') || {};
+    // Version 2 counts consumption as import + solar - export; older totals are read again
+    let months = this.homey.settings.get('monthTotals') || {};
+    if (months.version !== 2) months = {};
+    delete months.version;
     if (lastYearMonths().some(key => !(key in months)) && !this.monthsPending && Date.now() - (this.monthsTried || 0) > NIGHTS_RETRY) {
       this.monthsTried = Date.now();
       this.monthsPending = this.readMonthTotals(months)
@@ -557,7 +560,7 @@ class EnergyDashboardApp extends Homey.App {
       months[key] = monthTotals(await this.energyReport({ kind: 'month', yearMonth: key }).catch(() => null));
     }
     for (const key of Object.keys(months)) if (!wanted.includes(key)) delete months[key];
-    this.homey.settings.set('monthTotals', months);
+    this.homey.settings.set('monthTotals', { ...months, version: 2 });
   }
 
   // Where the Homey is, to know when the sun is down
@@ -856,7 +859,8 @@ class EnergyDashboardApp extends Homey.App {
       kinds[kind] = (kinds[kind] || 0) + 1;
     }
     // The month totals the model works with, and how it fitted
-    const monthTotalsKept = this.homey.settings.get('monthTotals') || {};
+    const monthTotalsKept = { ...(this.homey.settings.get('monthTotals') || {}) };
+    delete monthTotalsKept.version;
     const views = batteryViews(nights?.nights || {}, this.homey.settings.get('nightImport')?.nights, monthTotalsKept, { place: this.getPlace() });
     return {
       insights,
