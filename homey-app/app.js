@@ -855,10 +855,15 @@ class EnergyDashboardApp extends Homey.App {
       const kind = n.missing ? 'missing' : n.skipped ? `skipped:${n.skipped}` : `step${n.step}`;
       kinds[kind] = (kinds[kind] || 0) + 1;
     }
+    // The month totals the model works with, and how it fitted
+    const monthTotalsKept = this.homey.settings.get('monthTotals') || {};
+    const views = batteryViews(nights?.nights || {}, this.homey.settings.get('nightImport')?.nights, monthTotalsKept, { place: this.getPlace() });
     return {
       insights,
       dayReports: available?.failed ? available : { count: days.length, from: days[0] || null, to: days[days.length - 1] || null },
       nightLog: { version: nights?.version || null, kinds },
+      monthTotals: monthTotalsKept,
+      modelFit: views.fit,
     };
   }
 

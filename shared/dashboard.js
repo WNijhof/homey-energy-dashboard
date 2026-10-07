@@ -2809,6 +2809,9 @@
       if (typeof b.unlimited === 'number') rows.push(fact('Hoogst haalbaar met zon', `${nf(0).format(b.unlimited * 100)}%`));
       if (b.imported) rows.push(fact('Import', `${b.imported.from} – ${b.imported.to}, donker onder ${nf(1).format(b.imported.darkHeight)}° zon`));
       if (b.check) rows.push(fact('Schatting t.o.v. gemeten', `${nf(0).format(b.check.nights)} nachten: ${nf(1).format(b.check.estimated / b.check.nights)} / ${nf(1).format(b.check.measured / b.check.nights)} kWh${b.check.factor !== 1 ? `, ×${nf(2).format(b.check.factor)}` : ''}`));
+      // Why there is no model, when there is none
+      if (!b.modelled && all.fit?.rejected) rows.push(fact('Model', `niet gebruikt, afwijking ± ${nf(0).format(all.fit.error * 100)}%`));
+      if (!b.modelled && all.fit?.missingTotals?.length) rows.push(fact('Geen maandtotalen', all.fit.missingTotals.join(', ')));
       if (b.modelled && all.fit) {
         rows.push(fact('Model', `${nf(0).format(all.fit.modelled.length)} maanden uit maandtotalen, gefit op ${nf(0).format(all.fit.months.length)}${typeof all.fit.error === 'number' ? `, afwijking ± ${nf(0).format(all.fit.error * 100)}%` : ''}`));
       }

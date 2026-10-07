@@ -2277,7 +2277,7 @@
     return out;
   }
   function infoDetails(id) {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
     const t = (_a2 = state.history) == null ? void 0 : _a2.totals;
     const tf = (_b2 = state.live) == null ? void 0 : _b2.tariff;
     if (id === "costs" && (t == null ? void 0 : t.costs)) {
@@ -2341,6 +2341,8 @@
       if (typeof b.unlimited === "number") rows.push(fact("Hoogst haalbaar met zon", "".concat(nf(0).format(b.unlimited * 100), "%")));
       if (b.imported) rows.push(fact("Import", "".concat(b.imported.from, " – ").concat(b.imported.to, ", donker onder ").concat(nf(1).format(b.imported.darkHeight), "° zon")));
       if (b.check) rows.push(fact("Schatting t.o.v. gemeten", "".concat(nf(0).format(b.check.nights), " nachten: ").concat(nf(1).format(b.check.estimated / b.check.nights), " / ").concat(nf(1).format(b.check.measured / b.check.nights), " kWh").concat(b.check.factor !== 1 ? ", ×".concat(nf(2).format(b.check.factor)) : "")));
+      if (!b.modelled && ((_h = all.fit) == null ? void 0 : _h.rejected)) rows.push(fact("Model", "niet gebruikt, afwijking ± ".concat(nf(0).format(all.fit.error * 100), "%")));
+      if (!b.modelled && ((_j = (_i = all.fit) == null ? void 0 : _i.missingTotals) == null ? void 0 : _j.length)) rows.push(fact("Geen maandtotalen", all.fit.missingTotals.join(", ")));
       if (b.modelled && all.fit) {
         rows.push(fact("Model", "".concat(nf(0).format(all.fit.modelled.length), " maanden uit maandtotalen, gefit op ").concat(nf(0).format(all.fit.months.length)).concat(typeof all.fit.error === "number" ? ", afwijking ± ".concat(nf(0).format(all.fit.error * 100), "%") : "")));
       }
@@ -2349,14 +2351,14 @@
       return '<ul class="facts">'.concat(rows.join(""), "</ul>");
     }
     if (id === "baseload") {
-      const b = (_h = state.live) == null ? void 0 : _h.baseload;
+      const b = (_k = state.live) == null ? void 0 : _k.baseload;
       if (!b) return "";
       const rows = [fact("Per jaar", "".concat(formatPower(b.watts), " × 8.760 h = ").concat(nf(0).format(b.yearKWh), " kWh"))];
       if (typeof b.yearCost === "number" && b.yearKWh > 0) rows.push(fact("Kost per jaar", times(nf(0).format(b.yearKWh), "kWh", b.yearCost / b.yearKWh, b.yearCost)));
       return '<ul class="facts">'.concat(rows.join(""), "</ul>");
     }
     if (id === "peak") {
-      const p = (_i = state.live) == null ? void 0 : _i.peak;
+      const p = (_l = state.live) == null ? void 0 : _l.peak;
       if (!p || typeof p.peakW !== "number") return "";
       const counted = Math.max(p.peakW / 1e3, p.minKw || 0);
       const rows = [fact("Telt deze maand", "max(".concat(nf(2).format(p.peakW / 1e3), "; ").concat(nf(1).format(p.minKw || 0), ") = ").concat(nf(2).format(counted), " kW"))];
