@@ -1,4 +1,8 @@
 {
+  "0.2.14": {
+    "en": "Fixed: devices with a returned-energy counter next to their normal one, such as a Shelly PM Mini, were taken for a second P1 meter and missing from Devices now, the live energy flows and Use per device; they are now shown as consumers. The live energy flows also show smaller devices now (down to 0.5% of the use, was 1.5%), so fewer devices drop out when a large one is switched on.",
+    "nl": "Opgelost: apparaten met een teller voor teruggeleverde energie naast de gewone, zoals een Shelly PM Mini, werden aangezien voor een tweede P1-meter en ontbraken bij Apparaten nu, de live energiestromen en Verbruik per apparaat; ze worden nu als verbruiker getoond. De live energiestromen tonen ook kleinere apparaten (vanaf 0,5% van het verbruik, was 1,5%), zodat er minder apparaten wegvallen als een groot apparaat aan staat."
+  },
   "0.2.13": {
     "en": "New widget Circuits: the load of each circuit in the fuse box, per phase with Other. A device can now be on more circuits, such as a Perilex hob on two: its power counts evenly on each. Devices that are not in Homey (a fridge, a freezer) can be added with a name and their use, and given a circuit.",
     "nl": "Nieuwe widget Groepen: de belasting van elke groep in de meterkast, per fase met Overig. Een apparaat kan nu op meer groepen zitten, zoals een Perilex-kookplaat op twee: zijn vermogen telt dan gelijk verdeeld op elke groep. Apparaten die niet in Homey staan (een koelkast, een vriezer) voeg je toe met een naam en hun verbruik, en geef je een groep."
