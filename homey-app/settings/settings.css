@@ -65,6 +65,17 @@ input[type="text"] {
   width: 180px;
   max-width: 55%;
 }
+/* Homey's own form style can set a dark text color on the fields, unreadable on the dark
+   background in dark mode; set the color so that it wins */
+body form select,
+body form input[type="number"],
+body form input[type="text"],
+body form input[type="password"] {
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+}
+body form input::placeholder { color: var(--muted); -webkit-text-fill-color: var(--muted); opacity: 1; }
 fieldset { border: 0; padding: 0; margin: 0; }
 legend { font-size: 14px; margin-bottom: 6px; }
 
