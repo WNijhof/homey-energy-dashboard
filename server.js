@@ -6,7 +6,7 @@ const path = require('path');
 const { HomeyClient } = require('./lib/homey');
 const {
   PERIODS, nettingSummary, expectedSolar, layoutName, savedLayout, historyCsv, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
-  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy,
+  blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, estimatedDevices, gridPower, hasUsageEstimate, isCopy, consumerStatus,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, mergeNights, importMeterExport, UploadParts, connectionMaxW,
   batteryViews, lastYearMonths, monthTotals,
   timelineDay, recordTimeline, buildLiveAt, totalsUntil, POWER_STEP,
@@ -428,13 +428,14 @@ async function getDeviceList() {
         { id: 'demo-pv', name: 'Omvormer', class: 'solarpanel' },
         { id: 'demo-p1', name: 'Slimme meter', class: 'sensor' },
         { id: 'demo-battery', name: 'Zendure SolarFlow 2400 AC', class: 'battery' },
-        { id: 'demo-hp', name: 'Hybride warmtepomp', class: 'heatpump' },
+        { id: 'demo-hp', name: 'Hybride warmtepomp', class: 'heatpump', power: true, consumer: 'excluded' },
         { id: 'demo-thermostat', name: 'Thermostaat woonkamer', class: 'thermostat' },
-        { id: 'demo-ev', name: 'Laadpaal oprit', class: 'evcharger' },
+        { id: 'demo-ev', name: 'Laadpaal oprit', class: 'evcharger', power: true, consumer: 'counted' },
         { id: 'demo-water', name: 'Watermeter', class: 'sensor' },
-        { id: 'demo-dishwasher', name: 'Vaatwasser', class: 'socket', power: true },
-        { id: 'demo-washer', name: 'Wasmachine', class: 'socket', power: true },
-        { id: 'demo-fridge', name: 'Koelkast', class: 'socket', power: true },
+        { id: 'demo-dishwasher', name: 'Vaatwasser', class: 'socket', power: true, consumer: 'counted' },
+        { id: 'demo-washer', name: 'Wasmachine', class: 'socket', power: true, consumer: 'counted' },
+        { id: 'demo-fridge', name: 'Koelkast', class: 'socket', power: true, consumer: 'counted' },
+        { id: 'demo-group-meter', name: 'kWh-meter groep 5', class: 'sensor', power: true, consumer: 'meter' },
       ],
       contract: contractFrom(cfg),
       suppliers: SUPPLIERS,
@@ -469,6 +470,7 @@ async function getDeviceList() {
       power: (d.capabilities || []).includes('measure_power'),
       estimate: hasUsageEstimate(d),
       copy: isCopy(d),
+      consumer: consumerStatus(d, found),
     })),
   };
 }

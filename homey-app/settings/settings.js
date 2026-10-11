@@ -104,6 +104,7 @@ function onHomeyReady(Homey) {
         d => d.class === 'battery' || /batter|zendure|solarflow|accu/i.test(d.name),
         __('noBattery'));
       form.invertPower.checked = Boolean(config.battery?.invertPower);
+      fillCount(list.devices, devices.count || {});
 
       const boiler = { ...DEFAULT_BOILER, ...config.boiler };
       BOILER_FIELDS.forEach(key => { form[key].value = boiler[key]; });
@@ -131,6 +132,7 @@ function onHomeyReady(Homey) {
           thermostat: form.thermostat.value,
           evChargers: checkedValues('evChargers'),
           water: form.water.value,
+          count: countToSave(),
         },
         grid: { fuseAmps: number('fuseAmps') ?? 25, capacityTariff: number('capacityTariff') ?? null, capacityMin: number('capacityMin') ?? 2.5 },
         prices: { source: form.priceSource.value, chosen: true },
@@ -608,6 +610,28 @@ function onHomeyReady(Homey) {
       .filter(d => looksLike(d) || selected.includes(d.id))
       .map(d => `<label class="check"><input type="checkbox" name="${name}" value="${d.id}" ${selected.includes(d.id) ? 'checked' : ''}> ${escapeText(d.name)}</label>`)
       .join('') || `<span class="muted">${escapeText(emptyText)}</span>`;
+  }
+
+  // Consumers: devices the dashboard leaves out by itself can be counted anyway (with the reason
+  // they are left out), and counted devices can be left out (folded away, the list is long)
+  function fillCount(devices, count) {
+    const row = (d, name, note) => `<label class="check"><input type="checkbox" name="${name}" value="${d.id}" ${count[d.id] === (name === 'countInclude' ? 'include' : 'exclude') ? 'checked' : ''}> ${escapeText(d.name)}${note ? ` <small class="muted">(${escapeText(note)})</small>` : ''}</label>`;
+    const reasons = { excluded: __('countExcluded'), copy: __('countCopy'), meter: __('countMeter') };
+    document.getElementById('count-include').innerHTML = devices
+      .filter(d => reasons[d.consumer])
+      .map(d => row(d, 'countInclude', reasons[d.consumer]))
+      .join('') || `<span class="muted">${escapeText(__('countNone'))}</span>`;
+    document.getElementById('count-exclude').innerHTML = devices
+      .filter(d => d.consumer === 'counted')
+      .map(d => row(d, 'countExclude'))
+      .join('');
+  }
+
+  function countToSave() {
+    const count = {};
+    checkedValues('countInclude').forEach(id => { count[id] = 'include'; });
+    checkedValues('countExclude').forEach(id => { count[id] = 'exclude'; });
+    return count;
   }
 
   function fillSelect(select, devices, selected, autoLabel) {

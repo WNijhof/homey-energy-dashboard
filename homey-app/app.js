@@ -7,7 +7,7 @@ const { HomeyAPI } = require('homey-api');
 const {
   PERIODS, PREVIOUS, discover, buildLive, buildHistory, buildBaseload, comparableTotals, todayTotals,
   blockCatalog, resolveLayout, defaultLayout, validateLayout, PinGuard, layoutName, savedLayout, historyCsv, buildZoneFlow, consumptionDevices, nettingSummary,
-  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy,
+  expectedSolar, estimatedDevices, gridPower, timelineDay, recordTimeline, buildLiveAt, buildGroups, buildPhases, hasUsageEstimate, isCopy, consumerStatus,
   collectNights, pruneNights, batteryAdvice, nightSource, lastNight, meterCapabilities,
   mergeNights, connectionMaxW, importMeterExport, UploadParts, batteryViews, lastYearMonths, monthTotals, batteryDirection,
 } = require('./lib/energy');
@@ -58,7 +58,7 @@ const OLD_PORT = 8080;
 
 const DEFAULTS = {
   port: 8686,
-  devices: { p1: '', solar: [], batteries: [], boiler: '', heating: [], thermostat: '', evChargers: [], water: '' },
+  devices: { p1: '', solar: [], batteries: [], boiler: '', heating: [], thermostat: '', evChargers: [], water: '', count: {} },
   boiler: { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 },
   battery: { invertPower: false },
   grid: { fuseAmps: 25, capacityTariff: null, capacityMin: 2.5 },
@@ -1015,6 +1015,8 @@ class EnergyDashboardApp extends Homey.App {
           estimate: hasUsageEstimate(d) || estimatedIds.has(d.id),
           // A summary of Power by the Hour (Σ): it copies another meter, so it is no group device
           copy: isCopy(d),
+          // Whether the dashboard counts it as a consumer by itself, or why not (Consumers)
+          consumer: consumerStatus(d, found),
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     };

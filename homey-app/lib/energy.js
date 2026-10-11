@@ -79,8 +79,9 @@ function isExcluded(d) {
   return (d.energySettings || d.settings || {}).energy_exclude === true;
 }
 
-// Devices the dashboard leaves out unless they are chosen in the settings
-const isLeftOut = d => isCopy(d) || isExcluded(d);
+// Devices the dashboard leaves out unless they are chosen in the settings. Under Consumers in
+// the settings a device can be counted anyway, or never (`countOverride`, set by discover()).
+const isLeftOut = d => (d.countOverride === 'include' ? false : d.countOverride === 'exclude' || isCopy(d) || isExcluded(d));
 
 // Apps that make virtual devices, such as test devices for Homey Energy: they can carry the main
 // meter flag without being the real meter
@@ -113,6 +114,8 @@ function likelyP1(devices) {
 
 // Finds the P1 meter, solar panels, home batteries and boiler, unless they are pinned in the config
 function discover(devices, pinned = {}) {
+  const count = pinned.count && typeof pinned.count === 'object' ? pinned.count : {};
+  for (const d of devices) d.countOverride = count[d.id] === 'include' || count[d.id] === 'exclude' ? count[d.id] : null;
   const byId = id => id && devices.find(d => d.id === id);
   // A copy of another meter, or a device excluded from Homey Energy, is only used when it is
   // chosen in the settings
@@ -1339,11 +1342,27 @@ const RETURN_ONLY_CAPABILITIES = [
 const hasGridCounters = d => GRID_METER_CAPABILITIES.some(c => has(d, c))
   || (!has(d, 'meter_power') && RETURN_ONLY_CAPABILITIES.some(c => has(d, c)));
 function isGridMeter(d) {
+  return d.countOverride !== 'include' && looksLikeGridMeter(d);
+}
+function looksLikeGridMeter(d) {
   if (d.energyObj?.cumulative) return true;
   if (has(d, 'onoff')) return false;
   return (has(d, 'meter_gas') && has(d, 'measure_power'))
     || hasGridCounters(d)
     || /\bp1\b|dongle|slimme meter|smart meter/i.test(d.name || '');
+}
+
+// Whether the dashboard counts a device as a consumer by itself, for the settings: 'counted',
+// or why it is left out ('excluded' from Homey Energy, a 'copy' of another meter, looks like a
+// 'meter' for the whole house). Null for what is no consumer at all (meters chosen as P1,
+// panels, batteries, devices without power or kWh).
+function consumerStatus(d, found) {
+  const roles = new Set([found.p1?.id, ...found.solar.map(x => x.id), ...found.batteries.map(x => x.id)]);
+  if (roles.has(d.id) || isSourceOrStore(d) || !(has(d, 'measure_power') || has(d, 'meter_power'))) return null;
+  if (isCopy(d)) return 'copy';
+  if (isExcluded(d)) return 'excluded';
+  if (looksLikeGridMeter(d)) return 'meter';
+  return 'counted';
 }
 
 // Solar panels and batteries are never a consumer, also when they are not the ones chosen in the
@@ -2862,6 +2881,7 @@ module.exports = {
   isCopy,
   isExcluded,
   isLeftOut,
+  consumerStatus,
   degreeDayBuckets,
   PERIODS,
   PREVIOUS,
