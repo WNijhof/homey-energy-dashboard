@@ -83,6 +83,11 @@ function isExcluded(d) {
   return (d.energySettings || d.settings || {}).energy_exclude === true;
 }
 
+// Homey's main meter flag (energyObj.cumulative). A Shelly 3EM on one circuit carries it too, but
+// then "include in the total" is off in its energy settings (energy_cumulative_include: false).
+const isMainMeter = d => Boolean(d.energyObj?.cumulative)
+  && (d.energySettings || d.settings || {}).energy_cumulative_include !== false;
+
 // Devices the dashboard leaves out unless they are chosen in the settings. Under Consumers in
 // the settings a device can be counted anyway, or never (`countOverride`, set by discover()).
 const isLeftOut = d => (d.countOverride === 'include' ? false : d.countOverride === 'exclude' || isCopy(d) || isExcluded(d));
@@ -97,9 +102,9 @@ const appOf = d => String(d.driverId || d.driverUri || '').match(/^homey:app:([^
 function likelyP1(devices) {
   const score = d => {
     if (!has(d, 'measure_power')) return 0;
-    if (has(d, 'onoff') && !d.energyObj?.cumulative) return 0;
+    if (has(d, 'onoff') && !isMainMeter(d)) return 0;
     let s = 1;
-    if (d.energyObj?.cumulative) s += 4;
+    if (isMainMeter(d)) s += 4;
     if (hasGridCounters(d)) s += 3;
     if (has(d, 'meter_gas')) s += 2;
     if (phaseCapabilities(d).length) s += 2;
@@ -113,7 +118,7 @@ function likelyP1(devices) {
     // Live power alone makes any plug a candidate; it needs at least one sign of a whole-house meter
     .filter(x => x.s >= 2)
     .sort((a, b) => b.s - a.s)[0];
-  return best?.d || devices.find(d => d.energyObj?.cumulative);
+  return best?.d || devices.find(isMainMeter);
 }
 
 // Finds the P1 meter, solar panels, home batteries and boiler, unless they are pinned in the config
@@ -1349,7 +1354,7 @@ function isGridMeter(d) {
   return d.countOverride !== 'include' && looksLikeGridMeter(d);
 }
 function looksLikeGridMeter(d) {
-  if (d.energyObj?.cumulative) return true;
+  if (isMainMeter(d)) return true;
   if (has(d, 'onoff')) return false;
   return (has(d, 'meter_gas') && has(d, 'measure_power'))
     || hasGridCounters(d)
