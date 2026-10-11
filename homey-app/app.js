@@ -37,6 +37,12 @@ const ENERGY_LIVE_WAIT = 2 * 1000;
 // A day of Insights for looking back: today gets a new step every 5 minutes, yesterday is done
 const TIMELINE_TTL = { today: 2 * 60 * 1000, yesterday: 30 * 60 * 1000 };
 const TIMELINE_FRESH = 30 * 1000;
+// How long a live answer waits for something slow before going without it (null)
+const LIVE_WAIT = 1500;
+const soon = promise => Promise.race([
+  Promise.resolve(promise).catch(() => null),
+  new Promise(resolve => setTimeout(() => resolve(null), LIVE_WAIT)),
+]);
 
 // Prices can come from the app Power by the Hour (see lib/prices.js). Its earlier prices are read
 // from Insights, in the finest resolution that reaches back far enough.
@@ -469,9 +475,11 @@ class EnergyDashboardApp extends Homey.App {
       const today = await Promise.race([this.getHistory('today').catch(() => null), new Promise(r => setTimeout(r, 1500))]);
       live.today = todayTotals(today?.totals);
     }
-    if (shown.has('baseload')) live.baseload = await this.getBaseload(found, cfg).catch(() => null);
+    // Base load and net metering read a lot of Insights the first time (a year for net
+    // metering): the dashboard does not wait for that, the blocks fill on a later poll
+    if (shown.has('baseload')) live.baseload = await soon(this.getBaseload(found, cfg));
     if (shown.has('batterysize')) live.batterysize = this.getBatterySize(found, cfg);
-    if (shown.has('netting')) live.netting = await this.getNetting().catch(() => null);
+    if (shown.has('netting')) live.netting = await soon(this.getNetting());
     if (shown.has('peak')) live.peak = this.getPeak(found, cfg);
     // The contract, for the explanation of the amounts in the cost blocks
     live.tariff = describeTariff(contractFrom(cfg), await this.prices.homeyTariff().catch(() => null));
@@ -486,6 +494,7 @@ class EnergyDashboardApp extends Homey.App {
 
   // The end of net metering, from last year (or this year while last year has too little data).
   // Calculated at most once an hour; the first time reads a year of Insights and prices.
+  // While it is calculated again the previous result is returned.
   async getNetting() {
     if (this.nettingCache && Date.now() - this.nettingCache.at < NETTING_CACHE_TTL) return this.nettingCache.data;
     if (!this.nettingPending) {
@@ -498,20 +507,26 @@ class EnergyDashboardApp extends Homey.App {
         this.nettingCache = { at: Date.now(), data };
         return data;
       })().finally(() => { this.nettingPending = null; });
+      this.nettingPending.catch(err => this.error(`Netting: ${err.message}`));
     }
-    return this.nettingPending;
+    return this.nettingCache ? this.nettingCache.data : this.nettingPending;
   }
 
+  // While it is calculated again the previous result is returned.
   async getBaseload(found, cfg) {
-    if (Date.now() - this.baseloadCache.at > BASELOAD_CACHE_TTL) {
-      const market = await this.prices.get({}).catch(() => null);
-      const homey = await this.prices.homeyTariff().catch(() => null);
-      this.baseloadCache = { at: Date.now(), data: await buildBaseload(this, found, cfg, market?.avg, homey) };
-      // Kept per day, to notice when standby use rises
-      const log = this.homey.settings.get('baseloadLog') || {};
-      this.homey.settings.set('baseloadLog', recordBaseload(log, this.baseloadCache.data?.watts));
+    if (Date.now() - this.baseloadCache.at > BASELOAD_CACHE_TTL && !this.baseloadPending) {
+      this.baseloadPending = (async () => {
+        const market = await this.prices.get({}).catch(() => null);
+        const homey = await this.prices.homeyTariff().catch(() => null);
+        this.baseloadCache = { at: Date.now(), data: await buildBaseload(this, found, cfg, market?.avg, homey) };
+        // Kept per day, to notice when standby use rises
+        const log = this.homey.settings.get('baseloadLog') || {};
+        this.homey.settings.set('baseloadLog', recordBaseload(log, this.baseloadCache.data?.watts));
+        return this.baseloadCache.data;
+      })().finally(() => { this.baseloadPending = null; });
+      this.baseloadPending.catch(err => this.error(`Baseload: ${err.message}`));
     }
-    return this.baseloadCache.data;
+    return this.baseloadCache.data || this.baseloadPending || null;
   }
 
   // Battery size: the use while dark per night, kept in the settings for a year. Nights that are
