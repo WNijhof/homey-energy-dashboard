@@ -1482,13 +1482,21 @@ function averageInSteps(entries, start, steps, { idleZero = false, hold = 6 } = 
   return out;
 }
 
-// Turns a cumulative kWh meter into power readings (W), for panels that log no power
+// Turns a cumulative kWh meter into power readings (W), for panels that log no power. Many apps
+// update the counter only every 15 minutes or so while Insights logs it every 5, so a rise is
+// spread over the readings since the counter last moved, rather than a peak with zeros between.
+// Readings after the last rise are not known yet; a counter that stands still for 2 hours is 0 W.
 function powerFromMeter(entries) {
   const out = [];
+  const spread = (from, to, v) => { for (let j = from; j < to; j++) out.push({ t: entries[j].t, v }); };
+  let from = 0;
   for (let i = 1; i < entries.length; i++) {
-    const hours = (entries[i].t - entries[i - 1].t) / 3600000;
-    const delta = entries[i].v - entries[i - 1].v;
-    if (hours > 0 && hours <= 2 && delta >= 0) out.push({ t: entries[i - 1].t, v: delta * 1000 / hours });
+    const hours = (entries[i].t - entries[from].t) / 3600000;
+    const delta = entries[i].v - entries[from].v;
+    if (delta === 0 && hours <= 2) continue;
+    if (delta === 0) spread(from, i, 0);
+    else if (delta > 0 && hours > 0 && hours <= 2) spread(from, i, delta * 1000 / hours);
+    from = i;
   }
   return out;
 }
