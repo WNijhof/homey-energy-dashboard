@@ -353,6 +353,16 @@ function solarMeterCapability(device) {
   return named;
 }
 
+// Readings of a solar kWh counter. Homey's own choice may have no Insights log (Zevercloud:
+// measure_e-total, GitHub #15); then the counter found without it, which often has one
+async function solarMeterEntries(device, read) {
+  const first = solarMeterCapability(device);
+  const entries = first ? await read(device, first) : [];
+  if (entries.length >= 2) return entries;
+  const other = solarMeterCapability({ ...device, energyObj: null });
+  return other && other !== first ? read(device, other) : entries;
+}
+
 // kWh counter of a home battery for energy going in (charge) or out (discharge)
 function batteryMeterCapability(device, direction) {
   const explicit = direction === 'charge'
@@ -1557,8 +1567,7 @@ async function buildPowerHistory(client, found, period, cfg) {
     gridPower(found.p1, read),
     Promise.all(found.solar.map(async panel => {
       let entries = has(panel, 'measure_power') ? await read(panel, 'measure_power') : [];
-      const meter = solarMeterCapability(panel);
-      if (!entries.length && meter) entries = powerFromMeter(await read(panel, meter));
+      if (!entries.length) entries = powerFromMeter(await solarMeterEntries(panel, read));
       return entries.map(e => ({ t: e.t, v: Math.abs(e.v) }));
     })),
     Promise.all(found.batteries.map(b => batteryPowerEntries(b, read, cfg.battery))),
@@ -1650,8 +1659,7 @@ async function recordTimeline(readInsights, devices, found, cfg, day, now = new 
   for (const panel of found.solar) {
     tasks.push(async () => {
       let entries = has(panel, 'measure_power') ? await read(panel, 'measure_power') : [];
-      const meter = solarMeterCapability(panel);
-      if (!entries.length && meter) entries = powerFromMeter(await read(panel, meter));
+      if (!entries.length) entries = powerFromMeter(await solarMeterEntries(panel, read));
       if (entries.length) put(panel, 'measure_power', averageInSteps(entries.map(e => ({ t: e.t, v: Math.abs(e.v) })), start, steps, { idleZero: true, hold: HOLD_STEPS }));
     });
   }
@@ -1820,10 +1828,9 @@ async function buildHistory(client, devices, found, period, cfg, { light = false
       own.forEach((v, i) => { series.solar[i] += v; });
       solarDevices.push({ name: panel.name, kWh: own.reduce((a, b) => a + b, 0) });
     };
-    const meter = solarMeterCapability(panel);
-    if (meter) {
+    if (solarMeterCapability(panel)) {
       // A meter without history (Insights off for it) falls back to the power
-      jobs.push(entries(panel, meter).then(async e => {
+      jobs.push(solarMeterEntries(panel, entries).then(async e => {
         if (e.length < 2 && has(panel, 'measure_power')) addPowerIntegral(own, buckets, await entries(panel, 'measure_power'));
         else addMeterDeltas(own, buckets, e, maxKW);
         add();
@@ -2424,8 +2431,7 @@ async function collectNights(read, found, cfg = {}, known = {}, now = new Date()
     if (!step || step > NIGHT_MAX_STEP) continue;
     const solar = await Promise.all(found.solar.map(async panel => {
       let entries = has(panel, 'measure_power') ? await r(panel, 'measure_power') : [];
-      const meter = solarMeterCapability(panel);
-      if (!entries.length && meter) entries = powerFromMeter(await r(panel, meter));
+      if (!entries.length) entries = powerFromMeter(await solarMeterEntries(panel, r));
       return entries;
     }));
     // Panels without any readings at this resolution would make every day look dark
