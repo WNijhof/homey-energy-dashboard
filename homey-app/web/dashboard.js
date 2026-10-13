@@ -1557,6 +1557,14 @@
     if (typeof ((_b = live == null ? void 0 : live.water) == null ? void 0 : _b.flow) === "number") parts.push("nu ".concat(nf(1).format(live.water.flow), " L/min"));
     setText("water-total", parts.join(" · "));
   }
+  const meterFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
+  function renderMeters(rows) {
+    const el = $("meters");
+    if (!el || rows === void 0) return;
+    toggleEmpty("meters", Boolean(rows == null ? void 0 : rows.length));
+    if (!(rows == null ? void 0 : rows.length)) return;
+    el.innerHTML = rows.map((r) => "<li><span>".concat(escapeHtml(r.label), "</span><strong>").concat(meterFormat.format(r.value), " ").concat(r.unit, "</strong></li>")).join("");
+  }
   const BATTERY_VIEW_KEY = "energy-dashboard-battery-view";
   const BATTERY_VIEWS = ["measured", "export", "model"];
   function batteryView(data) {
@@ -1926,6 +1934,7 @@
       renderBaseload(state.live.baseload);
       renderBatterySize(state.live.batterysize);
       renderPhases(state.live.phases);
+      renderMeters(state.live.meters);
       renderGroups(state.live.groups);
       renderPeak(state.live.peak);
       renderWater(state.live, state.history);
@@ -2245,6 +2254,7 @@
     solar: "Opbrengst van je zonnepanelen met een streepje voor de verwachting van Forecast.Solar. Prestatie = opbrengst ÷ verwachting; per kWp gebruikt het vermogen van je dakvlakken.",
     gas: "Gasverbruik van het hele huis uit je slimme meter. Per graaddag deelt het verbruik door de graaddagen (buitentemperatuur van Open-Meteo), zodat perioden met ander weer te vergelijken zijn.",
     water: "Waterverbruik in liters uit je watermeter, en het huidige verbruik per minuut.",
+    meters: "De standen van je meters, zoals op de meter zelf of je jaarafrekening: stroom per tarief uit je slimme meter, gas, water en de kWh-teller van je zonnepanelen. In Nederland is tarief 1 het daltarief en tarief 2 normaal; in België is tarief 1 dag en tarief 2 nacht.",
     batterysize: "Hoe groot een thuisbatterij moet zijn: per nacht wat het huis verbruikt terwijl de zon minder dan 200 W geeft, van de middag tot de middag erna, over de afgelopen 365 dagen. Het verbruik is wat de slimme meter afneemt plus wat de zonnepanelen leveren. Onder nul staat het zonne-overschot van een dag: wat je teruglevert en dus in een batterij kunt laden. Een batterij van een bepaalde grootte levert per nacht hooguit zijn capaciteit, hooguit wat die nacht gebruikt wordt en hooguit wat de zon die dag over had. Het vermogen is gemiddeld per meetstap van Homey (vaak een uur), dus korte pieken zoals een waterkoker vallen weg. De eerste keer haalt de app de nachten uit de dagrapporten van Homey Energy (vermogen per 5 minuten, zo ver terug als die gaan) en uit Insights, en daarna elke dag de afgelopen nacht. Elk dagrapport wordt gecontroleerd tegen zijn eigen kWh-totalen. Nachten met ontbrekende of onlogische metingen tellen niet mee: een koppeling die uit lag, een meter die bleef hangen, teruglevering terwijl de panelen niets gaven, of veel minder verbruik dan normaal. Een kort gat in het donker wordt aangevuld met het gemiddelde van die nacht. Wat een laadpaal gebruikt telt niet mee.",
     baseload: "Het laagste verbruik van het huis afgelopen nacht tussen 1:00 en 5:00, als alleen apparaten draaien die altijd aan staan.",
     alerts: "Apparaten die langer aan staan dan normaal, hoger sluipverbruik dan de afgelopen twee weken, meters die niet reageren, een negatieve prijs terwijl je teruglevert en een kwartier boven je maandpiek.",
@@ -2698,6 +2708,7 @@
       renderBaseload(live.baseload);
       renderBatterySize(live.batterysize);
       renderPhases(live.phases);
+      renderMeters(live.meters);
       renderGroups(live.groups);
       renderPeak(live.peak);
       renderWater(live, state.history);

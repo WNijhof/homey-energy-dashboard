@@ -218,6 +218,7 @@
     "solar": "Solar energy",
     "gas": "Gas",
     "water": "Water",
+    "meters": "Meter readings",
     "baseload": "Standby use",
     "batterysize": "Choosing a battery",
     "phases": "Phase load",

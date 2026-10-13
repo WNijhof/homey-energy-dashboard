@@ -28,6 +28,7 @@ Het dashboard bestaat uit blokken. Je kiest zelf welke je ziet, in welke volgord
 | **Zonne-energie** | Opwek per uur of dag |
 | **Gas** | Gasverbruik per uur of dag |
 | **Water** | Waterverbruik per uur of dag in liters, en het huidige verbruik |
+| **Meterstanden** | De standen van je slimme meter (afname en teruglevering per tarief), gas, water en de kWh-teller van je zonnepanelen, om door te geven aan je energieleverancier |
 | **Sluipverbruik** | Wat er 's nachts altijd aan staat, en wat dat per jaar kost |
 | **Batterij kiezen** | Voor wie een thuisbatterij overweegt: je verbruik per avond en nacht (zon onder 200 W) over de afgelopen 365 dagen, het zonne-overschot per maand, en hoeveel van dat verbruik een batterij van 2,5 tot 15 kWh en 800 W tot 5 kW zou dekken (zie *Batterij kiezen*). Staat niet standaard op het dashboard; voeg het toe via het potlood |
 | **Meldingen** | Apparaten die blijven aanstaan, stijgend sluipverbruik, een meter die niet reageert, een negatieve prijs terwijl je teruglevert (zie *Meldingen*) |

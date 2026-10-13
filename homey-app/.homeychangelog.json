@@ -1,7 +1,7 @@
 {
   "0.2.17": {
-    "en": "Fixed: solar panels whose app keeps its total yield in a counter that Homey Insights does not log, such as Zevercloud, now count in the solar totals and the power chart, also for earlier days.",
-    "nl": "Opgelost: zonnepanelen waarvan de app de totale opbrengst bijhoudt in een teller die Homey Insights niet logt, zoals Zevercloud, tellen nu mee in de zonnetotalen en de vermogensgrafiek, ook voor eerdere dagen."
+    "en": "New block: Meter readings, with the readings of your smart meter (import and export per tariff), gas, water and the kWh counter of your solar panels, to pass on to your energy supplier. Add it in edit mode. Fixed: solar panels whose app keeps its total yield in a counter that Homey Insights does not log, such as Zevercloud, now count in the solar totals and the power chart, also for earlier days.",
+    "nl": "Nieuw blok: Meterstanden, met de standen van je slimme meter (afname en teruglevering per tarief), gas, water en de kWh-teller van je zonnepanelen, om door te geven aan je energieleverancier. Voeg het toe in de bewerkmodus. Opgelost: zonnepanelen waarvan de app de totale opbrengst bijhoudt in een teller die Homey Insights niet logt, zoals Zevercloud, tellen nu mee in de zonnetotalen en de vermogensgrafiek, ook voor eerdere dagen."
   },
   "0.2.16": {
     "en": "New in the device settings: Consumers. Count a device the dashboard leaves out anyway, or leave one out, without excluding it in Homey. Fixed: a meter that is set not to count in the total, such as a Shelly 3EM on one appliance, is now a consumer instead of a whole-house meter; a heat pump that only reports power in, such as a Weheat, now shows its watts; false jumps of a device kWh counter no longer count in Use per device; the solar line of the power chart no longer jumps up and down when the panels only update their kWh counter every 15 minutes.",

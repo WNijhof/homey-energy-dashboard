@@ -218,6 +218,7 @@
     "solar": "Zonne-energie",
     "gas": "Gas",
     "water": "Water",
+    "meters": "Meterstanden",
     "baseload": "Sluipverbruik",
     "batterysize": "Batterij kiezen",
     "phases": "Fasebelasting",
