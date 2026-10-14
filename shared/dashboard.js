@@ -2134,9 +2134,9 @@
     const rows = data.groups.map((g, r) => {
       const y = pad.top + r * (rowH + gap);
       const cells = g.values.map((v, k) => (v > 0
-        ? `<rect x="${X(start + k * data.step * 1000).toFixed(1)}" y="${y}" width="${(stepW + 0.4).toFixed(2)}" height="${rowH}" fill="${loadColor(v / 100)}"><title>${escapeHtml(g.name)} ${hm(new Date(start + k * data.step * 1000).toISOString())}: ${v}%</title></rect>`
+        ? `<rect x="${X(start + k * data.step * 1000).toFixed(1)}" y="${y}" width="${(stepW + 0.4).toFixed(2)}" height="${rowH}" fill="${loadColor(v / 100)}"><title>${escapeHtml(g.name)} ${hm(new Date(start + k * data.step * 1000).toISOString())}: ${nf(v < 10 ? 1 : 0).format(v)}%</title></rect>`
         : '')).join('');
-      const label = `<text x="0" y="${y + rowH - 2}" style="font-size:11px">${escapeHtml(g.name)}</text>`;
+      const label = `<text x="0" y="${y + rowH - 2}" fill="var(--text)" style="font-size:11px">${escapeHtml(g.name)}</text>`;
       return `<rect x="${pad.left}" y="${y}" width="${plotW}" height="${rowH}" rx="3" fill="var(--track)"/>${cells}${label}`;
     }).join('');
     let axis = '';

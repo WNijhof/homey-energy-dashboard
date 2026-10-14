@@ -1728,8 +1728,8 @@
     const X = (t) => pad.left + (t - start2) / day * plotW;
     const rows = data.groups.map((g, r) => {
       const y = pad.top + r * (rowH + gap);
-      const cells = g.values.map((v, k) => v > 0 ? '<rect x="'.concat(X(start2 + k * data.step * 1e3).toFixed(1), '" y="').concat(y, '" width="').concat((stepW + 0.4).toFixed(2), '" height="').concat(rowH, '" fill="').concat(loadColor(v / 100), '"><title>').concat(escapeHtml(g.name), " ").concat(hm(new Date(start2 + k * data.step * 1e3).toISOString()), ": ").concat(v, "%</title></rect>") : "").join("");
-      const label = '<text x="0" y="'.concat(y + rowH - 2, '" style="font-size:11px">').concat(escapeHtml(g.name), "</text>");
+      const cells = g.values.map((v, k) => v > 0 ? '<rect x="'.concat(X(start2 + k * data.step * 1e3).toFixed(1), '" y="').concat(y, '" width="').concat((stepW + 0.4).toFixed(2), '" height="').concat(rowH, '" fill="').concat(loadColor(v / 100), '"><title>').concat(escapeHtml(g.name), " ").concat(hm(new Date(start2 + k * data.step * 1e3).toISOString()), ": ").concat(nf(v < 10 ? 1 : 0).format(v), "%</title></rect>") : "").join("");
+      const label = '<text x="0" y="'.concat(y + rowH - 2, '" fill="var(--text)" style="font-size:11px">').concat(escapeHtml(g.name), "</text>");
       return '<rect x="'.concat(pad.left, '" y="').concat(y, '" width="').concat(plotW, '" height="').concat(rowH, '" rx="3" fill="var(--track)"/>').concat(cells).concat(label);
     }).join("");
     let axis = "";
