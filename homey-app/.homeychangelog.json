@@ -1,4 +1,8 @@
 {
+  "0.2.19": {
+    "en": "The water heater block now supports tanks with a temperature sensor at the top and at the bottom, such as the Weheat heat pump: the shower minutes are calculated from both layers. The sensors are found automatically, or you pick them in the settings under Water heater. Without a chosen cold water temperature, the shower minutes now follow the season.",
+    "nl": "Het blok Boiler werkt nu ook met een boiler met een temperatuursensor boven en onder, zoals de Weheat-warmtepomp: de doucheminuten worden berekend uit beide lagen. De sensoren worden automatisch gevonden, of je kiest ze zelf in de instellingen onder Boiler. Als je geen temperatuur voor het koude water invult, volgen de doucheminuten nu het seizoen."
+  },
   "0.2.18": {
     "en": "Fixed in the Groups block: the group names next to the day bars are readable in dark mode, and a light load (under 1 % of the fuse) now shows in the bars instead of an empty bar.",
     "nl": "Opgelost in het blok Groepen: de groepsnamen naast de dagbalken zijn leesbaar in dark mode, en een lichte belasting (onder 1 % van de zekering) is nu te zien in de balken in plaats van een lege balk."

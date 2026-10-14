@@ -454,6 +454,9 @@
     setText("boiler-showers", typeof boiler.showers === "number" ? boiler.showers : "–");
     const showersRow = $("boiler-showers-row");
     if (showersRow) showersRow.hidden = typeof boiler.showers !== "number";
+    const bottomRow = $("boiler-bottom-row");
+    if (bottomRow) bottomRow.hidden = typeof boiler.bottom !== "number";
+    setText("boiler-bottom", typeof boiler.bottom === "number" ? "".concat(nf(1).format(boiler.bottom), " °C") : "–");
     const heatingRow = $("boiler-heating-row");
     if (heatingRow) heatingRow.hidden = typeof boiler.heating !== "boolean";
     setText("boiler-target", typeof boiler.target === "number" ? "".concat(boiler.target, " °C") : "–");

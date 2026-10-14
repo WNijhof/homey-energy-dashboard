@@ -59,7 +59,7 @@ const OLD_PORT = 8080;
 const DEFAULTS = {
   port: 8686,
   devices: { p1: '', solar: [], batteries: [], boiler: '', heating: [], thermostat: '', evChargers: [], water: '', count: {} },
-  boiler: { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 },
+  boiler: { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '' },
   battery: { invertPower: false },
   grid: { fuseAmps: 25, capacityTariff: null, capacityMin: 2.5 },
   prices: { source: 'auto' },
@@ -1012,6 +1012,7 @@ class EnergyDashboardApp extends Homey.App {
           name: d.name,
           class: d.virtualClass || d.class,
           power: (d.capabilities || []).includes('measure_power'),
+          temps: (d.capabilities || []).filter(c => c.startsWith('measure_temperature')),
           estimate: hasUsageEstimate(d) || estimatedIds.has(d.id),
           // A summary of Power by the Hour (Σ): it copies another meter, so it is no group device
           copy: isCopy(d),

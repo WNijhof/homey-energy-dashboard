@@ -823,6 +823,7 @@
     'doucheminuten': ['shower minutes', 'Duschminuten', 'dusjminutter', 'duschminuter', 'bruseminutter', 'minuti di doccia', 'minutes de douche', 'minutos de duche', 'minutos de ducha'],
     'Douchebeurten': ['Showers', 'Duschen', 'Dusjer', 'Duschar', 'Brusebade', 'Docce', 'Douches', 'Duches', 'Duchas'],
     'Ingesteld': ['Target', 'Soll', 'Innstilt', 'Inställt', 'Indstillet', 'Impostato', 'Consigne', 'Definido', 'Objetivo'],
+    'Onderin': ['Bottom', 'Unten', 'Nederst', 'Nederst', 'Nederst', 'In basso', 'En bas', 'Em baixo', 'Abajo'],
     'Opwarmen': ['Heating up', 'Aufheizen', 'Varmer opp', 'Värmer upp', 'Varmer op', 'In riscaldamento', 'Chauffe', 'A aquecer', 'Calentando'],
     'Warm': ['Hot', 'Heiß', 'Varm', 'Varmt', 'Varmt', 'Calda', 'Chaude', 'Quente', 'Caliente'],
     'Lauw': ['Lukewarm', 'Lauwarm', 'Lunken', 'Ljummet', 'Lunkent', 'Tiepida', 'Tiède', 'Morna', 'Tibia'],

@@ -16,10 +16,12 @@
   },
   "boiler": {
     "liters": 80,
-    "coldWaterTemp": 10,
+    "coldWaterTemp": null,
     "showerTemp": 40,
     "showerFlow": 8,
-    "warmFrom": 50
+    "warmFrom": 50,
+    "topSensor": "",
+    "bottomSensor": ""
   },
   "battery": {
     "invertPower": false

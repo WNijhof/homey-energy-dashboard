@@ -3,7 +3,8 @@
 // Homey settings page: links to the dashboard and edits the app settings
 
 const BOILER_FIELDS = ['liters', 'coldWaterTemp', 'showerTemp', 'showerFlow', 'warmFrom'];
-const DEFAULT_BOILER = { liters: 80, coldWaterTemp: 10, showerTemp: 40, showerFlow: 8, warmFrom: 50 };
+const BOILER_SENSORS = ['topSensor', 'bottomSensor'];
+const DEFAULT_BOILER = { liters: 80, coldWaterTemp: null, showerTemp: 40, showerFlow: 8, warmFrom: 50, topSensor: '', bottomSensor: '' };
 
 function onHomeyReady(Homey) {
   const form = document.getElementById('settings-form');
@@ -107,7 +108,17 @@ function onHomeyReady(Homey) {
       fillCount(list.devices, devices.count || {});
 
       const boiler = { ...DEFAULT_BOILER, ...config.boiler };
-      BOILER_FIELDS.forEach(key => { form[key].value = boiler[key]; });
+      BOILER_FIELDS.forEach(key => { form[key].value = key === 'coldWaterTemp' && boiler[key] === 10 ? '' : boiler[key] ?? ''; });
+      const fillSensors = () => {
+        const id = form.boiler.value || list.found.boiler;
+        const temps = list.devices.find(d => d.id === id)?.temps || [];
+        const options = (first, selected) => `<option value="">${escapeText(__('automatic'))}</option>${first}`
+          + temps.map(t => `<option value="${t}" ${t === selected ? 'selected' : ''}>${escapeText(t.replace('measure_temperature', 'temperature'))}</option>`).join('');
+        form.topSensor.innerHTML = options('', boiler.topSensor);
+        form.bottomSensor.innerHTML = options(`<option value="none" ${boiler.bottomSensor === 'none' ? 'selected' : ''}>${escapeText(__('boilerNoBottom'))}</option>`, boiler.bottomSensor);
+      };
+      fillSensors();
+      form.boiler.addEventListener('change', () => { boiler.topSensor = ''; boiler.bottomSensor = ''; fillSensors(); });
     } catch (err) {
       status.textContent = __('loadFailed', { error: err.message || err });
     }
@@ -145,9 +156,12 @@ function onHomeyReady(Homey) {
         groupsSolarPhases: phasesFrom(form.groupsSolarPhases.value),
         groupsBatteryPhases: phasesFrom(form.groupsBatteryPhases.value),
         battery: { invertPower: form.invertPower.checked },
-        boiler: Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
+        boiler: {
+          ...Object.fromEntries(BOILER_FIELDS.map(key => [key, number(key) ?? DEFAULT_BOILER[key]])),
+          ...Object.fromEntries(BOILER_SENSORS.map(key => [key, form[key].value])),
+        },
       };
-      if (config.boiler.showerTemp <= config.boiler.coldWaterTemp) {
+      if (config.boiler.showerTemp <= (config.boiler.coldWaterTemp ?? 17)) {
         status.textContent = __('showerTooCold');
         return;
       }

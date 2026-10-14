@@ -49,7 +49,7 @@ Kreeg je een diagnose van een gebruiker met **Mijn dashboard meesturen**, bewaar
 | `port` | Poort van het dashboard (standaard 8080) |
 | `devices` | `p1`, `solar`, `batteries`, `boiler`, `heating`, `thermostat`, `evChargers` en `water`. Laat leeg om automatisch te zoeken. Worden je apparaten niet gevonden, open dan `http://localhost:8080/api/devices` en zet de juiste `id` hier neer (`solar`, `batteries`, `heating` en `evChargers` zijn lijsten) |
 | `boiler.liters` | Inhoud van je boiler (Lydos Hybrid: 80 of 110 liter) |
-| `boiler.coldWaterTemp` | Temperatuur van het koude leidingwater (ongeveer 10 °C) |
+| `boiler.coldWaterTemp` | Temperatuur van het koude leidingwater; weglaten (of `null`) volgt het seizoen, ongeveer 6 °C in februari en 17 °C in augustus |
 | `boiler.showerTemp` | Temperatuur waarop je doucht (ongeveer 38–40 °C) |
 | `boiler.showerFlow` | Liters per minuut van je douchekop (spaardouche ongeveer 6–7, normaal 8–10) |
 | `boiler.warmFrom` | Vanaf deze temperatuur staat de boiler op "Warm" |
