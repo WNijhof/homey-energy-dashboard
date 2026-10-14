@@ -1,4 +1,8 @@
 {
+  "0.2.18": {
+    "en": "Fixed in the Groups block: the group names next to the day bars are readable in dark mode, and a light load (under 1 % of the fuse) now shows in the bars instead of an empty bar.",
+    "nl": "Opgelost in het blok Groepen: de groepsnamen naast de dagbalken zijn leesbaar in dark mode, en een lichte belasting (onder 1 % van de zekering) is nu te zien in de balken in plaats van een lege balk."
+  },
   "0.2.17": {
     "en": "New block: Meter readings, with the readings of your smart meter (import and export per tariff), gas, water and the kWh counter of your solar panels, to pass on to your energy supplier. Add it in edit mode. Fixed: solar panels whose app keeps its total yield in a counter that Homey Insights does not log, such as Zevercloud, now count in the solar totals and the power chart, also for earlier days.",
     "nl": "Nieuw blok: Meterstanden, met de standen van je slimme meter (afname en teruglevering per tarief), gas, water en de kWh-teller van je zonnepanelen, om door te geven aan je energieleverancier. Voeg het toe in de bewerkmodus. Opgelost: zonnepanelen waarvan de app de totale opbrengst bijhoudt in een teller die Homey Insights niet logt, zoals Zevercloud, tellen nu mee in de zonnetotalen en de vermogensgrafiek, ook voor eerdere dagen."
