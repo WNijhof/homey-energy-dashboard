@@ -356,13 +356,25 @@ function solarMeterCapability(device) {
 }
 
 // Readings of a solar kWh counter. Homey's own choice may have no Insights log (Zevercloud:
-// measure_e-total, GitHub #15); then the counter found without it, which often has one
+// measure_e-total, GitHub #15); then the counter found without it, which often has one.
+// A lifetime counter in whole kWh hides most of a day: Zevercloud gets its total in MWh with
+// two decimals, so it moves in steps of 10 kWh. A finer day counter (measure_e-total-today,
+// meter_power.day) read at least hourly then tells the yield; it drops to 0 at night, which
+// counts as nothing, like a meter reset.
+const SOLAR_DAY_COUNTER = /^(meter_power|measure_e-total)[._-](day|today)$/;
+const wholeKWh = entries => entries.every(e => Math.abs(e.v - Math.round(e.v)) < 1e-6);
 async function solarMeterEntries(device, read) {
   const first = solarMeterCapability(device);
-  const entries = first ? await read(device, first) : [];
-  if (entries.length >= 2) return entries;
-  const other = solarMeterCapability({ ...device, energyObj: null });
-  return other && other !== first ? read(device, other) : entries;
+  let entries = first ? await read(device, first) : [];
+  if (entries.length < 2) {
+    const other = solarMeterCapability({ ...device, energyObj: null });
+    if (other && other !== first) entries = await read(device, other);
+  }
+  const day = (device.capabilities || []).find(c => SOLAR_DAY_COUNTER.test(c));
+  if (!day || (entries.length >= 2 && !wholeKWh(entries))) return entries;
+  const daily = await read(device, day);
+  const step = typicalStep(daily);
+  return step && step <= 3600000 && !wholeKWh(daily) ? daily : entries;
 }
 
 // kWh counter of a home battery for energy going in (charge) or out (discharge)
