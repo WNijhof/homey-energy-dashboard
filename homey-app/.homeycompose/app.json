@@ -52,6 +52,7 @@
   "homepage": "https://github.com/WNijhof/homey-energy-dashboard",
   "source": "https://github.com/WNijhof/homey-energy-dashboard",
   "support": "https://github.com/WNijhof/homey-energy-dashboard/issues",
+  "homeyCommunityTopicId": 160116,
   "bugs": {
     "url": "https://github.com/WNijhof/homey-energy-dashboard/issues"
   },
