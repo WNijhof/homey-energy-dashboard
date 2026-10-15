@@ -47,8 +47,8 @@
     "min vermindering energiebelasting": ["minus energy tax reduction", "abzüglich Energiesteuerermäßigung", "minus reduksjon i energiavgift", "minus sänkt energiskatt", "minus nedsættelse af energiafgift", "meno riduzione dell'imposta sull'energia", "moins réduction de la taxe sur l'énergie", "menos redução do imposto sobre a energia", "menos reducción del impuesto sobre la energía"],
     "all-in: markt + belasting + opslag": ["all-in: market + tax + markup", "all-in: Markt + Steuer + Aufschlag", "alt inkl.: marked + avgift + påslag", "allt inkl.: marknad + skatt + påslag", "alt inkl.: marked + afgift + tillæg", "tutto incluso: mercato + imposte + maggiorazione", "tout compris : marché + taxes + marge", "tudo incluído: mercado + impostos + margem", "todo incluido: mercado + impuestos + margen"],
     "marktprijs incl. btw": ["market price incl. VAT", "Marktpreis inkl. MwSt.", "markedspris inkl. mva", "marknadspris inkl. moms", "markedspris inkl. moms", "prezzo di mercato IVA incl.", "prix du marché TTC", "preço de mercado c/ IVA", "precio de mercado con IVA"],
-    "Afname kost nu": ["Import costs now", "Bezug kostet jetzt", "Import koster nå", "Import kostar nu", "Import koster nu", "Il prelievo costa ora", "Le soutirage coûte maintenant", "O consumo da rede custa agora", "El consumo de red cuesta ahora"],
-    "Teruglevering levert nu": ["Export earns now", "Einspeisung bringt jetzt", "Eksport gir nå", "Export ger nu", "Eksport giver nu", "L'immissione rende ora", "L'injection rapporte maintenant", "A injeção rende agora", "La inyección rinde ahora"],
+    "Net kost nu": ["Grid costs now", "Netz kostet jetzt", "Nettet koster nå", "Nätet kostar nu", "Nettet koster nu", "La rete costa ora", "Le réseau coûte maintenant", "A rede custa agora", "La red cuesta ahora"],
+    "Vandaag laag · gem. · hoog": ["Today low · avg · high", "Heute niedrig · Ø · hoch", "I dag lav · snitt · høy", "Idag låg · snitt · hög", "I dag lav · gns. · høj", "Oggi min · media · max", "Aujourd'hui bas · moy. · haut", "Hoje mín. · méd. · máx.", "Hoy mín. · media · máx."],
     "vandaag": ["today", "heute", "i dag", "idag", "i dag", "oggi", "aujourd'hui", "hoje", "hoy"],
     "gisteren": ["yesterday", "gestern", "i går", "igår", "i går", "ieri", "hier", "ontem", "ayer"],
     "deze week": ["this week", "diese Woche", "denne uken", "denna vecka", "denne uge", "questa settimana", "cette semaine", "esta semana", "esta semana"],
@@ -134,16 +134,16 @@
       "Os totais do período escolhido a partir das leituras no Homey Insights, comparados com o período anterior até ao mesmo momento. Autossuficiente é a parte do consumo vinda do sol e da bateria.",
       "Los totales del periodo elegido a partir de las lecturas en Homey Insights, comparados con el periodo anterior hasta el mismo momento. Autosuficiente es la parte de tu consumo del sol y la batería."
     ],
-    "De dynamische stroomprijzen van vandaag en morgen, per kwartier of uur, van Homey Energie of EnergyZero. Het goedkoopste blok is het goedkoopste aaneengesloten blok van 3 uur.": [
-      "The dynamic electricity prices of today and tomorrow, per quarter hour or hour, from Homey Energy or EnergyZero. The cheapest block is the cheapest 3 hours in a row.",
-      "Die dynamischen Strompreise von heute und morgen, pro Viertelstunde oder Stunde, von Homey Energie oder EnergyZero. Der günstigste Block sind die günstigsten 3 Stunden am Stück.",
-      "Dynamiske strømpriser for i dag og i morgen, per kvarter eller time, fra Homey Energi eller EnergyZero. Billigste blokk er de billigste 3 timene på rad.",
-      "Dynamiska elpriser för idag och imorgon, per kvart eller timme, från Homey Energi eller EnergyZero. Billigaste blocket är de billigaste 3 timmarna i följd.",
-      "Dynamiske elpriser for i dag og i morgen, pr. kvarter eller time, fra Homey Energi eller EnergyZero. Billigste blok er de billigste 3 timer i træk.",
-      "I prezzi dinamici di oggi e domani, per quarto d'ora o ora, da Homey Energia o EnergyZero. Il blocco più economico sono le 3 ore consecutive più economiche.",
-      "Les prix dynamiques d'aujourd'hui et de demain, par quart d'heure ou heure, de Homey Énergie ou EnergyZero. Le bloc le moins cher est celui de 3 heures consécutives le moins cher.",
-      "Os preços dinâmicos de hoje e amanhã, por quarto de hora ou hora, do Homey Energia ou da EnergyZero. O bloco mais barato são as 3 horas seguidas mais baratas.",
-      "Los precios dinámicos de hoy y mañana, por cuarto de hora u hora, de Homey Energía o EnergyZero. El bloque más barato son las 3 horas seguidas más baratas."
+    "De dynamische stroomprijzen van vandaag en morgen, per kwartier of uur, van Homey Energie of EnergyZero. Het goedkoopste blok is het goedkoopste aaneengesloten blok van 3 uur. Net kost nu: wat je afname van dit moment per uur kost, met een min ervoor als je teruglevert.": [
+      "The dynamic electricity prices of today and tomorrow, per quarter hour or hour, from Homey Energy or EnergyZero. The cheapest block is the cheapest 3 hours in a row. Grid costs now: what your import of this moment costs per hour, with a minus while you export.",
+      "Die dynamischen Strompreise von heute und morgen, pro Viertelstunde oder Stunde, von Homey Energie oder EnergyZero. Der günstigste Block sind die günstigsten 3 Stunden am Stück. Netz kostet jetzt: was dein Bezug in diesem Moment pro Stunde kostet, mit einem Minus, wenn du einspeist.",
+      "Dynamiske strømpriser for i dag og i morgen, per kvarter eller time, fra Homey Energi eller EnergyZero. Billigste blokk er de billigste 3 timene på rad. Nettet koster nå: hva importen din akkurat nå koster per time, med minus når du eksporterer.",
+      "Dynamiska elpriser för idag och imorgon, per kvart eller timme, från Homey Energi eller EnergyZero. Billigaste blocket är de billigaste 3 timmarna i följd. Nätet kostar nu: vad din import just nu kostar per timme, med ett minus när du exporterar.",
+      "Dynamiske elpriser for i dag og i morgen, pr. kvarter eller time, fra Homey Energi eller EnergyZero. Billigste blok er de billigste 3 timer i træk. Nettet koster nu: hvad din import lige nu koster pr. time, med et minus når du eksporterer.",
+      "I prezzi dinamici di oggi e domani, per quarto d'ora o ora, da Homey Energia o EnergyZero. Il blocco più economico sono le 3 ore consecutive più economiche. La rete costa ora: quanto costa all'ora il prelievo di questo momento, con un meno quando immetti.",
+      "Les prix dynamiques d'aujourd'hui et de demain, par quart d'heure ou heure, de Homey Énergie ou EnergyZero. Le bloc le moins cher est celui de 3 heures consécutives le moins cher. Le réseau coûte maintenant : ce que coûte par heure ton soutirage de ce moment, avec un moins quand tu injectes.",
+      "Os preços dinâmicos de hoje e amanhã, por quarto de hora ou hora, do Homey Energia ou da EnergyZero. O bloco mais barato são as 3 horas seguidas mais baratas. A rede custa agora: quanto custa por hora o consumo da rede neste momento, com um menos quando injetas.",
+      "Los precios dinámicos de hoy y mañana, por cuarto de hora u hora, de Homey Energía o EnergyZero. El bloque más barato son las 3 horas seguidas más baratas. La red cuesta ahora: lo que cuesta por hora tu consumo de red en este momento, con un menos cuando inyectas."
     ],
     "Zelfvoorzienend: deel van je verbruik uit zon en batterij. Eigen zon gebruikt: deel van je zonnestroom dat je zelf gebruikte. Netto: afname min teruglevering.": [
       "Self-sufficient: share of your use from solar and battery. Own solar used: share of your solar power you used yourself. Net: import minus export.",
@@ -937,9 +937,6 @@
     // Prices
     "Geen prijzen beschikbaar.": ["No prices available.", "Keine Preise verfügbar.", "Ingen priser tilgjengelig.", "Inga priser tillgängliga.", "Ingen priser tilgængelige.", "Nessun prezzo disponibile.", "Aucun prix disponible.", "Sem preços disponíveis.", "No hay precios disponibles."],
     "per kWh nu": ["per kWh now", "pro kWh jetzt", "per kWh nå", "per kWh nu", "pr. kWh nu", "per kWh ora", "par kWh maintenant", "por kWh agora", "por kWh ahora"],
-    "Laagste vandaag": ["Lowest today", "Niedrigster heute", "Lavest i dag", "Lägst idag", "Lavest i dag", "Minimo oggi", "Le plus bas aujourd'hui", "Mais baixo hoje", "Más bajo hoy"],
-    "Hoogste vandaag": ["Highest today", "Höchster heute", "Høyest i dag", "Högst idag", "Højest i dag", "Massimo oggi", "Le plus haut aujourd'hui", "Mais alto hoje", "Más alto hoy"],
-    "Gemiddeld vandaag": ["Average today", "Durchschnitt heute", "Snitt i dag", "Snitt idag", "Gennemsnit i dag", "Media oggi", "Moyenne aujourd'hui", "Média hoje", "Media hoy"],
     "morgen": ["tmrw", "morgen", "i morgen", "imorgon", "i morgen", "domani", "demain", "amanhã", "mañana"],
     "Prijzen ophalen duurde te lang": ["Loading prices took too long", "Preise laden dauerte zu lange", "Henting av priser tok for lang tid", "Att hämta priser tog för lång tid", "Hentning af priser tog for lang tid", "Il caricamento dei prezzi ha richiesto troppo tempo", "Le chargement des prix a pris trop de temps", "Carregar os preços demorou demasiado", "La carga de precios tardó demasiado"],
     "Goedkoopste 1 uur": ["Cheapest hour", "Günstigste Stunde", "Billigste time", "Billigaste timmen", "Billigste time", "Ora più economica", "Heure la moins chère", "Hora mais barata", "Hora más barata"],

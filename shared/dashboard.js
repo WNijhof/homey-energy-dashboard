@@ -1725,7 +1725,8 @@
   // Amounts in euro, or in the currency Homey Energy uses (kroner, pounds, francs)
   const euro = (value, digits = 2) => {
     const currency = state.live?.currency || 'EUR';
-    if (currency === 'EUR') return `${value < 0 ? '−' : ''}€ ${nf(digits).format(Math.abs(value))}`;
+    // A no-break space, so a narrow block never splits the sign from the amount
+    if (currency === 'EUR') return `${value < 0 ? '−' : ''}€ ${nf(digits).format(Math.abs(value))}`;
     try {
       return new Intl.NumberFormat(LOCALE, { style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
     } catch {
@@ -1758,14 +1759,14 @@
     setText('price-now', typeof prices.current === 'number' ? euro(prices.current, 3) : '–');
 
     const facts = [
-      `<li><span>Laagste vandaag</span><strong>${euro(prices.min, 3)}</strong></li>`,
-      `<li><span>Hoogste vandaag</span><strong>${euro(prices.max, 3)}</strong></li>`,
-      `<li><span>Gemiddeld vandaag</span><strong>${euro(prices.avg, 3)}</strong></li>`,
+      `<li><span>Vandaag laag · gem. · hoog</span><strong>${[prices.min, prices.avg, prices.max].map(v => euro(v, 3)).join(' · ')}</strong></li>`,
     ];
-    // What the power of this moment costs (or earns) per hour
+    // What the power of this moment costs per hour, minus while exporting. Always one line, so the
+    // block keeps its size when a home battery keeps the grid around 0 W (GitHub #17).
     const gridW = state.live?.gridW;
-    if (prices.allIn && typeof prices.current === 'number' && typeof gridW === 'number' && Math.abs(gridW) > 5) {
-      facts.unshift(`<li><span>${gridW > 0 ? 'Afname kost nu' : 'Teruglevering levert nu'}</span><strong>${euro(Math.abs(gridW) / 1000 * prices.current)} per uur</strong></li>`);
+    if (prices.allIn && typeof prices.current === 'number' && typeof gridW === 'number') {
+      const cost = Math.abs(gridW) > 5 ? gridW / 1000 * prices.current : 0;
+      facts.unshift(`<li><span>Net kost nu</span><strong>${cost > 0 ? '+' : ''}${euro(cost)} per uur</strong></li>`);
     }
     if (prices.cheapest) {
       const end = new Date(new Date(prices.cheapest.start).getTime() + prices.cheapest.hours * 3600000).toISOString();
@@ -2710,7 +2711,7 @@
     battery: 'Laadniveau en vermogen van je thuisbatterij en wat hij laadde en leverde. De opbrengst is wat ontladen bespaarde min wat laden kostte; laden met zonnestroom kost de teruglevering die je misliep.',
     batteryhistory: 'Wat de batterij laadde (van zon of net) en leverde (aan huis of net). Waar de energie vandaan kwam, volgt uit de energiestromen van dat uur. Bij Vandaag en Gisteren elke sessie met de gemiddelde prijs.',
     tiles: 'De totalen van de gekozen periode uit de meterstanden in Homey Insights, vergeleken met de vorige periode tot hetzelfde moment. Zelfvoorzienend is het deel van je verbruik uit zon en batterij.',
-    prices: 'De dynamische stroomprijzen van vandaag en morgen, per kwartier of uur, van Homey Energie of EnergyZero. Het goedkoopste blok is het goedkoopste aaneengesloten blok van 3 uur.',
+    prices: 'De dynamische stroomprijzen van vandaag en morgen, per kwartier of uur, van Homey Energie of EnergyZero. Het goedkoopste blok is het goedkoopste aaneengesloten blok van 3 uur. Net kost nu: wat je afname van dit moment per uur kost, met een min ervoor als je teruglevert.',
     gauges: 'Zelfvoorzienend: deel van je verbruik uit zon en batterij. Eigen zon gebruikt: deel van je zonnestroom dat je zelf gebruikte. Netto: afname min teruglevering.',
     consumers: 'Apparaten die nu stroom gebruiken, volgens hun eigen vermogensmeting. "geschat" betekent dat Homey het verbruik schat.',
     electricity: 'Boven de nul waar je stroom vandaan kwam (net, zon, batterij), eronder waar overschot heen ging (teruglevering, batterij). Uit de meterstanden van je P1-meter, zonnepanelen en batterij.',
