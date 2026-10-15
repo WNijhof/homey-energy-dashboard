@@ -1,4 +1,8 @@
 {
+  "0.2.20": {
+    "en": "The Electricity price block always shows one line with what the grid costs now: a plus while you import, a minus while you export. It no longer changes size when a home battery keeps the grid around zero. Today's lowest, average and highest price are on one line. Fixed: Zevercloud solar panels now count in today's yield, and a false peak of the P1 meter after a power cut no longer flattens the power chart.",
+    "nl": "Het blok Stroomprijs toont altijd één regel met wat het net nu kost: met een plus bij afname en een min bij teruglevering. Het verspringt niet meer als een thuisbatterij het net rond nul houdt. De laagste, gemiddelde en hoogste prijs van vandaag staan op één regel. Opgelost: zonnepanelen via Zevercloud tellen nu mee in de opbrengst van vandaag, en een valse piek van de P1-meter na een stroomstoring maakt de vermogensgrafiek niet meer plat."
+  },
   "0.2.19": {
     "en": "The water heater block now supports tanks with a temperature sensor at the top and at the bottom, such as the Weheat heat pump: the shower minutes are calculated from both layers. The sensors are found automatically, or you pick them in the settings under Water heater. Without a chosen cold water temperature, the shower minutes now follow the season.",
     "nl": "Het blok Boiler werkt nu ook met een boiler met een temperatuursensor boven en onder, zoals de Weheat-warmtepomp: de doucheminuten worden berekend uit beide lagen. De sensoren worden automatisch gevonden, of je kiest ze zelf in de instellingen onder Boiler. Als je geen temperatuur voor het koude water invult, volgen de doucheminuten nu het seizoen."
